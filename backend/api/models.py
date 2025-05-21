@@ -71,7 +71,7 @@ class EstadoVehiculo(models.Model):
 class Sucursal(models.Model):
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20)
-    localidad = models.CharField(max_length=100)
+    localidad = models.ForeignKey(Localidad, on_delete=models.CASCADE, db_column='ID_Localidad')
     direccion = models.CharField(max_length=200)
 
     class Meta:
@@ -83,15 +83,10 @@ class Categoria(models.Model):
     class Meta:
         db_table = 'categoria'
 
-class TipoPolitica(models.Model):
-    nombre = models.CharField(max_length=100)
-
-    class Meta:
-        db_table = 'tipo_politica'
-
 class PoliticaDeCancelacion(models.Model):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(max_length=100)
     porcentaje = models.DecimalField(max_digits=5, decimal_places=2)
-    tipo = models.ForeignKey(TipoPolitica, on_delete=models.CASCADE, db_column='ID_Tipo')
 
     class Meta:
         db_table = 'politica_de_cancelacion'

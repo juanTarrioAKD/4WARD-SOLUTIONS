@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
-    PoliticaDeCancelacion, TipoPolitica, Foto
+    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta
 )
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -12,12 +12,17 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 class UsuarioCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
+    username = serializers.CharField(required=False, write_only=True)  # No requerimos el username ya que lo generaremos
+
     class Meta:
         model = Usuario
-        fields = ('email', 'password', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad')
+        fields = ('email', 'password', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username')
+
     def create(self, validated_data):
         password = validated_data.pop('password')
+        validated_data.pop('username', None)  # Removemos el username si existe
         usuario = Usuario(**validated_data)
+        usuario.username = validated_data['email']  # Usamos el email como username
         usuario.set_password(password)
         usuario.save()
         return usuario
@@ -37,25 +42,32 @@ class EstadoVehiculoSerializer(serializers.ModelSerializer):
         model = EstadoVehiculo
         fields = '__all__'
 
+class LocalidadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Localidad
+        fields = ['id', 'nombre']
+
 class SucursalSerializer(serializers.ModelSerializer):
+    localidad = LocalidadSerializer(read_only=True)
+    localidad_id = serializers.PrimaryKeyRelatedField(
+        queryset=Localidad.objects.all(),
+        source='localidad',
+        write_only=True
+    )
+
     class Meta:
         model = Sucursal
-        fields = '__all__'
+        fields = ['id', 'nombre', 'telefono', 'localidad', 'localidad_id', 'direccion']
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = '__all__'
-
-class TipoPoliticaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TipoPolitica
-        fields = '__all__'
+        fields = ['id', 'precio']
 
 class PoliticaDeCancelacionSerializer(serializers.ModelSerializer):
     class Meta:
         model = PoliticaDeCancelacion
-        fields = '__all__'
+        fields = ['id', 'nombre', 'descripcion', 'porcentaje']
 
 class FotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -86,4 +98,14 @@ class PublicacionSerializer(serializers.ModelSerializer):
 class PublicacionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Publicacion
-        fields = '__all__' 
+        fields = '__all__'
+
+class CalificacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Calificacion
+        fields = ['id', 'puntaje', 'publicacion', 'usuario']
+
+class PreguntaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pregunta
+        fields = ['id', 'publicacion', 'comentario', 'usuario'] 
