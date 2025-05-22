@@ -1,0 +1,80 @@
+{
+	"info": {
+		"_postman_id": "9374e076-b874-48a4-9cd1-66f82197a725",
+		"name": "Modificacion",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45108515"
+	},
+	"item": [
+		{
+			"name": "Modificacion de Sucursal",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"nombre\": \"Sucursal Centro\",\r\n    \"telefono\": \"1234567890\",\r\n    \"localidad\": \"Ciudad\",\r\n    \"direccion\": \"Calle Principal 123\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/sucursales/1/modificar/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"sucursales",
+						"1",
+						"modificar",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Modificacion de Categoria",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"precio\": 1000.00\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/categorias/1/modificar/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"categorias",
+						"1",
+						"modificar",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
