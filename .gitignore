@@ -1,0 +1,25 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+
+# Entorno virtual
+env/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# Archivos personales
+*.env
+*.sqlite3
+
+# Test coverage
+htmlcov/
+.coverage
+coverage.xml
+
+# Otros
+.DS_Store
+Thumbs.db
