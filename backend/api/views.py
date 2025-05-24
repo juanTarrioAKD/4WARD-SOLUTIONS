@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -286,4 +286,42 @@ class PreguntaViewSet(viewsets.ModelViewSet):
     def baja(self, request, pk=None):
         pregunta = self.get_object()
         pregunta.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT) 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET'])
+def getDatosCategorias(request):
+    # Categories with direct image URLs
+    categories = [
+        {
+            "id": 1,
+            "name": "SUV",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+            "price": 150.00
+        },
+        {
+            "id": 2,
+            "name": "Sedan",
+            "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
+            "price": 100.00
+        },
+        {
+            "id": 3,
+            "name": "Sports Car",
+            "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
+            "price": 250.00
+        },
+        {
+            "id": 4,
+            "name": "Van",
+            "image": "https://images.unsplash.com/photo-1558383331-f520f2888351?auto=format&fit=crop&w=800&h=600",
+            "price": 180.00
+        },
+        {
+            "id": 5,
+            "name": "Luxury",
+            "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&h=600",
+            "price": 300.00
+        }
+    ]
+    
+    return Response(categories) 
