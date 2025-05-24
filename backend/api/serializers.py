@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
-    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta
+    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta, Category
 )
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -62,7 +62,7 @@ class SucursalSerializer(serializers.ModelSerializer):
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ['id', 'precio']
+        fields = ['id', 'name', 'image', 'price']
 
 class PoliticaDeCancelacionSerializer(serializers.ModelSerializer):
     class Meta:

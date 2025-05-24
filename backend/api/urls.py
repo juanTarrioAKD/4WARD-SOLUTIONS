@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views
 from .views import (
     UsuarioViewSet, VehiculoViewSet, PublicacionViewSet,
     SucursalViewSet, PoliticaDeCancelacionViewSet,
@@ -24,4 +25,5 @@ router.register(r'preguntas', PreguntaViewSet, basename='pregunta')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('get-categories/', views.getDatosCategorias, name='get-categories'),
 ] 
