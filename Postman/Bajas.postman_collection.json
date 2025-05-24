@@ -1,0 +1,220 @@
+{
+	"info": {
+		"_postman_id": "bfc28c34-a0ab-4799-8495-758cb166a2e5",
+		"name": "Bajas",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45108515"
+	},
+	"item": [
+		{
+			"name": "Baja Calificacion",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/calificaciones/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"calificaciones",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Sucursal",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/sucursales/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"sucursales",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Localidad",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/localidades/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"localidades",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Pregunta",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/preguntas/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"preguntas",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Marca",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/marcas/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"marcas",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Modelo",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/modelos/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"modelos",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Categoria",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": ""
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/categorias/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"categorias",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

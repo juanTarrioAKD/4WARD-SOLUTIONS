@@ -1,0 +1,152 @@
+{
+	"info": {
+		"_postman_id": "c432a692-cd63-4aa2-8921-2615075db1b2",
+		"name": "Vehiculos",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45108515"
+	},
+	"item": [
+		{
+			"name": "Baja Vehiculo",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/vehiculos/2/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehiculos",
+						"2",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Vehiculos",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/vehiculos/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehiculos",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Alta Vehiculo",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"patente\": \"OBV020\",\r\n    \"capacidad\": 5,\r\n    \"año_fabricacion\": 2015,\r\n    \"sucursal\": 1,\r\n    \"politica\": 1,\r\n    \"marca\": 1,\r\n    \"estado\": 1,\r\n    \"categoria\": 1\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/vehiculos/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehiculos",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Modificacion de Vehiculo",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"patente\": \"ABC123456\",\r\n    \"capacidad\": 7,\r\n    \"año_fabricacion\": 2020,\r\n    \"sucursal\": 1,\r\n    \"politica\": 1,\r\n    \"marca\": 1,\r\n    \"estado\": 1,\r\n    \"categoria\": 1\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/vehiculos/1/modificar/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"vehiculos",
+						"1",
+						"modificar",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
