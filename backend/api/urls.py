@@ -5,7 +5,7 @@ from .views import (
     SucursalViewSet, PoliticaDeCancelacionViewSet,
     MarcaViewSet, EstadoVehiculoViewSet, CategoriaViewSet,
     CalificacionViewSet, ModeloViewSet, LocalidadViewSet,
-    PreguntaViewSet
+    PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet
 )
 
 router = DefaultRouter()
@@ -21,6 +21,8 @@ router.register(r'categorias', CategoriaViewSet, basename='categoria')
 router.register(r'calificaciones', CalificacionViewSet, basename='calificacion')
 router.register(r'localidades', LocalidadViewSet, basename='localidad')
 router.register(r'preguntas', PreguntaViewSet, basename='pregunta')
+router.register(r'alquileres', AlquilerViewSet, basename='alquiler')
+router.register(r'estados-alquiler', EstadoAlquilerViewSet, basename='estado-alquiler')
 
 urlpatterns = [
     path('', include(router.urls)),

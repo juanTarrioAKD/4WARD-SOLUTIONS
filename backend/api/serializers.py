@@ -1,9 +1,20 @@
+import re
+
 from rest_framework import serializers
 from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
-    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta
+    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta,
+    Alquiler, EstadoAlquiler
 )
+
+def validar_contrasena_segura(password):
+        if len(password) < 8:
+            raise serializers.ValidationError("La contraseña no cumple con los requisitos de seguridad.")
+        if not re.search(r"[A-Z]", password):
+            raise serializers.ValidationError("La contraseña no cumple con los requisitos de seguridad.")
+        if not re.search(r"\d", password):
+            raise serializers.ValidationError("La contraseña no cumple con los requisitos de seguridad.")
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +24,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class UsuarioCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     username = serializers.CharField(required=False, write_only=True)  # No requerimos el username ya que lo generaremos
+    rol = serializers.ChoiceField(choices=Usuario.ROL_CHOICES, required=False)  # Hacemos el rol opcional
 
     class Meta:
         model = Usuario
@@ -26,6 +38,10 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
         usuario.set_password(password)
         usuario.save()
         return usuario
+    
+    def validate_password(self, value):
+        validar_contrasena_segura(value)
+        return value
 
 class MarcaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -108,4 +124,89 @@ class CalificacionSerializer(serializers.ModelSerializer):
 class PreguntaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pregunta
-        fields = ['id', 'publicacion', 'comentario', 'usuario'] 
+        fields = ['id', 'publicacion', 'comentario', 'usuario']
+
+class AlquilerSerializer(serializers.ModelSerializer):
+    cliente = UsuarioSerializer(read_only=True)
+    vehiculo = VehiculoSerializer(read_only=True)
+    estado = serializers.StringRelatedField()
+
+    class Meta:
+        model = Alquiler
+        fields = ['id', 'fecha_inicio', 'fecha_fin', 'fecha_reserva', 'monto_total', 'estado', 'cliente', 'vehiculo']
+
+class AlquilerCreateSerializer(serializers.ModelSerializer):
+    categoria_id = serializers.PrimaryKeyRelatedField(
+        queryset=Categoria.objects.all(),
+        write_only=True
+    )
+    cliente_id = serializers.PrimaryKeyRelatedField(
+        queryset=Usuario.objects.all(),
+        write_only=True
+    )
+
+    class Meta:
+        model = Alquiler
+        fields = ['fecha_inicio', 'fecha_fin', 'fecha_reserva', 'categoria_id', 'cliente_id']
+
+    def validate(self, data):
+        fecha_inicio = data['fecha_inicio']
+        fecha_fin = data['fecha_fin']
+        fecha_reserva = data['fecha_reserva']
+
+        if fecha_inicio >= fecha_fin:
+            raise serializers.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin")
+
+        if fecha_reserva > fecha_inicio:
+            raise serializers.ValidationError("La fecha de reserva debe ser anterior a la fecha de inicio")
+
+        return data
+
+    def create(self, validated_data):
+        categoria = validated_data.pop('categoria_id')
+        cliente = validated_data.pop('cliente_id')
+        
+        # Calcular la cantidad de días
+        dias = (validated_data['fecha_fin'] - validated_data['fecha_inicio']).days
+        
+        # Calcular el monto total
+        monto_total = categoria.precio * dias
+        
+        # Obtener el estado inicial (asumiendo que existe un estado "Pendiente" con ID 1)
+        estado = EstadoAlquiler.objects.get(id=1)
+
+        # Buscar un vehículo disponible de la categoría seleccionada
+        # Primero obtenemos el ID del estado "Disponible" (asumiendo que es 1)
+        estado_disponible = EstadoVehiculo.objects.get(id=1)
+        
+        # Buscamos un vehículo disponible de la categoría que no tenga alquileres en las fechas solicitadas
+        vehiculo_disponible = Vehiculo.objects.filter(
+            categoria=categoria,
+            estado=estado_disponible
+        ).exclude(
+            alquileres__fecha_inicio__lte=validated_data['fecha_fin'],
+            alquileres__fecha_fin__gte=validated_data['fecha_inicio']
+        ).first()
+
+        if not vehiculo_disponible:
+            raise serializers.ValidationError("No hay vehículos disponibles en la categoría seleccionada para las fechas especificadas")
+        
+        # 🔧 ACTUALIZAR ESTADO DEL VEHÍCULO
+        vehiculo_disponible.estado_id = 2  # "Alquilado"
+        vehiculo_disponible.save()
+
+        # Crear el alquiler
+        alquiler = Alquiler.objects.create(
+            **validated_data,
+            cliente=cliente,
+            vehiculo=vehiculo_disponible,
+            monto_total=monto_total,
+            estado=estado
+        )
+        
+        return alquiler
+
+class EstadoAlquilerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EstadoAlquiler
+        fields = ['id', 'nombre'] 

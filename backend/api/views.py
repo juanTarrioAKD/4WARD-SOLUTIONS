@@ -7,7 +7,8 @@ from django.contrib.auth import authenticate
 from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
-    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta
+    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta,
+    Alquiler, EstadoAlquiler
 )
 from .serializers import (
     UsuarioSerializer, UsuarioCreateSerializer,
@@ -16,7 +17,9 @@ from .serializers import (
     SucursalSerializer, PoliticaDeCancelacionSerializer,
     MarcaSerializer, ModeloSerializer, EstadoVehiculoSerializer,
     CategoriaSerializer, CalificacionSerializer,
-    LocalidadSerializer, PreguntaSerializer
+    LocalidadSerializer, PreguntaSerializer,
+    AlquilerSerializer, AlquilerCreateSerializer,
+    EstadoAlquilerSerializer
 )
 
 class UsuarioViewSet(viewsets.ModelViewSet):
@@ -32,6 +35,29 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'register', 'login']:
             return [AllowAny()]
         return super().get_permissions()
+
+    @action(detail=True, methods=['put'])
+    def asignar_rol(self, request, pk=None):
+        if not request.user.is_authenticated or request.user.rol != 'administrador':
+            return Response({'error': 'No tiene permisos para realizar esta acción'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        usuario = self.get_object()
+        rol = request.data.get('rol')
+        puesto_id = request.data.get('puesto_id')
+        
+        if not rol or rol not in dict(Usuario.ROL_CHOICES):
+            return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        usuario.rol = rol
+        if puesto_id:
+            try:
+                usuario.puesto_id = puesto_id
+            except Exception:
+                return Response({'error': 'Puesto inválido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        usuario.save()
+        return Response(UsuarioSerializer(usuario).data)
 
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -286,4 +312,45 @@ class PreguntaViewSet(viewsets.ModelViewSet):
     def baja(self, request, pk=None):
         pregunta = self.get_object()
         pregunta.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class AlquilerViewSet(viewsets.ModelViewSet):
+    queryset = Alquiler.objects.all()
+    serializer_class = AlquilerSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AlquilerCreateSerializer
+        return AlquilerSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            alquiler = serializer.save()
+            return Response(AlquilerSerializer(alquiler).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['put', 'patch'])
+    def modificar(self, request, pk=None):
+        alquiler = self.get_object()
+        serializer = AlquilerSerializer(alquiler, data=request.data, partial=True)
+        if serializer.is_valid():
+            alquiler = serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        alquiler = self.get_object()
+        alquiler.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class EstadoAlquilerViewSet(viewsets.ModelViewSet):
+    queryset = EstadoAlquiler.objects.all()
+    serializer_class = EstadoAlquilerSerializer
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        estado = self.get_object()
+        estado.delete()
         return Response(status=status.HTTP_204_NO_CONTENT) 

@@ -12,7 +12,7 @@ class Usuario(AbstractUser):
     nombre = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20, blank=True, null=True)
     fecha_nacimiento = models.DateField(blank=True, null=True)
-    rol = models.CharField(max_length=20, choices=ROL_CHOICES)
+    rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='cliente')
     puesto = models.ForeignKey('Puesto', on_delete=models.SET_NULL, null=True, blank=True)
     localidad = models.ForeignKey('Localidad', on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -46,6 +46,8 @@ class Alquiler(models.Model):
     fecha_reserva = models.DateTimeField()
     monto_total = models.DecimalField(max_digits=10, decimal_places=2)
     estado = models.ForeignKey(EstadoAlquiler, on_delete=models.CASCADE, db_column='IDEstado')
+    cliente = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alquileres')
+    vehiculo = models.ForeignKey('Vehiculo', on_delete=models.CASCADE, related_name='alquileres', null=True)
 
     class Meta:
         db_table = 'alquiler'
