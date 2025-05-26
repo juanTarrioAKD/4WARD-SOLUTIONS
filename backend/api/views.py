@@ -19,12 +19,14 @@ from .serializers import (
     CategoriaSerializer, CalificacionSerializer,
     LocalidadSerializer, PreguntaSerializer,
     AlquilerSerializer, AlquilerCreateSerializer,
-    EstadoAlquilerSerializer
+    EstadoAlquilerSerializer, CalificacionCreateSerializer,
+    PreguntaCreateSerializer
 )
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
@@ -34,7 +36,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'register', 'login']:
             return [AllowAny()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
 
     @action(detail=True, methods=['put'])
     def asignar_rol(self, request, pk=None):
@@ -81,7 +83,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': UsuarioSerializer(user).data
+                'user': UsuarioSerializer(user).data,
+                'message': 'Login exitoso. Use el token de acceso en el header Authorization: Bearer <token>'
             })
         return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -116,12 +119,26 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=True, methods=['get'], url_path='alquileres')
-    def listar_alquileres(self, request, pk=None):
-        usuario = self.get_object()
-        alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
-        serializer = AlquilerSerializer(alquileres, many=True)
-        return Response(serializer.data)
+    @action(detail=False, methods=['get'], url_path='mis-alquileres')
+    def mis_alquileres(self, request):
+        try:
+            usuario = request.user
+            if not usuario:
+                return Response({'error': 'Usuario no encontrado en la solicitud'}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            serializer = AlquilerSerializer(alquileres, many=True)
+            return Response({
+                'alquileres': serializer.data,
+                'usuario_id': usuario.id,
+                'usuario_email': usuario.email
+            })
+        except Exception as e:
+            return Response({
+                'error': f'Error al obtener alquileres: {str(e)}',
+                'user_info': str(request.user) if request.user else 'No user found'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
@@ -235,25 +252,24 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
     serializer_class = CalificacionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CalificacionCreateSerializer
+        return CalificacionSerializer
 
     def create(self, request, *args, **kwargs):
         try:
-            # Asegurarse de que los datos estén en formato JSON
-            if not isinstance(request.data, dict):
-                return Response(
-                    {'error': 'Los datos deben estar en formato JSON'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
                 # Verificar que el usuario no haya calificado la misma publicación antes
                 if Calificacion.objects.filter(
                     publicacion=serializer.validated_data['publicacion'],
-                    usuario=serializer.validated_data['usuario']
+                    usuario=request.user
                 ).exists():
                     return Response(
-                        {'error': 'El usuario ya ha calificado esta publicación'},
+                        {'error': 'Ya has calificado esta publicación'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 calificacion = serializer.save()
@@ -307,6 +323,12 @@ class LocalidadViewSet(viewsets.ModelViewSet):
 class PreguntaViewSet(viewsets.ModelViewSet):
     queryset = Pregunta.objects.all()
     serializer_class = PreguntaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return PreguntaCreateSerializer
+        return PreguntaSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

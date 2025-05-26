@@ -117,14 +117,36 @@ class PublicacionCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CalificacionSerializer(serializers.ModelSerializer):
+    usuario = UsuarioSerializer(read_only=True)
+
     class Meta:
         model = Calificacion
         fields = ['id', 'puntaje', 'publicacion', 'usuario']
 
+class CalificacionCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Calificacion
+        fields = ['puntaje', 'publicacion']
+
+    def create(self, validated_data):
+        usuario = self.context['request'].user
+        return Calificacion.objects.create(usuario=usuario, **validated_data)
+
 class PreguntaSerializer(serializers.ModelSerializer):
+    usuario = UsuarioSerializer(read_only=True)
+
     class Meta:
         model = Pregunta
         fields = ['id', 'publicacion', 'comentario', 'usuario']
+
+class PreguntaCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pregunta
+        fields = ['publicacion', 'comentario']
+
+    def create(self, validated_data):
+        usuario = self.context['request'].user
+        return Pregunta.objects.create(usuario=usuario, **validated_data)
 
 class AlquilerSerializer(serializers.ModelSerializer):
     cliente = UsuarioSerializer(read_only=True)
@@ -140,14 +162,10 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
         queryset=Categoria.objects.all(),
         write_only=True
     )
-    cliente_id = serializers.PrimaryKeyRelatedField(
-        queryset=Usuario.objects.all(),
-        write_only=True
-    )
 
     class Meta:
         model = Alquiler
-        fields = ['fecha_inicio', 'fecha_fin', 'fecha_reserva', 'categoria_id', 'cliente_id']
+        fields = ['fecha_inicio', 'fecha_fin', 'fecha_reserva', 'categoria_id']
 
     def validate(self, data):
         fecha_inicio = data['fecha_inicio']
@@ -164,7 +182,7 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         categoria = validated_data.pop('categoria_id')
-        cliente = validated_data.pop('cliente_id')
+        cliente = self.context['request'].user  # Obtenemos el usuario autenticado
         
         # Calcular la cantidad de días
         dias = (validated_data['fecha_fin'] - validated_data['fecha_inicio']).days
