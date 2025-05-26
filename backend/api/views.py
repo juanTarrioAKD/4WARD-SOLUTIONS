@@ -115,6 +115,13 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['get'], url_path='alquileres')
+    def listar_alquileres(self, request, pk=None):
+        usuario = self.get_object()
+        alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+        serializer = AlquilerSerializer(alquileres, many=True)
+        return Response(serializer.data)
 
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
