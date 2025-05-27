@@ -1,23 +1,43 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 class Usuario(AbstractUser):
     ROL_CHOICES = [
-        ('administrador', 'Administrador'),
-        ('empleado', 'Empleado'),
         ('cliente', 'Cliente'),
+        ('empleado', 'Empleado'),
+        ('admin', 'Administrador'),
     ]
+    
     email = models.EmailField(unique=True)
-    apellido = models.CharField(max_length=100)
     nombre = models.CharField(max_length=100)
-    telefono = models.CharField(max_length=20, blank=True, null=True)
-    fecha_nacimiento = models.DateField(blank=True, null=True)
+    apellido = models.CharField(max_length=100)
+    telefono = models.CharField(max_length=20)
+    fecha_nacimiento = models.DateField()
     rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='cliente')
-    puesto = models.ForeignKey('Puesto', on_delete=models.SET_NULL, null=True, blank=True)
+    puesto = models.CharField(max_length=100, null=True, blank=True)
     localidad = models.ForeignKey('Localidad', on_delete=models.SET_NULL, null=True, blank=True)
+    login_attempts = models.IntegerField(default=0)
+    is_locked = models.BooleanField(default=False)
+    last_login_attempt = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
+    REQUIRED_FIELDS = ['nombre', 'apellido', 'telefono', 'fecha_nacimiento']
+
+    def increment_login_attempts(self):
+        self.login_attempts += 1
+        self.last_login_attempt = timezone.now()
+        if self.login_attempts >= 3:
+            self.is_locked = True
+        self.save()
+
+    def reset_login_attempts(self):
+        self.login_attempts = 0
+        self.is_locked = False
+        self.save()
+
+    def __str__(self):
+        return f"{self.nombre} {self.apellido}"
 
     class Meta:
         db_table = 'usuario'

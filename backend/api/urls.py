@@ -2,27 +2,29 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     UsuarioViewSet, VehiculoViewSet, PublicacionViewSet,
-    SucursalViewSet, PoliticaDeCancelacionViewSet,
-    MarcaViewSet, EstadoVehiculoViewSet, CategoriaViewSet,
-    CalificacionViewSet, ModeloViewSet, LocalidadViewSet,
-    PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet
+    MarcaViewSet, ModeloViewSet, EstadoVehiculoViewSet,
+    SucursalViewSet, CategoriaViewSet, PoliticaDeCancelacionViewSet,
+    CalificacionViewSet, LocalidadViewSet,
+    PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet,
+    EstadisticasViewSet
 )
 
 router = DefaultRouter()
-router.register(r'usuarios', UsuarioViewSet, basename='usuario')
-router.register(r'vehiculos', VehiculoViewSet, basename='vehiculo')
-router.register(r'publicaciones', PublicacionViewSet, basename='publicacion')
-router.register(r'sucursales', SucursalViewSet, basename='sucursal')
-router.register(r'politicas', PoliticaDeCancelacionViewSet, basename='politica')
-router.register(r'marcas', MarcaViewSet, basename='marca')
-router.register(r'modelos', ModeloViewSet, basename='modelo')
-router.register(r'estados', EstadoVehiculoViewSet, basename='estado')
-router.register(r'categorias', CategoriaViewSet, basename='categoria')
-router.register(r'calificaciones', CalificacionViewSet, basename='calificacion')
-router.register(r'localidades', LocalidadViewSet, basename='localidad')
-router.register(r'preguntas', PreguntaViewSet, basename='pregunta')
-router.register(r'alquileres', AlquilerViewSet, basename='alquiler')
-router.register(r'estados-alquiler', EstadoAlquilerViewSet, basename='estado-alquiler')
+router.register(r'usuarios', UsuarioViewSet)
+router.register(r'vehiculos', VehiculoViewSet)
+router.register(r'publicaciones', PublicacionViewSet)
+router.register(r'marcas', MarcaViewSet)
+router.register(r'modelos', ModeloViewSet)
+router.register(r'estados-vehiculo', EstadoVehiculoViewSet)
+router.register(r'sucursales', SucursalViewSet)
+router.register(r'categorias', CategoriaViewSet)
+router.register(r'politicas', PoliticaDeCancelacionViewSet)
+router.register(r'calificaciones', CalificacionViewSet)
+router.register(r'localidades', LocalidadViewSet)
+router.register(r'preguntas', PreguntaViewSet)
+router.register(r'alquileres', AlquilerViewSet)
+router.register(r'estados-alquiler', EstadoAlquilerViewSet)
+router.register(r'estadisticas', EstadisticasViewSet, basename='estadisticas')
 
 urlpatterns = [
     path('', include(router.urls)),

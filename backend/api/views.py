@@ -22,11 +22,12 @@ from .serializers import (
     EstadoAlquilerSerializer, CalificacionCreateSerializer,
     PreguntaCreateSerializer
 )
+from .permissions import *
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Permitimos acceso público para registro y login
 
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
@@ -34,31 +35,56 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return UsuarioSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'register', 'login']:
+        if self.action in ['register', 'login', 'logout']:
             return [AllowAny()]
-        return [IsAuthenticated()]
+        elif self.action in ['modificar', 'baja']:
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
     @action(detail=True, methods=['put'])
-    def asignar_rol(self, request, pk=None):
-        if not request.user.is_authenticated or request.user.rol != 'administrador':
-            return Response({'error': 'No tiene permisos para realizar esta acción'}, 
+    def modificar(self, request, pk=None):
+        usuario = self.get_object()
+        if request.user != usuario and request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'No tienes permiso para modificar este usuario'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        usuario = self.get_object()
+        if request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'No tienes permiso para dar de baja usuarios'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        usuario.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['put'])
+    def cambiar_rol(self, request, pk=None):
+        if request.user.rol != 'admin':
+            return Response({'error': 'Solo los administradores pueden cambiar roles'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
         usuario = self.get_object()
-        rol = request.data.get('rol')
-        puesto_id = request.data.get('puesto_id')
-        
-        if not rol or rol not in dict(Usuario.ROL_CHOICES):
+        nuevo_rol = request.data.get('rol')
+        nuevo_puesto = request.data.get('puesto')
+        nueva_localidad = request.data.get('localidad')
+
+        if nuevo_rol not in ['cliente', 'empleado', 'admin']:
             return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        usuario.rol = rol
-        if puesto_id:
-            try:
-                usuario.puesto_id = puesto_id
-            except Exception:
-                return Response({'error': 'Puesto inválido'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        usuario.rol = nuevo_rol
+        if nuevo_puesto:
+            usuario.puesto = nuevo_puesto
+        if nueva_localidad:
+            usuario.localidad_id = nueva_localidad
         usuario.save()
+
         return Response(UsuarioSerializer(usuario).data)
 
     @action(detail=False, methods=['post'])
@@ -75,18 +101,36 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def login(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        if not email or not password:
-            return Response({'error': 'Por favor proporcione email y contraseña'}, status=status.HTTP_400_BAD_REQUEST)
-        user = authenticate(username=email, password=password)
-        if user:
+
+        try:
+            user = Usuario.objects.get(email=email)
+            
+            if user.is_locked:
+                return Response({
+                    'error': 'Cuenta bloqueada. Por favor, use la clave de recuperación "123456789" para desbloquear su cuenta.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            user = authenticate(username=email, password=password)
+            
+            if user is None:
+                user = Usuario.objects.get(email=email)
+                user.increment_login_attempts()
+                return Response({
+                    'error': 'Credenciales inválidas'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
             refresh = RefreshToken.for_user(user)
+            user.reset_login_attempts()
+            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': UsuarioSerializer(user).data,
-                'message': 'Login exitoso. Use el token de acceso en el header Authorization: Bearer <token>'
+                'user': UsuarioSerializer(user).data
             })
-        return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Usuario.DoesNotExist:
+            return Response({
+                'error': 'Credenciales inválidas'
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
@@ -104,21 +148,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(usuario)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
-        usuario = self.get_object()
-        usuario.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=True, methods=['put', 'patch'])
-    def modificar(self, request, pk=None):
-        usuario = self.get_object()
-        serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):
         try:
@@ -143,6 +172,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
+    permission_classes = [IsEmpleadoOrAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -177,9 +207,17 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             return Response(VehiculoSerializer(vehiculo).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['get'])
+    def buscar_por_patente(self, request):
+        patente = request.query_params.get('patente', '')
+        vehiculos = Vehiculo.objects.filter(patente__icontains=patente)
+        serializer = self.get_serializer(vehiculos, many=True)
+        return Response(serializer.data)
+
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
     serializer_class = PublicacionSerializer
+    permission_classes = [IsAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -252,7 +290,7 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
     serializer_class = CalificacionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCliente]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -323,7 +361,7 @@ class LocalidadViewSet(viewsets.ModelViewSet):
 class PreguntaViewSet(viewsets.ModelViewSet):
     queryset = Pregunta.objects.all()
     serializer_class = PreguntaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsClienteOrEmpleadoOrAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -343,14 +381,32 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         pregunta.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['put'])
+    def responder(self, request, pk=None):
+        if request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'Solo empleados y administradores pueden responder preguntas'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        pregunta = self.get_object()
+        respuesta = request.data.get('respuesta')
+        pregunta.respuesta = respuesta
+        pregunta.save()
+        return Response(PreguntaSerializer(pregunta).data)
+
 class AlquilerViewSet(viewsets.ModelViewSet):
     queryset = Alquiler.objects.all()
     serializer_class = AlquilerSerializer
+    permission_classes = [IsClienteOrEmpleadoOrAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':
             return AlquilerCreateSerializer
         return AlquilerSerializer
+
+    def get_queryset(self):
+        if self.request.user.rol == 'cliente':
+            return Alquiler.objects.filter(cliente=self.request.user)
+        return Alquiler.objects.all()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -374,6 +430,17 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         alquiler.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['post'])
+    def cancelar(self, request, pk=None):
+        alquiler = self.get_object()
+        if request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'No tienes permiso para cancelar alquileres'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        alquiler.estado_id = 3  # Estado "Cancelado"
+        alquiler.save()
+        return Response(AlquilerSerializer(alquiler).data)
+
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
@@ -382,4 +449,22 @@ class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     def baja(self, request, pk=None):
         estado = self.get_object()
         estado.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT) 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class EstadisticasViewSet(viewsets.ViewSet):
+    permission_classes = [IsAdmin]
+
+    @action(detail=False, methods=['get'])
+    def mejor_calificado(self, request):
+        # Implementar lógica para obtener el vehículo mejor calificado
+        pass
+
+    @action(detail=False, methods=['get'])
+    def registros_periodo(self, request):
+        # Implementar lógica para obtener registros en un período
+        pass
+
+    @action(detail=False, methods=['get'])
+    def mas_alquilado(self, request):
+        # Implementar lógica para obtener el vehículo más alquilado
+        pass 
