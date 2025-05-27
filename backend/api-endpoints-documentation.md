@@ -450,3 +450,21 @@ POST /api/vehiculos/
     "politica": 1
 }
 ``` 
+
+### Crear Alquiler
+```json
+POST /api/alquileres/
+{
+    "fecha_inicio": "2024-03-20T10:00:00Z",
+    "fecha_fin": "2024-03-25T10:00:00Z",
+    "fecha_reserva": "2024-03-19T10:00:00Z",
+    "categoria_id": 1,
+    "cliente_id": 1
+}
+```
+
+You can also:
+Modify a rental using PUT/PATCH to /api/alquileres/{id}/modificar/
+Delete a rental using DELETE to /api/alquileres/{id}/baja/
+List all rentals using GET to /api/alquileres/
+Get a specific rental using GET to /api/alquileres/{id}/

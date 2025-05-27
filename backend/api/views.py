@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,7 +7,8 @@ from django.contrib.auth import authenticate
 from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
-    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta
+    PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta,
+    Alquiler, EstadoAlquiler
 )
 from .serializers import (
     UsuarioSerializer, UsuarioCreateSerializer,
@@ -16,12 +17,16 @@ from .serializers import (
     SucursalSerializer, PoliticaDeCancelacionSerializer,
     MarcaSerializer, ModeloSerializer, EstadoVehiculoSerializer,
     CategoriaSerializer, CalificacionSerializer,
-    LocalidadSerializer, PreguntaSerializer
+    LocalidadSerializer, PreguntaSerializer,
+    AlquilerSerializer, AlquilerCreateSerializer,
+    EstadoAlquilerSerializer, CalificacionCreateSerializer,
+    PreguntaCreateSerializer
 )
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
@@ -31,7 +36,30 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['create', 'register', 'login']:
             return [AllowAny()]
-        return super().get_permissions()
+        return [IsAuthenticated()]
+
+    @action(detail=True, methods=['put'])
+    def asignar_rol(self, request, pk=None):
+        if not request.user.is_authenticated or request.user.rol != 'administrador':
+            return Response({'error': 'No tiene permisos para realizar esta acción'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        usuario = self.get_object()
+        rol = request.data.get('rol')
+        puesto_id = request.data.get('puesto_id')
+        
+        if not rol or rol not in dict(Usuario.ROL_CHOICES):
+            return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        usuario.rol = rol
+        if puesto_id:
+            try:
+                usuario.puesto_id = puesto_id
+            except Exception:
+                return Response({'error': 'Puesto inválido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        usuario.save()
+        return Response(UsuarioSerializer(usuario).data)
 
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -55,7 +83,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': UsuarioSerializer(user).data
+                'user': UsuarioSerializer(user).data,
+                'message': 'Login exitoso. Use el token de acceso en el header Authorization: Bearer <token>'
             })
         return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -89,6 +118,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'], url_path='mis-alquileres')
+    def mis_alquileres(self, request):
+        try:
+            usuario = request.user
+            if not usuario:
+                return Response({'error': 'Usuario no encontrado en la solicitud'}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            serializer = AlquilerSerializer(alquileres, many=True)
+            return Response({
+                'alquileres': serializer.data,
+                'usuario_id': usuario.id,
+                'usuario_email': usuario.email
+            })
+        except Exception as e:
+            return Response({
+                'error': f'Error al obtener alquileres: {str(e)}',
+                'user_info': str(request.user) if request.user else 'No user found'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
@@ -202,25 +252,24 @@ class CategoriaViewSet(viewsets.ModelViewSet):
 class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
     serializer_class = CalificacionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CalificacionCreateSerializer
+        return CalificacionSerializer
 
     def create(self, request, *args, **kwargs):
         try:
-            # Asegurarse de que los datos estén en formato JSON
-            if not isinstance(request.data, dict):
-                return Response(
-                    {'error': 'Los datos deben estar en formato JSON'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
                 # Verificar que el usuario no haya calificado la misma publicación antes
                 if Calificacion.objects.filter(
                     publicacion=serializer.validated_data['publicacion'],
-                    usuario=serializer.validated_data['usuario']
+                    usuario=request.user
                 ).exists():
                     return Response(
-                        {'error': 'El usuario ya ha calificado esta publicación'},
+                        {'error': 'Ya has calificado esta publicación'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 calificacion = serializer.save()
@@ -274,6 +323,12 @@ class LocalidadViewSet(viewsets.ModelViewSet):
 class PreguntaViewSet(viewsets.ModelViewSet):
     queryset = Pregunta.objects.all()
     serializer_class = PreguntaSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return PreguntaCreateSerializer
+        return PreguntaSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -288,40 +343,74 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         pregunta.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-@api_view(['GET'])
-def getDatosCategorias(request):
-    # Categories with direct image URLs
-    categories = [
-        {
-            "id": 1,
-            "name": "SUV",
-            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
-            "price": 150.00
-        },
-        {
-            "id": 2,
-            "name": "Sedan",
-            "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
-            "price": 100.00
-        },
-        {
-            "id": 3,
-            "name": "Sports Car",
-            "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
-            "price": 250.00
-        },
-        {
-            "id": 4,
-            "name": "Van",
-            "image": "https://images.unsplash.com/photo-1558383331-f520f2888351?auto=format&fit=crop&w=800&h=600",
-            "price": 180.00
-        },
-        {
-            "id": 5,
-            "name": "Luxury",
-            "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&h=600",
-            "price": 300.00
-        }
-    ]
-    
-    return Response(categories) 
+class AlquilerViewSet(viewsets.ModelViewSet):
+    queryset = Alquiler.objects.all()
+    serializer_class = AlquilerSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AlquilerCreateSerializer
+        return AlquilerSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            alquiler = serializer.save()
+            return Response(AlquilerSerializer(alquiler).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['put', 'patch'])
+    def modificar(self, request, pk=None):
+        alquiler = self.get_object()
+        serializer = AlquilerSerializer(alquiler, data=request.data, partial=True)
+        if serializer.is_valid():
+            alquiler = serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        alquiler = self.get_object()
+        alquiler.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'])
+    def cancelar(self, request, pk=None):
+        try:
+            alquiler = self.get_object()
+            
+            # Verificar que el usuario sea el cliente dueño del alquiler y tenga rol de cliente
+            if request.user != alquiler.cliente or request.user.rol != 'cliente':
+                return Response(
+                    {'error': 'Solo el cliente dueño del alquiler puede cancelarlo'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = self.get_serializer(alquiler)
+            alquiler = serializer.cancel(alquiler)
+            
+            return Response({
+                'message': 'Alquiler cancelado exitosamente',
+                'alquiler': serializer.data,
+                'monto_devolucion': float(alquiler.monto_devolucion),
+                'porcentaje_devolucion': float(alquiler.vehiculo.politica.porcentaje)
+            }, status=status.HTTP_200_OK)
+            
+        except serializers.ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': f'Error al cancelar el alquiler: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class EstadoAlquilerViewSet(viewsets.ModelViewSet):
+    queryset = EstadoAlquiler.objects.all()
+    serializer_class = EstadoAlquilerSerializer
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        estado = self.get_object()
+        estado.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT) 
