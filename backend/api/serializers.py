@@ -5,7 +5,7 @@ from .models import (
     Usuario, Vehiculo, Publicacion,
     Marca, Modelo, EstadoVehiculo, Sucursal, Categoria,
     PoliticaDeCancelacion, Foto, Calificacion, Localidad, Pregunta,
-    Alquiler, EstadoAlquiler
+    Alquiler, EstadoAlquiler, Rol
 )
 
 def validar_contrasena_segura(password):
@@ -24,7 +24,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class UsuarioCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     username = serializers.CharField(required=False, write_only=True)  # No requerimos el username ya que lo generaremos
-    rol = serializers.ChoiceField(choices=Usuario.ROL_CHOICES, required=False)  # Hacemos el rol opcional
+    rol = serializers.PrimaryKeyRelatedField(queryset=Rol.objects.all(), required=False)
 
     class Meta:
         model = Usuario
@@ -33,6 +33,9 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password')
         validated_data.pop('username', None)  # Removemos el username si existe
+        # Si no se envía rol, asignar el rol con ID 1 (cliente)
+        if 'rol' not in validated_data or validated_data['rol'] is None:
+            validated_data['rol'] = Rol.objects.get(pk=1)
         usuario = Usuario(**validated_data)
         usuario.username = validated_data['email']  # Usamos el email como username
         usuario.set_password(password)

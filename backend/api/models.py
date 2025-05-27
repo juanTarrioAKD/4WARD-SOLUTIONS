@@ -2,24 +2,31 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 
+class Rol(models.Model):
+    nombre = models.CharField(max_length=20, unique=True)
+
+    def __str__(self):
+        return self.nombre
+
+    class Meta:
+        db_table = 'rol'
+
 class Usuario(AbstractUser):
-    ROL_CHOICES = [
-        ('cliente', 'Cliente'),
-        ('empleado', 'Empleado'),
-        ('admin', 'Administrador'),
-    ]
-    
     email = models.EmailField(unique=True)
     nombre = models.CharField(max_length=100)
     apellido = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20)
     fecha_nacimiento = models.DateField()
-    rol = models.CharField(max_length=20, choices=ROL_CHOICES, default='cliente')
+    rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
     puesto = models.CharField(max_length=100, null=True, blank=True)
     localidad = models.ForeignKey('Localidad', on_delete=models.SET_NULL, null=True, blank=True)
     login_attempts = models.IntegerField(default=0)
     is_locked = models.BooleanField(default=False)
     last_login_attempt = models.DateTimeField(null=True, blank=True)
+
+    # Eliminamos los campos redundantes
+    first_name = None
+    last_name = None
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nombre', 'apellido', 'telefono', 'fecha_nacimiento']

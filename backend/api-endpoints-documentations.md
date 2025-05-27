@@ -16,7 +16,6 @@
     "rol": "cliente"
 }
 ```
-- Nota: El campo `username` se genera automáticamente usando el email proporcionado.
 - Respuesta Exitosa (200):
 ```json
 {
