@@ -324,4 +324,87 @@ def getDatosCategorias(request):
         }
     ]
     
-    return Response(categories) 
+    return Response(categories)
+
+@api_view(['GET'])
+def getDatosUsuarios(request):
+    # Mock users data
+    users = [
+        {
+            "id": 1,
+            "username": "Admin1",
+            "password": "Contraseña1",
+            "email": "admin1@alquilappcar.com",
+            "role": "admin"
+        },
+        {
+            "id": 2,
+            "username": "Admin2",
+            "password": "Contraseña2",
+            "email": "admin2@alquilappcar.com",
+            "role": "admin"
+        }
+    ]
+    
+    return Response(users)
+
+@api_view(['POST'])
+def registerUser(request):
+    # Obtenemos los usuarios existentes
+    users = [
+        {
+            "id": 1,
+            "username": "Admin1",
+            "password": "Contraseña1",
+            "email": "admin1@alquilappcar.com",
+            "role": "admin"
+        },
+        {
+            "id": 2,
+            "username": "Admin2",
+            "password": "Contraseña2",
+            "email": "admin2@alquilappcar.com",
+            "role": "admin"
+        }
+    ]
+    
+    # Obtenemos los datos del nuevo usuario
+    new_user_data = request.data
+    
+    # Validamos si el usuario ya existe
+    username_exists = any(user['username'] == new_user_data['username'] for user in users)
+    email_exists = any(user['email'] == new_user_data['email'] for user in users)
+    
+    if username_exists:
+        return Response(
+            {'error': 'El nombre de usuario ya está en uso'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if email_exists:
+        return Response(
+            {'error': 'El email ya está registrado'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    # Simulamos la creación del usuario
+    new_user = {
+        "id": len(users) + 1,
+        "username": new_user_data['username'],
+        "email": new_user_data['email'],
+        "password": new_user_data['password'],  # En un caso real, esto debería estar hasheado
+        "role": "cliente"  # Por defecto, los nuevos usuarios son clientes
+    }
+    
+    # En un caso real, aquí se guardaría en la base de datos
+    users.append(new_user)
+    
+    # Retornamos el usuario creado (sin la contraseña por seguridad)
+    response_user = {
+        "id": new_user["id"],
+        "username": new_user["username"],
+        "email": new_user["email"],
+        "role": new_user["role"]
+    }
+    
+    return Response(response_user, status=status.HTTP_201_CREATED) 
