@@ -16,7 +16,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Sucursal Central\",\r\n    \"direccion\": \"Av. Principal 123\",\r\n    \"telefono\": \"1234567890\",\r\n    \"localidad\": \"La Plata\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"Sucursal Central\",\r\n    \"direccion\": \"Av. Principal 123\",\r\n    \"telefono\": \"1234567890\",\r\n    \"localidad_id\": 1\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -36,6 +36,42 @@
 					"path": [
 						"api",
 						"sucursales",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Alta Estado Alquiler",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"nombre\": \"Pendiente\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/estados-alquiler/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"estados-alquiler",
 						""
 					]
 				}
@@ -229,7 +265,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Disponible\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"Alquilado\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"

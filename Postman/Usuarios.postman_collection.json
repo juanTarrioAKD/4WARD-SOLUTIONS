@@ -13,7 +13,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\": \"dante@ejemplo.com\",\r\n    \"password\": \"contraseña123\",\r\n    \"nombre\": \"Dante\",\r\n    \"apellido\": \"Zorzoli\",\r\n    \"telefono\": \"1234567890\",\r\n    \"fecha_nacimiento\": \"1990-01-01\",\r\n    \"rol\": \"cliente\"\r\n}",
+					"raw": "{\r\n    \"email\": \"dante3@ejemplo.com\",\r\n    \"password\": \"12345678A1\",\r\n    \"nombre\": \"Dante\",\r\n    \"apellido\": \"Zorzoli\",\r\n    \"telefono\": \"1234567890\",\r\n    \"fecha_nacimiento\": \"1990-01-01\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -127,7 +127,51 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": ""
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/usuarios/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"usuarios",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Usuarios Copy",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				},
 				"url": {
 					"raw": "http://127.0.0.1:8000/api/usuarios/",
@@ -212,6 +256,30 @@
 						"usuarios",
 						"{id}",
 						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Alquileres de Usuario (Historial)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
 						""
 					]
 				}

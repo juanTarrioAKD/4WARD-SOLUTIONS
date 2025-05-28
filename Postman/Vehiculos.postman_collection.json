@@ -87,7 +87,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"patente\": \"OBV020\",\r\n    \"capacidad\": 5,\r\n    \"año_fabricacion\": 2015,\r\n    \"sucursal\": 1,\r\n    \"politica\": 1,\r\n    \"marca\": 1,\r\n    \"estado\": 1,\r\n    \"categoria\": 1\r\n}",
+					"raw": "{\r\n    \"patente\": \"NUEVA11111\",\r\n    \"capacidad\": 5,\r\n    \"año_fabricacion\": 2015,\r\n    \"sucursal\": 1,\r\n    \"politica\": 1,\r\n    \"marca\": 1,\r\n    \"estado\": 1,\r\n    \"categoria\": 1\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
