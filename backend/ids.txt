@@ -1,0 +1,108 @@
+Rol:
+1. Cliente
+2. Empleado
+3. Admin
+
+Puesto:
+1. Agente de Alquiler
+2. Supervisor de Sucursal
+3. Chofer de Traslado
+4. Lavador de Autos
+5. Mantenimiento
+6. Mecánico
+7. Inspector de Vehículos
+8. Encargado de Reclamos
+9. Contador
+10. Recursos Humanos
+11. Marketing
+12. Gerente de Flota
+
+Estado_Alquiler:
+1. Pendiente
+2. Confirmada
+3. Cancelada
+4. Finalizada
+5. Finalizada con retraso
+
+Estado_Vehiculo:
+1. Disponible
+2. Reservado
+3. Alquilado
+4. Fuera de Servicio
+
+Localidades:
+1. Azul
+2. Bahía Blanca
+3. Balcarce
+4. Campana
+5. Chivilcoy
+6. Junín
+7. La Plata
+8. Luján
+9. Mar del Plata
+10. Mercedes
+11. Necochea
+12. Olavarría
+13. Pergamino
+14. Pinamar
+15. San Nicolás
+16. San Pedro
+17. Tandil
+18. Tres Arroyos
+19. Villa Gesell
+20. Zárate
+
+Marcas:
+1. Chevrolet
+2. Fiat
+3. Ford
+4. Honda
+5. Peugeot
+6. Renault
+7. Toyota
+8. Volkswagen
+
+Modelos
+1. 2008
+2. 208
+3. 308
+4. Amarok
+5. Civic
+6. Corolla
+7. Cronos
+8. Cruze
+9. Duster
+10. EcoSport
+11. Etios
+12. Fiorino
+13. Fit
+14. Focus
+15. Gol
+16. HR-V
+17. Hilux
+18. Ka
+19. Kangoo
+20. Kwid
+21. Mobi
+22. Onix
+23. Partner
+24. Ranger
+25. Sandero
+26. Spin
+27. T-Cross
+28. Toro
+29. Tracker
+30. Virtus
+
+Categorías:
+1. Apto discapacitados - Precio: 28800
+2. Chico - Precio: 34500
+3. Deportivo - Precio: 31800
+4. Mediano - Precio: 39700
+5. SUV - Precio: 35300
+6. Van - Precio: 39600
+
+Políticas de Cancelación
+1. 100% de devolución
+2. 20% de devolución
+3. Sin devolución
