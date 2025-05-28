@@ -414,6 +414,27 @@ INSERT INTO politica_de_cancelacion (id, porcentaje, descripcion, nombre) VALUES
 (2, 20.0, 'Reembolso parcial, se retiene el 80%', '20% de devolución'),
 (3, 0.0, 'No hay reembolso en esta política', 'Sin devolución');
 CREATE TABLE IF NOT EXISTS "sucursal" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(100) NOT NULL, "telefono" varchar(20) NOT NULL, "direccion" varchar(200) NOT NULL, "ID_Localidad" bigint NOT NULL REFERENCES "localidad" ("id") DEFERRABLE INITIALLY DEFERRED);
+INSERT INTO sucursal (id, nombre, telefono, direccion, ID_Localidad) VALUES
+( 1, 'Sucursal Azul', '0001-4123401', 'Calle Falsa 101', 1),
+( 2, 'Sucursal Bahía Blanca', '0002-4123402', 'Calle Falsa 102', 2),
+( 3, 'Sucursal Balcarce', '0003-4123403', 'Calle Falsa 103', 3),
+( 4, 'Sucursal Campana', '0004-4123404', 'Calle Falsa 104', 4),
+( 5, 'Sucursal Chivilcoy', '0005-4123405', 'Calle Falsa 105', 5),
+( 6, 'Sucursal Junín', '0006-4123406', 'Calle Falsa 106', 6),
+( 7, 'Sucursal La Plata', '0007-4123407', 'Calle Falsa 107', 7),
+( 8, 'Sucursal Luján', '0008-4123408', 'Calle Falsa 108', 8),
+( 9, 'Sucursal Mar del Plata', '0009-4123409', 'Calle Falsa 109', 9),
+(10, 'Sucursal Mercedes', '0010-4123410', 'Calle Falsa 110', 10),
+(11, 'Sucursal Necochea', '0011-4123411', 'Calle Falsa 111', 11),
+(12, 'Sucursal Olavarría', '0012-4123412', 'Calle Falsa 112', 12),
+(13, 'Sucursal Pergamino', '0013-4123413', 'Calle Falsa 113', 13),
+(14, 'Sucursal Pinamar', '0014-4123414', 'Calle Falsa 114', 14),
+(15, 'Sucursal San Nicolás', '0015-4123415', 'Calle Falsa 115', 15),
+(16, 'Sucursal San Pedro', '0016-4123416', 'Calle Falsa 116', 16),
+(17, 'Sucursal Tandil', '0017-4123417', 'Calle Falsa 117', 17),
+(18, 'Sucursal Tres Arroyos', '0018-4123418', 'Calle Falsa 118', 18),
+(19, 'Sucursal Villa Gesell', '0019-4123419', 'Calle Falsa 119', 19),
+(20, 'Sucursal Zárate', '0020-4123420', 'Calle Falsa 120', 20);
 CREATE TABLE IF NOT EXISTS "alquiler" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "fecha_inicio" datetime NOT NULL, "fecha_fin" datetime NOT NULL, "fecha_reserva" datetime NOT NULL, "monto_total" decimal NOT NULL, "IDEstado" bigint NOT NULL REFERENCES "estado_alquiler" ("id") DEFERRABLE INITIALLY DEFERRED, "vehiculo_id" bigint NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "cliente_id" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "rol" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(20) NOT NULL UNIQUE);
 INSERT INTO rol (id, nombre) VALUES
