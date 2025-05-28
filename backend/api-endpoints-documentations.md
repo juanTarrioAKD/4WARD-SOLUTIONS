@@ -40,412 +40,182 @@
 - Request:
 ```json
 {
-    "email": "usuario@ejemplo.com",
-    "password": "contraseña123"
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "refresh": "token_refresh",
-    "access": "token_access",
-    "user": {
-        "id": 1,
-        "email": "usuario@ejemplo.com",
-        "nombre": "Juan",
-        "apellido": "Pérez",
-        "telefono": "1234567890",
-        "fecha_nacimiento": "1990-01-01",
-        "rol": "cliente"
-    }
-}
-```
-- Respuesta Error (401):
-```json
-{
-    "error": "Credenciales inválidas"
+  "email": "ejemplo@correo.com",
+  "password": "Password1",
+  "nombre": "Juan",
+  "apellido": "Pérez",
+  "telefono": "12345678",
+  "fecha_nacimiento": "2000-01-01"
 }
 ```
 
-### Logout
-- Endpoint: `POST /api/usuarios/logout/`
-- Request:
+**RESPUESTA 201:**
 ```json
 {
-    "refresh": "token_refresh"
-}
-```
-- Respuesta Exitosa (205): Sin contenido
-- Respuesta Error (400): Sin contenido
-
-### Listar Usuarios
-- Endpoint: `GET /api/usuarios/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "email": "usuario1@ejemplo.com",
-        "nombre": "Juan",
-        "apellido": "Pérez",
-        "telefono": "1234567890",
-        "fecha_nacimiento": "1990-01-01",
-        "rol": "cliente"
-    },
-    {
-        "id": 2,
-        "email": "usuario2@ejemplo.com",
-        "nombre": "María",
-        "apellido": "González",
-        "telefono": "0987654321",
-        "fecha_nacimiento": "1992-05-15",
-        "rol": "cliente"
-    }
-]
-```
-
-## Vehículos
-
-### Listar vehículos
-- Endpoint: `GET /api/vehiculos/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "patente": "ABC123",
-        "marca": {
-            "id": 1,
-            "nombre": "Toyota"
-        },
-        "modelo": "Corolla",
-        "año": 2020,
-        "categoria": {
-            "id": 1,
-            "nombre": "Sedán"
-        },
-        "estado": {
-            "id": 1,
-            "nombre": "Disponible"
-        },
-        "sucursal": {
-            "id": 1,
-            "nombre": "Sucursal Central"
-        },
-        "politica": {
-            "id": 1,
-            "nombre": "Política Estándar"
-        }
-    }
-]
-```
-
-### Crear vehículo
-- Endpoint: `POST /api/vehiculos/`
-- Request:
-```json
-{
-    "patente": "ABC123",
-    "marca": 1,
-    "modelo": "Corolla",
-    "año": 2020,
-    "categoria": 1,
-    "estado": 1,
-    "sucursal": 1,
-    "politica": 1
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "patente": "ABC123",
-    "marca": {
-        "id": 1,
-        "nombre": "Toyota"
-    },
-    "modelo": "Corolla",
-    "año": 2020,
-    "categoria": {
-        "id": 1,
-        "nombre": "Sedán"
-    },
-    "estado": {
-        "id": 1,
-        "nombre": "Disponible"
-    },
-    "sucursal": {
-        "id": 1,
-        "nombre": "Sucursal Central"
-    },
-    "politica": {
-        "id": 1,
-        "nombre": "Política Estándar"
-    }
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "error": "La patente ya está registrada"
+  "id": 1,
+  "email": "ejemplo@correo.com"
 }
 ```
 
-## Sucursales
+**RESPUESTA 400:**  
+- Contraseña insegura  
+- Email ya registrado
 
-### Listar sucursales
-- Endpoint: `GET /api/sucursales/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "nombre": "Sucursal Central",
-        "direccion": "Av. Principal 123",
-        "telefono": "1234567890"
-    }
-]
-```
+---
 
-### Crear sucursal
-- Endpoint: `POST /api/sucursales/`
-- Request:
+### 🟢 Login  
+**URL:** `POST /api/usuarios/login/`  
+**QUERY:**
 ```json
 {
-    "nombre": "Sucursal Central",
-    "direccion": "Av. Principal 123",
-    "telefono": "1234567890",
-    "localidad": "La Plata"
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "nombre": "Sucursal Central",
-    "direccion": "Av. Principal 123",
-    "telefono": "1234567890"
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "nombre": ["Este campo es requerido"]
+  "email": "ejemplo@correo.com",
+  "password": "Password1"
 }
 ```
 
-## Políticas de Cancelación
-
-### Listar políticas
-- Endpoint: `GET /api/politicas/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "nombre": "Política Estándar",
-        "descripcion": "Cancelación con 24 horas de anticipación",
-        "porcentaje_devolucion": 80
-    }
-]
-```
-
-### Crear política
-- Endpoint: `POST /api/politicas/`
-- Request:
+**RESPUESTA 200:**
 ```json
 {
-    "nombre": "Política Estándar",
-    "descripcion": "Cancelación con 24 horas de anticipación",
-    "porcentaje_devolucion": 80
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "nombre": "Política Estándar",
-    "descripcion": "Cancelación con 24 horas de anticipación",
-    "porcentaje_devolucion": 80
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "nombre": ["Este campo es requerido"],
-    "porcentaje_devolucion": ["Este campo es requerido"]
+  "access": "token",
+  "refresh": "token",
+  "user": {...}
 }
 ```
 
-## Marcas
+**RESPUESTA 401 o 403:**  
+- Credenciales inválidas  
+- Cuenta bloqueada
 
-### Listar marcas
-- Endpoint: `GET /api/marcas/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "nombre": "Toyota"
-    }
-]
-```
+---
 
-### Crear marca
-- Endpoint: `POST /api/marcas/`
-- Request:
+### 🔴 Logout  
+**URL:** `POST /api/usuarios/logout/`  
+**QUERY:**
 ```json
 {
-    "nombre": "Toyota"
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "nombre": "Toyota"
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "nombre": ["Este campo es requerido"]
+  "refresh": "token"
 }
 ```
 
-## Estados de Vehículo
+**RESPUESTA 205:** Logout exitoso  
+**RESPUESTA 400:** Token inválido
 
-### Listar estados
-- Endpoint: `GET /api/estados/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "nombre": "Disponible"
-    }
-]
-```
+---
 
-### Crear estado
-- Endpoint: `POST /api/estados/`
-- Request:
+## 👤 USUARIOS
+
+### 🔍 Ver perfil  
+**URL:** `GET /api/usuarios/<id>/perfil/`
+
+### 🛠 Modificar usuario  
+**URL:** `PUT /api/usuarios/<id>/modificar/`
+
+### 🛑 Dar de baja  
+**URL:** `DELETE /api/usuarios/<id>/baja/`
+
+### 🔁 Cambiar rol y puesto  
+**URL:** `PUT /api/usuarios/<id>/cambiar_rol/`  
+**QUERY:**
 ```json
 {
-    "nombre": "Disponible"
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "nombre": "Disponible"
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "nombre": ["Este campo es requerido"]
+  "rol": "empleado",
+  "puesto": "Atención",
+  "localidad": 2
 }
 ```
 
-## Categorías
+### 🧾 Ver historial de alquileres del usuario autenticado  
+**URL:** `GET /api/usuarios/mis-alquileres/`
 
-### Listar categorías
-- Endpoint: `GET /api/categorias/`
-- Respuesta Exitosa (200):
-```json
-[
-    {
-        "id": 1,
-        "nombre": "Sedán",
-        "descripcion": "Vehículos de 4 puertas"
-    }
-]
-```
+---
 
-### Crear categoría
-- Endpoint: `POST /api/categorias/`
-- Request:
+## 🚗 VEHÍCULOS
+
+### 🔍 Listar vehículos  
+**URL:** `GET /api/vehiculos/`
+
+### ➕ Crear vehículo  
+**URL:** `POST /api/vehiculos/`
+
+### 🧾 Buscar por patente  
+**URL:** `GET /api/vehiculos/buscar_por_patente/?patente=ABC123`
+
+### 🛠 Modificar vehículo  
+**URL:** `PUT/PATCH /api/vehiculos/<id>/modificar/`
+
+### 🗑 Baja lógica  
+**URL:** `DELETE /api/vehiculos/<id>/baja/`
+
+---
+
+## 📅 ALQUILERES
+
+### ➕ Crear alquiler  
+**URL:** `POST /api/alquileres/`  
+**QUERY:**
 ```json
 {
-    "nombre": "Sedán",
-    "descripcion": "Vehículos de 4 puertas"
-}
-```
-- Respuesta Exitosa (200):
-```json
-{
-    "id": 1,
-    "nombre": "Sedán",
-    "descripcion": "Vehículos de 4 puertas"
-}
-```
-- Respuesta Error (400):
-```json
-{
-    "nombre": ["Este campo es requerido"]
-}
-```
-
-## Ejemplos de Uso
-
-### Crear Sucursal
-```json
-POST /api/sucursales/
-{
-    "nombre": "Sucursal Central",
-    "direccion": "Av. Principal 123",
-    "telefono": "1234567890"
+  "fecha_inicio": "...",
+  "fecha_fin": "...",
+  "fecha_reserva": "...",
+  "categoria_id": 2
 }
 ```
 
-### Crear Política de Cancelación
-```json
-POST /api/politicas/
-{
-    "nombre": "Política Estándar",
-    "descripcion": "Cancelación con 24 horas de anticipación",
-    "porcentaje_devolucion": 80
-}
-```
+### 🛠 Modificar alquiler  
+**URL:** `PUT/PATCH /api/alquileres/<id>/modificar/`
 
-### Crear Marca
-```json
-POST /api/marcas/
-{
-    "nombre": "Toyota"
-}
-```
+### 🗑 Baja lógica  
+**URL:** `DELETE /api/alquileres/<id>/baja/`
 
-### Crear Estado de Vehículo
-```json
-POST /api/estados/
-{
-    "nombre": "Disponible"
-}
-```
+### 🚫 Cancelar alquiler  
+**URL:** `POST /api/alquileres/<id>/cancelar/`
 
-### Crear Categoría
-```json
-POST /api/categorias/
-{
-    "nombre": "Sedán",
-    "descripcion": "Vehículos de 4 puertas"
-}
-```
+---
 
-### Crear Vehículo
-```json
-POST /api/vehiculos/
-{
-    "patente": "ABC123",
-    "marca": 1,
-    "modelo": "Corolla",
-    "año": 2020,
-    "categoria": 1,
-    "estado": 1,
-    "sucursal": 1,
-    "politica": 1
-}
-``` 
+## 📰 PUBLICACIONES
+
+- `GET /api/publicaciones/`
+- `POST /api/publicaciones/`
+
+---
+
+## ⭐ CALIFICACIONES
+
+- `POST /api/calificaciones/`
+- `DELETE /api/calificaciones/<id>/baja/`
+
+---
+
+## ❓ PREGUNTAS
+
+- `POST /api/preguntas/`
+- `DELETE /api/preguntas/<id>/baja/`
+
+---
+
+## 🏬 SUCURSALES
+
+- `GET /api/sucursales/`
+- `POST /api/sucursales/`
+- `PUT /api/sucursales/<id>/modificar/`
+- `DELETE /api/sucursales/<id>/baja/`
+
+---
+
+## 🏷️ CATEGORÍAS / MARCAS / MODELOS / POLÍTICAS / ESTADOS
+
+- `/api/categorias/`
+- `/api/marcas/`
+- `/api/modelos/`
+- `/api/politicas/`
+- `/api/estados-vehiculo/`
+- `/api/estados-alquiler/`
+
+---
+
+## 📈 ESTADÍSTICAS (TODO)
+
+- `/api/estadisticas/mejor_calificado/`
+- `/api/estadisticas/mas_alquilado/`
+- `/api/estadisticas/registros_periodo/`

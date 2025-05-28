@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "a91ef5f0-2866-47f3-a8dd-d9c1cc1f2df9",
+		"_postman_id": "a7c5edf3-4fbd-4bd9-b76e-5dbdc202bdc5",
 		"name": "Altas",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -10,13 +10,20 @@
 			"name": "Alta Sucursal",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Sucursal Central\",\r\n    \"direccion\": \"Av. Principal 123\",\r\n    \"telefono\": \"1234567890\",\r\n    \"localidad_id\": 1\r\n}",
+					"raw": "{\r\n    \"nombre\": \"Sucursal PRUEBA\",\r\n    \"direccion\": \"Av. Principal 123\",\r\n    \"telefono\": \"1234567890\",\r\n    \"localidad_id\": 2\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -46,13 +53,20 @@
 			"name": "Alta Estado Alquiler",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Pendiente\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"PRUEBA2\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -82,13 +96,20 @@
 			"name": "Alta Localidad",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"La Plata\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"PRUEBA\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -154,13 +175,20 @@
 			"name": "Alta Politica",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Política Estándar\",\r\n    \"descripcion\": \"Cancelación con 24 horas de anticipación\",\r\n    \"porcentaje\": 80\r\n}",
+					"raw": "{\r\n    \"nombre\": \"Política PRUEBA\",\r\n    \"descripcion\": \"Cancelación con 24 horas de anticipación\",\r\n    \"porcentaje\": 80\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -190,13 +218,20 @@
 			"name": "Alta Marca",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Toyota\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"PRUEBA\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -226,13 +261,20 @@
 			"name": "Alta Categoria",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwNzU2LCJpYXQiOjE3NDg0MDcxNTYsImp0aSI6IjI3Mjg1ZWZmN2ZkNzQ3YjdiNzQxNjczZDE3OGZkOWYyIiwidXNlcl9pZCI6MX0.VkCXB-0jV-IvocQz2CJ7Hm0ZtvENhlGMbfYinzUvAvA",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"4X4\",\r\n    \"descripcion\": \"Vehículos 4X4\",\r\n    \"precio\": 10000\r\n}",
+					"raw": "{\r\n    \"nombre\": \"Nombre de la Categoría\",\r\n    \"precio\": 1000.00\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -261,11 +303,21 @@
 		{
 			"name": "Alta Estado",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"nombre\": \"Alquilado\"\r\n}",
+					"raw": "{\r\n    \"nombre\": \"PRUEBA\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -273,7 +325,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/estados/",
+					"raw": "http://127.0.0.1:8000/api/estados-vehiculo/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -284,7 +336,7 @@
 					"port": "8000",
 					"path": [
 						"api",
-						"estados",
+						"estados-vehiculo",
 						""
 					]
 				}
@@ -295,13 +347,20 @@
 			"name": "Alta Calificacion",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"puntaje\": 5,\r\n    \"publicacion\": 1,\r\n    \"usuario\": 2\r\n}",
+					"raw": "{\r\n    \"puntaje\": 5,\r\n    \"publicacion\": 1\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"

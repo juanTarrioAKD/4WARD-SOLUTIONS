@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "2c94bfb7-b993-4458-926a-f60632c495e5",
+		"_postman_id": "03961117-3943-4de2-8c60-45a2d7a26559",
 		"name": "Listar",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -12,6 +12,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -48,6 +58,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -84,6 +104,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -120,6 +150,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwNzU2LCJpYXQiOjE3NDg0MDcxNTYsImp0aSI6IjI3Mjg1ZWZmN2ZkNzQ3YjdiNzQxNjczZDE3OGZkOWYyIiwidXNlcl9pZCI6MX0.VkCXB-0jV-IvocQz2CJ7Hm0ZtvENhlGMbfYinzUvAvA",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -148,10 +188,20 @@
 		{
 			"name": "Listar Estados",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/estados/",
+					"raw": "http://127.0.0.1:8000/api/estados-vehiculo/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -162,7 +212,7 @@
 					"port": "8000",
 					"path": [
 						"api",
-						"estados",
+						"estados-vehiculo",
 						""
 					]
 				}
@@ -175,6 +225,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {

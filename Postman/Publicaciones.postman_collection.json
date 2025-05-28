@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "c3f5174d-d1b4-4d0c-8008-3fb9d7204c7c",
+		"_postman_id": "659ef9ce-c0f1-4fe4-bb80-dd2cfe3ff628",
 		"name": "Publicaciones",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -46,6 +46,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -80,13 +90,20 @@
 			"name": "Alta Publicacion",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"categoria\": 2\r\n}",
+					"raw": "{\r\n    \"categoria\": 4\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -115,6 +132,16 @@
 		{
 			"name": "Modificacion de Publicacion",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA3NTM4LCJpYXQiOjE3NDg0MDM5MzgsImp0aSI6IjY3NmUxYjI5MDE2NDRhNzhhZjVjNDI1MWI4OTZjMTY1IiwidXNlcl9pZCI6MX0.5-tSZtpRg6xCtdPpC7NLJwfvzhGaD0ml_h6VixqedAg",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [],
 				"body": {
@@ -127,7 +154,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/publicaciones/2/",
+					"raw": "http://127.0.0.1:8000/api/publicaciones/1/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -139,7 +166,7 @@
 					"path": [
 						"api",
 						"publicaciones",
-						"2",
+						"1",
 						""
 					]
 				}

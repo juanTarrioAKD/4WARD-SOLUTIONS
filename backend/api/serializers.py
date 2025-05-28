@@ -1,4 +1,5 @@
 import re
+from django.utils import timezone
 
 from rest_framework import serializers
 from .models import (
@@ -81,7 +82,7 @@ class SucursalSerializer(serializers.ModelSerializer):
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Categoria
-        fields = ['id', 'precio']
+        fields = ['id', 'nombre', 'precio']
 
 class PoliticaDeCancelacionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -168,18 +169,14 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Alquiler
-        fields = ['fecha_inicio', 'fecha_fin', 'fecha_reserva', 'categoria_id']
+        fields = ['fecha_inicio', 'fecha_fin', 'categoria_id']
 
     def validate(self, data):
         fecha_inicio = data['fecha_inicio']
         fecha_fin = data['fecha_fin']
-        fecha_reserva = data['fecha_reserva']
 
         if fecha_inicio >= fecha_fin:
             raise serializers.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin")
-
-        if fecha_reserva > fecha_inicio:
-            raise serializers.ValidationError("La fecha de reserva debe ser anterior a la fecha de inicio")
 
         return data
 
@@ -216,9 +213,11 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
         vehiculo_disponible.estado_id = 2  # "Alquilado"
         vehiculo_disponible.save()
 
-        # Crear el alquiler
+        # Crear el alquiler con todos los datos necesarios
         alquiler = Alquiler.objects.create(
-            **validated_data,
+            fecha_inicio=validated_data['fecha_inicio'],
+            fecha_fin=validated_data['fecha_fin'],
+            fecha_reserva=timezone.now(),
             cliente=cliente,
             vehiculo=vehiculo_disponible,
             monto_total=monto_total,

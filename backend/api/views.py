@@ -23,6 +23,7 @@ from .serializers import (
     PreguntaCreateSerializer
 )
 from .permissions import *
+from django.utils import timezone
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -122,10 +123,23 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             refresh = RefreshToken.for_user(user)
             user.reset_login_attempts()
             
+            # Obtener el nombre del rol
+            rol_nombre = user.rol.nombre if user.rol else 'cliente'
+            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': UsuarioSerializer(user).data
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'nombre': user.nombre,
+                    'apellido': user.apellido,
+                    'telefono': user.telefono,
+                    'fecha_nacimiento': user.fecha_nacimiento,
+                    'rol': rol_nombre,
+                    'puesto': user.puesto,
+                    'localidad': user.localidad.id if user.localidad else None
+                }
             })
         except Usuario.DoesNotExist:
             return Response({
@@ -148,7 +162,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(usuario)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'], url_path='mis-alquileres')
+    @action(detail=False, methods=['get'], url_path='mis-alquileres', permission_classes=[IsAuthenticated])
     def mis_alquileres(self, request):
         try:
             usuario = request.user
@@ -156,7 +170,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'Usuario no encontrado en la solicitud'}, 
                               status=status.HTTP_401_UNAUTHORIZED)
             
-            alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            alquileres = Alquiler.objects.filter(usuario=usuario).order_by('-fecha_inicio')
             serializer = AlquilerSerializer(alquileres, many=True)
             return Response({
                 'alquileres': serializer.data,
@@ -217,23 +231,44 @@ class VehiculoViewSet(viewsets.ModelViewSet):
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
     serializer_class = PublicacionSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [IsAuthenticated]
 
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return PublicacionCreateSerializer
-        return PublicacionSerializer
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        if self.action == 'list':
+            return Publicacion.objects.filter(estado_id=1)  # Solo publicaciones activas
+        return Publicacion.objects.all()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            publicacion = serializer.save()
-            return Response(PublicacionSerializer(publicacion).data, status=status.HTTP_201_CREATED)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['put', 'patch'])
+    def modificar(self, request, pk=None):
+        publicacion = self.get_object()
+        serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
+        if serializer.is_valid():
+            publicacion = serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        publicacion = self.get_object()
+        publicacion.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
     serializer_class = SucursalSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -253,10 +288,12 @@ class SucursalViewSet(viewsets.ModelViewSet):
 class PoliticaDeCancelacionViewSet(viewsets.ModelViewSet):
     queryset = PoliticaDeCancelacion.objects.all()
     serializer_class = PoliticaDeCancelacionSerializer
+    permission_classes = [IsAdmin]
 
 class MarcaViewSet(viewsets.ModelViewSet):
     queryset = Marca.objects.all()
     serializer_class = MarcaSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -267,16 +304,19 @@ class MarcaViewSet(viewsets.ModelViewSet):
 class EstadoVehiculoViewSet(viewsets.ModelViewSet):
     queryset = EstadoVehiculo.objects.all()
     serializer_class = EstadoVehiculoSerializer
+    permission_classes = [IsAdmin]
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
+    permission_classes = [IsAdmin]
 
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
-        categoria = self.get_object()
-        categoria.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            categoria = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -286,6 +326,12 @@ class CategoriaViewSet(viewsets.ModelViewSet):
             categoria = serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        categoria = self.get_object()
+        categoria.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
@@ -328,6 +374,7 @@ class CalificacionViewSet(viewsets.ModelViewSet):
 class ModeloViewSet(viewsets.ModelViewSet):
     queryset = Modelo.objects.all()
     serializer_class = ModeloSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -338,6 +385,7 @@ class ModeloViewSet(viewsets.ModelViewSet):
 class LocalidadViewSet(viewsets.ModelViewSet):
     queryset = Localidad.objects.all()
     serializer_class = LocalidadSerializer
+    permission_classes = [IsAdmin]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -396,7 +444,7 @@ class PreguntaViewSet(viewsets.ModelViewSet):
 class AlquilerViewSet(viewsets.ModelViewSet):
     queryset = Alquiler.objects.all()
     serializer_class = AlquilerSerializer
-    permission_classes = [IsClienteOrEmpleadoOrAdmin]
+    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -404,16 +452,42 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         return AlquilerSerializer
 
     def get_queryset(self):
-        if self.request.user.rol == 'cliente':
+        if self.action == 'list' and self.request.user.rol.id == 1:  # Cliente
+            return Alquiler.objects.none()  # No permite listar todos los alquileres
+        elif self.action == 'mis_alquileres':
             return Alquiler.objects.filter(cliente=self.request.user)
         return Alquiler.objects.all()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
+            # Establecer fecha_reserva y estado automáticamente
+            serializer.validated_data['fecha_reserva'] = timezone.now()
+            serializer.validated_data['estado_id'] = 1  # Estado Pendiente
             alquiler = serializer.save()
             return Response(AlquilerSerializer(alquiler).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='mis-alquileres')
+    def mis_alquileres(self, request):
+        try:
+            usuario = request.user
+            if not usuario:
+                return Response({'error': 'Usuario no encontrado en la solicitud'}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            serializer = AlquilerSerializer(alquileres, many=True)
+            return Response({
+                'alquileres': serializer.data,
+                'usuario_id': usuario.id,
+                'usuario_email': usuario.email
+            })
+        except Exception as e:
+            return Response({
+                'error': f'Error al obtener alquileres: {str(e)}',
+                'user_info': str(request.user) if request.user else 'No user found'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -433,7 +507,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
         alquiler = self.get_object()
-        if request.user.rol not in ['admin', 'empleado']:
+        if request.user.rol.id not in [2, 3]:  # No es empleado ni admin
             return Response({'error': 'No tienes permiso para cancelar alquileres'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -444,6 +518,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):

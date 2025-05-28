@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "bfc28c34-a0ab-4799-8495-758cb166a2e5",
+		"_postman_id": "ac8378ed-c313-442b-8496-dfb1523a645f",
 		"name": "Bajas",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -9,6 +9,16 @@
 		{
 			"name": "Baja Calificacion",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -39,6 +49,16 @@
 		{
 			"name": "Baja Sucursal",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -69,6 +89,16 @@
 		{
 			"name": "Baja Localidad",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -99,6 +129,16 @@
 		{
 			"name": "Baja Pregunta",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -129,6 +169,16 @@
 		{
 			"name": "Baja Marca",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -159,6 +209,16 @@
 		{
 			"name": "Baja Modelo",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -189,6 +249,16 @@
 		{
 			"name": "Baja Categoria",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwNzU2LCJpYXQiOjE3NDg0MDcxNTYsImp0aSI6IjI3Mjg1ZWZmN2ZkNzQ3YjdiNzQxNjczZDE3OGZkOWYyIiwidXNlcl9pZCI6MX0.VkCXB-0jV-IvocQz2CJ7Hm0ZtvENhlGMbfYinzUvAvA",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -196,7 +266,7 @@
 					"raw": ""
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/categorias/1/baja/",
+					"raw": "http://127.0.0.1:8000/api/categorias/7/baja/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -208,7 +278,7 @@
 					"path": [
 						"api",
 						"categorias",
-						"1",
+						"7",
 						"baja",
 						""
 					]
