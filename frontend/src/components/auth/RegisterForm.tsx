@@ -47,11 +47,20 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
     return age;
   };
 
+  // Función para validar la contraseña
+  const validatePassword = (password: string): boolean => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    return minLength && hasUpperCase && hasNumber;
+  };
+
   // Manejador del envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess(false);
     setIsLoading(true);
+    setError('');
 
     // Validación de campos vacíos
     if (!formData.nombre || !formData.apellido || !formData.email || !formData.telefono || 
@@ -68,6 +77,18 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
       setFormData(prev => ({
         ...prev,
         fecha_nacimiento: ''
+      }));
+      setIsLoading(false);
+      return;
+    }
+
+    // Validación de contraseña
+    if (!validatePassword(formData.password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una letra mayúscula y un número');
+      setFormData(prev => ({
+        ...prev,
+        password: '',
+        confirmPassword: ''
       }));
       setIsLoading(false);
       return;
@@ -131,24 +152,23 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
           onShowLogin();
         }, 2000);
       } else {
-        setError(result.error || 'Error al registrar el usuario');
-        // Si el error es de usuario existente, limpiar el campo de usuario
-        if (result.error?.includes('usuario ya está en uso')) {
-          setFormData(prev => ({
-            ...prev,
+        // Manejar diferentes tipos de errores
+        if (result.error?.includes('email')) {
+          setError('El email ya está registrado');
+          setFormData(prev => ({ ...prev, email: '' }));
+        } else if (result.error?.includes('usuario')) {
+          setError('El usuario ya existe');
+          setFormData(prev => ({ 
+            ...prev, 
             nombre: '',
             apellido: ''
           }));
-        }
-        // Si el error es de email existente, limpiar el campo de email
-        if (result.error?.includes('email ya está registrado')) {
-          setFormData(prev => ({
-            ...prev,
-            email: ''
-          }));
+        } else {
+          setError(result.error || 'Error al registrar el usuario');
         }
       }
     } catch (error) {
+      console.error('Error en el registro:', error);
       setError('Hubo un error al intentar registrar el usuario. Por favor, intente nuevamente.');
     } finally {
       setIsLoading(false);
@@ -293,14 +313,14 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
               </div>
 
               <div className="mt-2">
-                <p className="text-[#a16bb7] text-sm">
+                <div className="text-[#a16bb7] text-sm">
                   Requisitos de contraseña:
-                  <ul className="list-disc list-inside mt-1">
-                    <li>Mínimo 8 caracteres</li>
-                    <li>Al menos 1 letra mayúscula</li>
-                    <li>Al menos 1 número</li>
-                  </ul>
-                </p>
+                </div>
+                <ul className="text-[#a16bb7] text-sm list-disc list-inside mt-1">
+                  <li>Mínimo 8 caracteres</li>
+                  <li>Al menos 1 letra mayúscula</li>
+                  <li>Al menos 1 número</li>
+                </ul>
               </div>
             </div>
           </div>

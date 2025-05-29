@@ -12,51 +12,64 @@ interface RegisterData {
 export const registerUser = async (userData: RegisterData): Promise<{ success: boolean; error?: string }> => {
   try {
     // Realizamos la llamada al endpoint de registro
-    const response = await fetch('http://localhost:8000/api/register/', {
+    const response = await fetch('http://localhost:8000/api/usuarios/register/', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
         nombre: userData.nombre.trim(),
         apellido: userData.apellido.trim(),
-        email: userData.email.trim().toLowerCase(),
         telefono: userData.telefono.trim(),
-        password: userData.password,
-        fecha_nacimiento: userData.fecha_nacimiento
+        fecha_nacimiento: userData.fecha_nacimiento,
+        rol: 1 // ID 1 corresponde al rol "cliente"
       })
     });
 
-    // Si la respuesta no es ok, intentamos obtener el mensaje de error
+    // Obtenemos la respuesta en JSON
+    const data = await response.json();
+
+    // Si la respuesta no es ok, manejamos el error
     if (!response.ok) {
-      let errorMessage = 'Error al registrar el usuario';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        // Si no podemos parsear el error, usamos el mensaje por defecto
+      // Si el backend devuelve un objeto con múltiples errores
+      if (typeof data === 'object' && data !== null) {
+        // Si hay un mensaje de error específico
+        if (data.error) {
+          return {
+            success: false,
+            error: data.error
+          };
+        }
+        // Si hay errores por campo
+        const errorMessages = [];
+        for (const [field, errors] of Object.entries(data)) {
+          if (Array.isArray(errors)) {
+            errorMessages.push(`${field}: ${errors.join(', ')}`);
+          }
+        }
+        if (errorMessages.length > 0) {
+          return {
+            success: false,
+            error: errorMessages.join('. ')
+          };
+        }
       }
+      
       return {
         success: false,
-        error: errorMessage
+        error: 'Error al registrar el usuario'
       };
     }
 
-    // Intentamos parsear la respuesta exitosa
-    try {
-      const data = await response.json();
-      return {
-        success: true,
-        ...data
-      };
-    } catch (error) {
-      console.error('Error parsing success response:', error);
-      return {
-        success: false,
-        error: 'Error al procesar la respuesta del servidor'
-      };
-    }
+    // Si todo salió bien, retornamos el éxito y los datos del usuario
+    return {
+      success: true,
+      ...data
+    };
+
   } catch (error) {
     console.error('Error registering user:', error);
     return {

@@ -25,21 +25,27 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
       return;
     }
 
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Por favor, ingrese un email válido');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const user = await loginUser(email, password);
       if (user) {
         onLoginSuccess();
         onClose();
       } else {
-        setError('El email o la contraseña son incorrectos. Por favor, verifique sus datos.');
+        setError('Credenciales inválidas');
       }
     } catch (error: any) {
       // Mostrar el mensaje de error específico del backend
-      if (error.message) {
-        setError(error.message);
-      } else {
-        setError('Hubo un error al intentar iniciar sesión. Por favor, intente nuevamente.');
-      }
+      setError(error.message || 'Hubo un error al intentar iniciar sesión');
+      // Limpiar el campo de contraseña por seguridad
+      setPassword('');
     } finally {
       setIsLoading(false);
     }
