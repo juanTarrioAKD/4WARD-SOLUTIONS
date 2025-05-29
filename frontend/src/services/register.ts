@@ -1,66 +1,16 @@
 // Interfaces para el registro
 interface RegisterData {
-  username: string;
+  nombre: string;
+  apellido: string;
   email: string;
+  telefono: string;
   password: string;
-  birthdate: string;
+  fecha_nacimiento: string;
 }
-
-interface ValidationResponse {
-  isValid: boolean;
-  error?: string;
-}
-
-// Función para verificar si el usuario ya existe
-export const checkUserExists = async (username: string, email: string): Promise<ValidationResponse> => {
-  try {
-    // Llamada a la API para verificar usuarios existentes
-    const response = await fetch('http://localhost:8000/api/get-users/');
-    if (!response.ok) {
-      throw new Error('Error al verificar usuarios existentes');
-    }
-    const users = await response.json();
-    
-    // Verificar si el username ya existe
-    const usernameExists = users.some((user: any) => user.username.toLowerCase() === username.toLowerCase());
-    if (usernameExists) {
-      return {
-        isValid: false,
-        error: 'El nombre de usuario ya está en uso'
-      };
-    }
-
-    // Verificar si el email ya existe
-    const emailExists = users.some((user: any) => user.email.toLowerCase() === email.toLowerCase());
-    if (emailExists) {
-      return {
-        isValid: false,
-        error: 'El email ya está registrado'
-      };
-    }
-
-    return { isValid: true };
-  } catch (error) {
-    console.error('Error checking user existence:', error);
-    return {
-      isValid: false,
-      error: 'Error al verificar disponibilidad del usuario'
-    };
-  }
-};
 
 // Función para registrar un nuevo usuario
 export const registerUser = async (userData: RegisterData): Promise<{ success: boolean; error?: string }> => {
   try {
-    // Primero verificamos si el usuario ya existe
-    const validationResult = await checkUserExists(userData.username, userData.email);
-    if (!validationResult.isValid) {
-      return {
-        success: false,
-        error: validationResult.error
-      };
-    }
-
     // Realizamos la llamada al endpoint de registro
     const response = await fetch('http://localhost:8000/api/register/', {
       method: 'POST',
@@ -69,10 +19,12 @@ export const registerUser = async (userData: RegisterData): Promise<{ success: b
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: userData.username.trim(),
+        nombre: userData.nombre.trim(),
+        apellido: userData.apellido.trim(),
         email: userData.email.trim().toLowerCase(),
+        telefono: userData.telefono.trim(),
         password: userData.password,
-        birthdate: userData.birthdate
+        fecha_nacimiento: userData.fecha_nacimiento
       })
     });
 

@@ -1,29 +1,42 @@
 interface User {
   id: number;
-  username: string;
   email: string;
-  role: string;
+  nombre: string;
+  apellido: string;
+  telefono: string;
+  fecha_nacimiento: string;
+  rol: string;
+  puesto: string | null;
+  localidad: number | null;
 }
 
-export const loginUser = async (username: string, password: string): Promise<User | null> => {
+export const loginUser = async (email: string, password: string): Promise<User | null> => {
   try {
-    const response = await fetch('http://localhost:8000/api/get-users/');
-    const users = await response.json();
+    const response = await fetch('http://localhost:8000/api/mock-login/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Error al iniciar sesión');
+    }
     
-    const user = users.find((u: any) => 
-      u.username === username && u.password === password
-    );
-    
-    if (user) {
-      // Guardar el usuario en localStorage para mantener la sesión
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      return user;
+    if (data.user) {
+      // Guardar el token y el usuario en localStorage
+      localStorage.setItem('token', data.access);
+      localStorage.setItem('currentUser', JSON.stringify(data.user));
+      return data.user;
     }
     
     return null;
   } catch (error) {
     console.error('Error during login:', error);
-    return null;
+    throw error;
   }
 };
 
@@ -34,4 +47,5 @@ export const getCurrentUser = (): User | null => {
 
 export const logout = () => {
   localStorage.removeItem('currentUser');
+  localStorage.removeItem('token');
 }; 

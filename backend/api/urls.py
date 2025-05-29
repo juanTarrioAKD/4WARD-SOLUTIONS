@@ -6,7 +6,7 @@ from .views import (
     SucursalViewSet, CategoriaViewSet, PoliticaDeCancelacionViewSet,
     CalificacionViewSet, LocalidadViewSet,
     PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet,
-    EstadisticasViewSet
+    EstadisticasViewSet, getDatosCategorias, getMockLogin, getMockRegister
 )
 
 router = DefaultRouter()
@@ -27,5 +27,8 @@ router.register(r'estados-alquiler', EstadoAlquilerViewSet)
 router.register(r'estadisticas', EstadisticasViewSet, basename='estadisticas')
 
 urlpatterns = [
+    path('get-categories/', getDatosCategorias, name='get-categories'),
+    path('mock-login/', getMockLogin, name='mock-login'),
+    path('register/', getMockRegister, name='register'),
     path('', include(router.urls)),
 ] 

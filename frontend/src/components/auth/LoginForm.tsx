@@ -8,7 +8,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,24 +19,27 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
     setIsLoading(true);
 
     // Validación de campos vacíos
-    if (!username || !password) {
+    if (!email || !password) {
       setError('Por favor, complete todos los campos');
       setIsLoading(false);
       return;
     }
 
     try {
-      const user = await loginUser(username, password);
+      const user = await loginUser(email, password);
       if (user) {
         onLoginSuccess();
         onClose();
       } else {
-        // Mensaje de error cuando las credenciales son inválidas
-        setError('El usuario o la contraseña son incorrectos. Por favor, verifique sus datos.');
+        setError('El email o la contraseña son incorrectos. Por favor, verifique sus datos.');
       }
-    } catch (error) {
-      // Mensaje de error cuando hay un problema con la petición
-      setError('Hubo un error al intentar iniciar sesión. Por favor, intente nuevamente.');
+    } catch (error: any) {
+      // Mostrar el mensaje de error específico del backend
+      if (error.message) {
+        setError(error.message);
+      } else {
+        setError('Hubo un error al intentar iniciar sesión. Por favor, intente nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,12 +74,12 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
             </div>
           )}
           <div>
-            <label htmlFor="username" className="block text-white mb-2">Nombre usuario:</label>
+            <label htmlFor="email" className="block text-white mb-2">Email:</label>
             <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
               disabled={isLoading}
             />
