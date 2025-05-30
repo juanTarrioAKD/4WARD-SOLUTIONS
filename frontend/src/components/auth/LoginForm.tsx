@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { loginUser } from '@/services/auth';
+import { login } from '@/services/auth';
 
 interface LoginFormProps {
   onClose: () => void;
@@ -10,12 +10,12 @@ interface LoginFormProps {
 export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setIsLoading(true);
 
     // Validación de campos vacíos
@@ -34,18 +34,11 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
     }
 
     try {
-      const user = await loginUser(email, password);
-      if (user) {
-        onLoginSuccess();
-        onClose();
-      } else {
-        setError('Credenciales inválidas');
-      }
-    } catch (error: any) {
-      // Mostrar el mensaje de error específico del backend
-      setError(error.message || 'Hubo un error al intentar iniciar sesión');
-      // Limpiar el campo de contraseña por seguridad
-      setPassword('');
+      const response = await login(email, password);
+      onLoginSuccess();
+      onClose();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +81,7 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
               disabled={isLoading}
+              required
             />
           </div>
           <div>
@@ -99,6 +93,7 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
               disabled={isLoading}
+              required
             />
           </div>
           <div className="flex flex-col gap-4">

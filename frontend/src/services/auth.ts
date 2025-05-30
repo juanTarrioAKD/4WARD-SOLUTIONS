@@ -1,3 +1,5 @@
+import { API_BASE_URL } from '@/config/config';
+
 export interface User {
   id: number;
   email: string;
@@ -10,66 +12,62 @@ export interface User {
   localidad: number | null;
 }
 
-export const loginUser = async (email: string, password: string): Promise<User | null> => {
+interface LoginResponse {
+  access: string;
+  refresh: string;
+  user: {
+    id: number;
+    email: string;
+    nombre: string;
+    apellido: string;
+    rol: string;
+  };
+}
+
+export const login = async (email: string, password: string): Promise<LoginResponse> => {
   try {
-    const response = await fetch('http://localhost:8000/api/usuarios/login/', {
+    const response = await fetch(`${API_BASE_URL}/api/usuarios/login/`, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        email: email.trim().toLowerCase(), 
-        password 
-      }),
+      body: JSON.stringify({ email, password }),
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      // Si la respuesta no es exitosa, lanzamos el error específico del backend
-      throw new Error(data.error || 'Credenciales inválidas');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Credenciales inválidas');
     }
+
+    const data = await response.json();
     
-    if (data.user) {
-      // Guardar los tokens y el usuario en localStorage
-      localStorage.setItem('token', data.access);
-      localStorage.setItem('refreshToken', data.refresh);
-      localStorage.setItem('currentUser', JSON.stringify(data.user));
-      return data.user;
-    }
+    // Guardar el token y la información del usuario
+    localStorage.setItem('token', data.access);
+    localStorage.setItem('user', JSON.stringify(data.user));
     
-    return null;
+    return data;
   } catch (error) {
-    console.error('Error during login:', error);
+    console.error('Error en login:', error);
     throw error;
   }
 };
 
-export const getCurrentUser = (): User | null => {
-  const userStr = localStorage.getItem('currentUser');
-  return userStr ? JSON.parse(userStr) : null;
+export const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
 };
 
-export const logout = async (): Promise<void> => {
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null;
+  
   try {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (refreshToken) {
-      // Llamar al endpoint de logout
-      await fetch('http://localhost:8000/api/usuarios/logout/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ refresh: refreshToken }),
-      });
-    }
-  } catch (error) {
-    console.error('Error during logout:', error);
-  } finally {
-    // Limpiar el almacenamiento local independientemente del resultado
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
+    return JSON.parse(userStr);
+  } catch {
+    return null;
   }
+};
+
+export const getAuthToken = () => {
+  return localStorage.getItem('token');
 }; 

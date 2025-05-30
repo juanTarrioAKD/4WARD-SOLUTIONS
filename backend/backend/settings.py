@@ -190,3 +190,8 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
 ]
+
+# Mercado Pago Configuration
+MERCADOPAGO_ACCESS_TOKEN = 'TEST-3886104043565544-053014-c3e799aa3cddd0a35739e6efdf6c3d12-459089512'  # Reemplazar con tu token real
+FRONTEND_URL = 'http://localhost:3000'  # URL del frontend
+BACKEND_URL = 'http://localhost:8000'  # URL del backend

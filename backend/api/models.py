@@ -75,6 +75,15 @@ class Alquiler(models.Model):
     estado = models.ForeignKey(EstadoAlquiler, on_delete=models.CASCADE, db_column='IDEstado')
     cliente = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alquileres')
     vehiculo = models.ForeignKey('Vehiculo', on_delete=models.CASCADE, related_name='alquileres', null=True)
+    estado_pago = models.CharField(
+        max_length=20,
+        choices=[
+            ('PENDIENTE', 'Pendiente'),
+            ('PAGADO', 'Pagado'),
+            ('RECHAZADO', 'Rechazado'),
+        ],
+        default='PENDIENTE'
+    )
 
     class Meta:
         db_table = 'alquiler'

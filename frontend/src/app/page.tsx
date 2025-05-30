@@ -294,16 +294,20 @@ export default function Home() {
               : ''}
           </p>
           <div className="flex flex-col gap-4 justify-center cta-buttons">
-            {!userState.isAuthenticated && (
               <div className="flex justify-center">
                 <button 
                   className="inline-flex bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => setShowLoginForm(true)}
+                onClick={() => {
+                  if (userState.isAuthenticated) {
+                    router.push('/reservar');
+                  } else {
+                    setShowLoginForm(true);
+                  }
+                }}
                 >
                   Reservar Ahora
                 </button>
               </div>
-            )}
             {userState.role === 'admin' && (
               <div className="flex flex-col gap-4">
                 <button 

@@ -9,6 +9,7 @@ from .views import (
     EstadisticasViewSet, getDatosCategorias, getMockLogin, getMockRegister,
     getMockReservations, getMockPolicies
 )
+from .payment_views import create_payment_preference, payment_webhook
 
 router = DefaultRouter()
 router.register(r'usuarios', UsuarioViewSet)
@@ -33,5 +34,7 @@ urlpatterns = [
     path('register/', getMockRegister, name='register'),
     path('mock-reservations/', getMockReservations, name='mock-reservations'),
     path('mock-policies/', getMockPolicies, name='mock-policies'),
+    path('pagos/crear-preferencia/', create_payment_preference, name='create-payment-preference'),
+    path('pagos/webhook/', payment_webhook, name='payment-webhook'),
     path('', include(router.urls)),
 ] 
