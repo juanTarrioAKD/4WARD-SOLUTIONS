@@ -31,8 +31,8 @@ export default function Home() {
     if (user) {
       setUserState({
         isAuthenticated: true,
-        role: user.role,
-        username: user.username
+        role: user.rol,
+        username: user.nombre
       });
     }
   }, []);
@@ -42,8 +42,8 @@ export default function Home() {
     if (user) {
       setUserState({
         isAuthenticated: true,
-        role: user.role,
-        username: user.username
+        role: user.rol,
+        username: user.nombre
       });
     }
   };
@@ -102,9 +102,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#3d2342]">
+    <div className="min-h-screen bg-[#5e3e5a]">
       {/* Header */}
-      <header className="flex justify-between items-center px-8 py-4 bg-[#2d1830] relative z-40">
+      <header className="flex justify-between items-center px-8 py-4 bg-[#4c3246] relative z-40">
         {/* Logo flotante */}
         <div className="absolute left-8 -bottom-24 z-50 bg-transparent">
           <Image 
@@ -198,8 +198,16 @@ export default function Home() {
         <nav className="p-4">
           <div className="flex flex-col divide-y divide-white/30 border-b border-white/30">
             {/* Opciones comunes para todos los usuarios */}
-              {/* Opciones específicas según el rol */}
-              {renderRoleSpecificButtons()}
+            {userState.isAuthenticated && (
+              <button 
+                className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+                onClick={() => router.push('/mis-reservas')}
+              >
+                Mis Reservas
+              </button>
+            )}
+            {/* Opciones específicas según el rol */}
+            {renderRoleSpecificButtons()}
             {/* Botón Mi Cuenta - Maneja la navegación condicional basada en autenticación */}
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
@@ -221,7 +229,7 @@ export default function Home() {
             </button>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Flota clicked')}
+              onClick={() => router.push('/flota')}
             >
               Flota
             </button>
@@ -278,9 +286,14 @@ export default function Home() {
           </p>
           <div className="flex flex-col gap-4 justify-center cta-buttons">
             {!userState.isAuthenticated && (
-              <button className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn">
-                Reservar Ahora
-              </button>
+              <div className="flex justify-center">
+                <button 
+                  className="inline-flex bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
+                  onClick={() => setShowLoginForm(true)}
+                >
+                  Reservar Ahora
+                </button>
+              </div>
             )}
             {userState.role === 'admin' && (
               <div className="flex flex-col gap-4">
