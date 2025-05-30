@@ -212,15 +212,10 @@ export default function Home() {
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
               onClick={() => {
-                // Verifica si el usuario está autenticado
                 if (userState.isAuthenticated) {
-                  // Si está autenticado, navega a la página de cuenta
                   router.push('/mi-cuenta');
                 } else {
-                  // Si no está autenticado:
-                  // 1. Muestra el formulario de inicio de sesión
                   setShowLoginForm(true);
-                  // 2. Cierra el menú lateral para mejor UX
                   setIsMenuOpen(false);
                 }
               }}
@@ -229,7 +224,14 @@ export default function Home() {
             </button>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => router.push('/flota')}
+              onClick={() => {
+                if (userState.isAuthenticated) {
+                  router.push('/flota');
+                } else {
+                  setShowLoginForm(true);
+                  setIsMenuOpen(false);
+                }
+              }}
             >
               Flota
             </button>
@@ -243,7 +245,14 @@ export default function Home() {
             {/* Opciones comunes para todos los usuarios */}
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Politicas de uso clicked')}
+              onClick={() => {
+                if (userState.isAuthenticated) {
+                  router.push('/politicas');
+                } else {
+                  setShowLoginForm(true);
+                  setIsMenuOpen(false);
+                }
+              }}
             >
               Politicas de uso
             </button>

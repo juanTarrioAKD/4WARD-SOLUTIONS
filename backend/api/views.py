@@ -754,3 +754,35 @@ def getMockReservations(request):
     response["Access-Control-Allow-Headers"] = "Content-Type"
     return response
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getMockPolicies(request):
+    # Mock de políticas de cancelación
+    policies = [
+        {
+            "id": 1,
+            "nombre": "Política Flexible",
+            "descripcion": "Cancelación gratuita hasta 24 horas antes del inicio del alquiler",
+            "porcentaje": 100
+        },
+        {
+            "id": 2,
+            "nombre": "Política Moderada",
+            "descripcion": "Cancelación con 50% de reembolso hasta 48 horas antes del inicio",
+            "porcentaje": 50
+        },
+        {
+            "id": 3,
+            "nombre": "Política Estricta",
+            "descripcion": "Cancelación con 20% de reembolso hasta 72 horas antes del inicio",
+            "porcentaje": 20
+        }
+    ]
+    
+    # Add CORS headers
+    response = Response(policies)
+    response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
