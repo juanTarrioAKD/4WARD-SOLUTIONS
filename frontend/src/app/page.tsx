@@ -198,8 +198,16 @@ export default function Home() {
         <nav className="p-4">
           <div className="flex flex-col divide-y divide-white/30 border-b border-white/30">
             {/* Opciones comunes para todos los usuarios */}
-              {/* Opciones específicas según el rol */}
-              {renderRoleSpecificButtons()}
+            {userState.isAuthenticated && (
+              <button 
+                className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+                onClick={() => router.push('/mis-reservas')}
+              >
+                Mis Reservas
+              </button>
+            )}
+            {/* Opciones específicas según el rol */}
+            {renderRoleSpecificButtons()}
             {/* Botón Mi Cuenta - Maneja la navegación condicional basada en autenticación */}
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
@@ -221,7 +229,7 @@ export default function Home() {
             </button>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Flota clicked')}
+              onClick={() => router.push('/flota')}
             >
               Flota
             </button>

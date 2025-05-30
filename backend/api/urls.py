@@ -6,7 +6,8 @@ from .views import (
     SucursalViewSet, CategoriaViewSet, PoliticaDeCancelacionViewSet,
     CalificacionViewSet, LocalidadViewSet,
     PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet,
-    EstadisticasViewSet, getDatosCategorias, getMockLogin, getMockRegister
+    EstadisticasViewSet, getDatosCategorias, getMockLogin, getMockRegister,
+    getMockReservations
 )
 
 router = DefaultRouter()
@@ -30,5 +31,6 @@ urlpatterns = [
     path('get-categories/', getDatosCategorias, name='get-categories'),
     path('mock-login/', getMockLogin, name='mock-login'),
     path('register/', getMockRegister, name='register'),
+    path('mock-reservations/', getMockReservations, name='mock-reservations'),
     path('', include(router.urls)),
 ] 

@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
 import { User } from '@/services/auth';
+import EditProfileForm from '@/components/auth/EditProfileForm';
 
 export default function MiCuenta() {
   const router = useRouter();
   const [userData, setUserData] = useState<User | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   // Verificar que el usuario está autenticado al cargar la página
   useEffect(() => {
@@ -18,6 +20,14 @@ export default function MiCuenta() {
       setUserData(user);
     }
   }, [router]);
+
+  const handleUpdateSuccess = () => {
+    // Actualizar los datos del usuario después de una actualización exitosa
+    const updatedUser = getCurrentUser();
+    if (updatedUser) {
+      setUserData(updatedUser);
+    }
+  };
 
   if (!userData) {
     return <div className="p-8 text-white">Cargando...</div>;
@@ -57,7 +67,7 @@ export default function MiCuenta() {
         <div className="space-y-3">
           <button 
             className="w-full bg-[#e94b5a] text-white py-2 rounded-md font-semibold hover:bg-[#b13e4a] transition-colors"
-            onClick={() => console.log('Editar perfil')}
+            onClick={() => setShowEditForm(true)}
           >
             Editar Perfil
           </button>
@@ -69,6 +79,18 @@ export default function MiCuenta() {
           </button>
         </div>
       </div>
+
+      {showEditForm && (
+        <EditProfileForm
+          onClose={() => setShowEditForm(false)}
+          onUpdateSuccess={handleUpdateSuccess}
+          initialData={{
+            firstName: userData.nombre,
+            lastName: userData.apellido,
+            phoneNumber: userData.telefono
+          }}
+        />
+      )}
     </div>
   );
 } 

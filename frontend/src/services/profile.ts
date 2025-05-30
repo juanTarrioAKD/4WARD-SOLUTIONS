@@ -17,9 +17,9 @@ export const updateProfile = async (data: UpdateProfileData) => {
     // Por ahora, solo actualizamos el localStorage
     const updatedUser = {
       ...currentUser,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phoneNumber: data.phoneNumber
+      nombre: data.firstName,
+      apellido: data.lastName,
+      telefono: data.phoneNumber
     };
 
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));

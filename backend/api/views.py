@@ -218,12 +218,19 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
-    permission_classes = [IsEmpleadoOrAdmin]
+    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return VehiculoCreateSerializer
-        return VehiculoSerializer
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsEmpleadoOrAdmin()]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -589,25 +596,25 @@ def getDatosCategorias(request):
         },
         {
             "id": 2,
-            "name": "Sedan",
+            "name": "Chico",
             "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
             "price": 100.00
         },
         {
             "id": 3,
-            "name": "Sports Car",
+            "name": "Mediano",
             "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
             "price": 250.00
         },
         {
             "id": 4,
             "name": "Van",
-            "image": "https://images.unsplash.com/photo-1558383331-f520f2888351?auto=format&fit=crop&w=800&h=600",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
             "price": 180.00
         },
         {
             "id": 5,
-            "name": "Luxury",
+            "name": "Deportivo",
             "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&h=600",
             "price": 300.00
         }
@@ -727,4 +734,23 @@ def getMockRegister(request):
         'success': True,
         'message': 'Usuario registrado exitosamente'
     }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getMockReservations(request):
+    # Add CORS headers
+    response = Response([
+        {
+            "id": "1",
+            "numeroReserva": "1234"
+        },
+        {
+            "id": "2",
+            "numeroReserva": "5678"
+        }
+    ])
+    response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
 
