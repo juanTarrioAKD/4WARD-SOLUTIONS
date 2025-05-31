@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -545,14 +545,32 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
-        alquiler = self.get_object()
-        if request.user.rol.id not in [2, 3]:  # No es empleado ni admin
-            return Response({'error': 'No tienes permiso para cancelar alquileres'}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
-        alquiler.estado_id = 3  # Estado "Cancelado"
-        alquiler.save()
-        return Response(AlquilerSerializer(alquiler).data)
+        try:
+            alquiler = self.get_object()
+            
+            # Verificar que el usuario sea el cliente dueño del alquiler
+            if request.user != alquiler.cliente:
+                return Response(
+                    {'error': 'Los datos ingresados son incorrectos'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = self.get_serializer(alquiler)
+            alquiler = serializer.cancel(alquiler)
+            
+            return Response({
+                'message': 'Alquiler cancelado exitosamente',
+                'alquiler': serializer.data,
+                'monto_devolucion': float(alquiler.monto_devolucion),
+                'porcentaje_devolucion': float(alquiler.vehiculo.politica.porcentaje)
+            }, status=status.HTTP_200_OK)
+            
+        except serializers.ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': 'Los datos ingresados son incorrectos'},
+                status=status.HTTP_400_BAD_REQUEST)
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
