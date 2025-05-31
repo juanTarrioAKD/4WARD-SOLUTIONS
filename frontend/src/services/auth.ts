@@ -7,7 +7,7 @@ export interface User {
   apellido: string;
   telefono: string;
   fecha_nacimiento: string;
-  rol: string;
+  rol: number;
   puesto: string | null;
   localidad: number | null;
 }
@@ -15,13 +15,7 @@ export interface User {
 interface LoginResponse {
   access: string;
   refresh: string;
-  user: {
-    id: number;
-    email: string;
-    nombre: string;
-    apellido: string;
-    rol: string;
-  };
+  user: User;
 }
 
 export const login = async (email: string, password: string): Promise<LoginResponse> => {

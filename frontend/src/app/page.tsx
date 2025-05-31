@@ -11,7 +11,7 @@ const CategoryList = dynamic(() => import('@/components/CategoryList'), { ssr: f
 
 interface UserState {
   isAuthenticated: boolean;
-  role: string | null;
+  role: number | null;
   username: string | null;
 }
 
@@ -31,7 +31,7 @@ export default function Home() {
     if (user) {
       setUserState({
         isAuthenticated: true,
-        role: user.rol,
+        role: Number(user.rol),
         username: user.nombre
       });
     }
@@ -42,9 +42,10 @@ export default function Home() {
     if (user) {
       setUserState({
         isAuthenticated: true,
-        role: user.rol,
+        role: Number(user.rol),
         username: user.nombre
       });
+      setShowLoginForm(false);
     }
   };
 
@@ -72,30 +73,29 @@ export default function Home() {
     if (!userState.isAuthenticated) return null;
 
     switch (userState.role) {
-      case 'admin':
+      case 3: // ID del rol admin
         return (
           <>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Panel de Administración clicked')}
+              onClick={() => router.push('/admin')}
             >
               Panel de Administración
             </button>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Gestionar Usuarios clicked')}
+              onClick={() => router.push('/admin/usuarios')}
             >
               Gestionar Usuarios
             </button>
             <button 
               className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Reportes clicked')}
+              onClick={() => router.push('/admin/reportes')}
             >
               Reportes
             </button>
           </>
         );
-      // Puedes agregar más roles aquí
       default:
         return null;
     }
@@ -138,7 +138,7 @@ export default function Home() {
             <>
               <span className="text-white">
                 Bienvenido, {userState.username}
-                {userState.role === 'admin' && ''}
+                {userState.role === 3 && ' (Administrador)'}
               </span>
               <button 
                 className="bg-[#e94b5a] text-white px-4 py-2 rounded-md font-semibold hover:bg-[#b13e4a] transition-colors"
@@ -289,66 +289,66 @@ export default function Home() {
               : 'Manejá tu camino'}
           </h1>
           <p className="text-lg md:text-xl mb-8 text-[#a16bb7]">
-            {userState.role === 'admin' 
+            {userState.role === 3 
               ? 'Panel de administración y gestión de AlquilappCar' 
-              : ''}
+              : 'Encontrá el vehículo perfecto para tu próxima aventura'}
           </p>
           <div className="flex flex-col gap-4 justify-center cta-buttons">
-              <div className="flex justify-center">
-                <button 
-                  className="inline-flex bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => {
-                    if (userState.isAuthenticated) {
-                      router.push('/buscar-categorias');
-                    } else {
-                      setShowLoginForm(true);
-                    }
-                  }}
-                >
-                  Reservar Ahora
-                </button>
-              </div>
-            {userState.role === 'admin' && (
+            {userState.role === 3 ? (
               <div className="flex flex-col gap-4">
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => console.log('Gestionar vehículos clicked')}
+                  onClick={() => router.push('/admin/vehiculos')}
                 >
                   Gestionar vehículos
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => console.log('Gestionar usuarios clicked')}
+                  onClick={() => router.push('/admin/usuarios')}
                 >
                   Gestionar usuarios
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => console.log('Gestionar sucursales clicked')}
+                  onClick={() => router.push('/admin/sucursales')}
                 >
                   Gestionar sucursales
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => console.log('Gestionar publicaciones clicked')}
+                  onClick={() => router.push('/admin/publicaciones')}
                 >
                   Gestionar publicaciones
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => console.log('Ver estadísticas clicked')}
+                  onClick={() => router.push('/admin/estadisticas')}
                 >
                   Ver estadísticas
                 </button>
               </div>
+            ) : (
+              <>
+                <div className="flex justify-center">
+                  <button 
+                    className="inline-flex bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
+                    onClick={() => {
+                      if (userState.isAuthenticated) {
+                        router.push('/buscar-categorias');
+                      } else {
+                        setShowLoginForm(true);
+                      }
+                    }}
+                  >
+                    Reservar Ahora
+                  </button>
+                </div>
+                <div className="mt-12">
+                  <CategoryList />
+                </div>
+              </>
             )}
           </div>
-          {/* Solo mostrar el listado de categorías si NO es admin */}
-          {userState.role !== 'admin' && (
-            <div className="mt-12">
-              <CategoryList />
-            </div>
-          )}
         </div>
       </main>
     </div>

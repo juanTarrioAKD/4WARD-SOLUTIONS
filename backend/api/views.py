@@ -155,9 +155,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             refresh = RefreshToken.for_user(user)
             user.reset_login_attempts()
             
-            # Obtener el nombre del rol
-            rol_nombre = user.rol.nombre if user.rol else 'cliente'
-            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -168,7 +165,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'apellido': user.apellido,
                     'telefono': user.telefono,
                     'fecha_nacimiento': user.fecha_nacimiento,
-                    'rol': rol_nombre,
+                    'rol': user.rol.id if user.rol else 1,  # 1 es cliente por defecto
                     'puesto': user.puesto,
                     'localidad': user.localidad.id if user.localidad else None
                 }
