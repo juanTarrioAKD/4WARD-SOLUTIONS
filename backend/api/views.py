@@ -622,6 +622,76 @@ def getDatosCategorias(request):
     
     return Response(categories)
 
+@api_view(['POST', 'OPTIONS'])
+@permission_classes([AllowAny])
+def searchAvailableCategories(request):
+    # Manejar la solicitud OPTIONS para CORS
+    if request.method == 'OPTIONS':
+        response = Response()
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        return response
+
+    try:
+        # Get dates from request
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        
+        print(f"Búsqueda recibida - Fecha inicio: {fecha_inicio}, Fecha fin: {fecha_fin}")
+        
+        # Mock data for available categories with vehicles
+        available_categories = [
+            {
+                "id": 1,
+                "name": "SUV",
+                "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+                "price": 150.00,
+                "available_vehicles": 3,
+                "description": "Vehículos espaciosos y versátiles, perfectos para todo tipo de terreno",
+                "features": ["4x4", "5 puertas", "Aire acondicionado", "GPS"]
+            },
+            {
+                "id": 2,
+                "name": "Chico",
+                "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
+                "price": 100.00,
+                "available_vehicles": 5,
+                "description": "Autos compactos ideales para la ciudad",
+                "features": ["Bajo consumo", "Fácil estacionamiento", "Aire acondicionado"]
+            },
+            {
+                "id": 3,
+                "name": "Mediano",
+                "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
+                "price": 250.00,
+                "available_vehicles": 2,
+                "description": "Balance perfecto entre comodidad y rendimiento",
+                "features": ["Amplio baúl", "Control crucero", "Pantalla táctil"]
+            }
+        ]
+        
+        response_data = {
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "available_categories": available_categories
+        }
+        
+        response = Response(response_data)
+        response["Access-Control-Allow-Origin"] = "*"
+        response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        
+        print("Enviando respuesta mock:", response_data)
+        return response
+        
+    except Exception as e:
+        print(f"Error en searchAvailableCategories: {str(e)}")
+        return Response(
+            {"error": "Error al procesar la solicitud"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def getMockLogin(request):
@@ -785,4 +855,41 @@ def getMockPolicies(request):
     response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     response["Access-Control-Allow-Headers"] = "Content-Type"
     return response
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def createMockAlquiler(request):
+    try:
+        # Obtener datos del request
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        categoria_id = request.data.get('categoria_id')
+
+        # Crear un alquiler mock
+        mock_alquiler = {
+            "id": 1,
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "fecha_reserva": "2024-05-30T10:00:00Z",
+            "monto_total": "150.00",
+            "estado": {
+                "id": 1,
+                "nombre": "Pendiente"
+            },
+            "categoria": {
+                "id": categoria_id,
+                "nombre": "SUV",
+                "precio": "150.00"
+            },
+            "estado_pago": "PENDIENTE"
+        }
+
+        return Response(mock_alquiler, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        print(f"Error en createMockAlquiler: {str(e)}")
+        return Response(
+            {"error": "Error al procesar la solicitud"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
