@@ -123,13 +123,14 @@ class PoliticaDeCancelacion(models.Model):
 
 class Vehiculo(models.Model):
     patente = models.CharField(max_length=20, unique=True)
-    capacidad = models.IntegerField()
+    capacidad = models.IntegerField()   
     año_fabricacion = models.IntegerField()
-    sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE, db_column='ID_Sucursal')
-    politica = models.ForeignKey(PoliticaDeCancelacion, on_delete=models.CASCADE, db_column='ID_Politica')
-    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, db_column='ID_Marca')
-    estado = models.ForeignKey(EstadoVehiculo, on_delete=models.CASCADE, db_column='ID_EstVehi')
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, db_column='ID_Cate')
+    estado = models.ForeignKey(EstadoVehiculo, on_delete=models.CASCADE, db_column='ID_EstVehi')
+    marca = models.ForeignKey(Marca, on_delete=models.CASCADE, db_column='ID_Marca')
+    modelo = models.ForeignKey(Modelo, on_delete=models.CASCADE, db_column='ID_Modelo')
+    politica = models.ForeignKey(PoliticaDeCancelacion, on_delete=models.CASCADE, db_column='ID_Politica')
+    sucursal = models.ForeignKey(Sucursal, on_delete=models.CASCADE, db_column='ID_Sucursal')
 
     class Meta:
         db_table = 'vehiculo'
