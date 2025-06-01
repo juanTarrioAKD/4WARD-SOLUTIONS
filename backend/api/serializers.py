@@ -1,5 +1,6 @@
 import re
 from django.utils import timezone
+from django.db.models import Q
 
 from rest_framework import serializers
 from .models import (
@@ -217,8 +218,8 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
             # Excluir casos donde las fechas no se solapan:
             # 1. El alquiler existente termina antes del nuevo inicio
             # 2. El alquiler existente comienza después del nuevo fin
-            models.Q(fecha_fin__lte=fecha_inicio) | 
-            models.Q(fecha_inicio__gte=fecha_fin)
+            Q(fecha_fin__lte=fecha_inicio) | 
+            Q(fecha_inicio__gte=fecha_fin)
         )
 
         if alquileres_confirmados.exists():
