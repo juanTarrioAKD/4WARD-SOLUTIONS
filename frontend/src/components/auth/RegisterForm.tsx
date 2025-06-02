@@ -13,11 +13,13 @@ interface RegisterFormProps {
 export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }: RegisterFormProps) {
   // Estados para manejar los campos del formulario
   const [formData, setFormData] = useState({
-    username: '',
+    nombre: '',
+    apellido: '',
     email: '',
+    telefono: '',
     password: '',
     confirmPassword: '',
-    birthdate: ''
+    fecha_nacimiento: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -45,33 +47,48 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
     return age;
   };
 
+  // Función para validar la contraseña
+  const validatePassword = (password: string): boolean => {
+    const minLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    return minLength && hasUpperCase && hasNumber;
+  };
+
   // Manejador del envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccess(false);
     setIsLoading(true);
+    setError('');
 
     // Validación de campos vacíos
-    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword || !formData.birthdate) {
-      const emptyFields = Object.entries(formData).filter(([_, value]) => !value);
-      const firstEmptyField = emptyFields[0][0];
+    if (!formData.nombre || !formData.apellido || !formData.email || !formData.telefono || 
+        !formData.password || !formData.confirmPassword || !formData.fecha_nacimiento) {
       setError('Por favor, complete todos los campos');
-      // Limpiar solo el primer campo vacío encontrado
-      setFormData(prev => ({
-        ...prev,
-        [firstEmptyField]: ''
-      }));
       setIsLoading(false);
       return;
     }
 
     // Validación de edad
-    const age = calculateAge(formData.birthdate);
+    const age = calculateAge(formData.fecha_nacimiento);
     if (age < 18) {
-      setError('El registro de usuario solo se puede realizar por personas superiores a 18 años');
+      setError('El registro de usuario solo se puede realizar por personas mayores de 18 años');
       setFormData(prev => ({
         ...prev,
-        birthdate: ''
+        fecha_nacimiento: ''
+      }));
+      setIsLoading(false);
+      return;
+    }
+
+    // Validación de contraseña
+    if (!validatePassword(formData.password)) {
+      setError('La contraseña debe tener al menos 8 caracteres, una letra mayúscula y un número');
+      setFormData(prev => ({
+        ...prev,
+        password: '',
+        confirmPassword: ''
       }));
       setIsLoading(false);
       return;
@@ -89,10 +106,10 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
       return;
     }
 
-    // Validación básica de email
+    // Validación de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('Mail invalido');
+      setError('Email inválido');
       setFormData(prev => ({
         ...prev,
         email: ''
@@ -101,13 +118,27 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
       return;
     }
 
+    // Validación de teléfono (solo números y mínimo 8 dígitos)
+    const phoneRegex = /^\d{8,}$/;
+    if (!phoneRegex.test(formData.telefono)) {
+      setError('El teléfono debe contener al menos 8 dígitos numéricos');
+      setFormData(prev => ({
+        ...prev,
+        telefono: ''
+      }));
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Llamada al servicio de registro
       const result = await registerUser({
-        username: formData.username,
+        nombre: formData.nombre,
+        apellido: formData.apellido,
         email: formData.email,
+        telefono: formData.telefono,
         password: formData.password,
-        birthdate: formData.birthdate
+        fecha_nacimiento: formData.fecha_nacimiento
       });
 
       if (result.success) {
@@ -121,23 +152,23 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
           onShowLogin();
         }, 2000);
       } else {
-        setError(result.error || 'Error al registrar el usuario');
-        // Si el error es de usuario existente, limpiar el campo de usuario
-        if (result.error?.includes('usuario ya está en uso')) {
-          setFormData(prev => ({
-            ...prev,
-            username: ''
+        // Manejar diferentes tipos de errores
+        if (result.error?.includes('email')) {
+          setError('El email ya está registrado');
+          setFormData(prev => ({ ...prev, email: '' }));
+        } else if (result.error?.includes('usuario')) {
+          setError('El usuario ya existe');
+          setFormData(prev => ({ 
+            ...prev, 
+            nombre: '',
+            apellido: ''
           }));
-        }
-        // Si el error es de email existente, limpiar el campo de email
-        if (result.error?.includes('email ya está registrado')) {
-          setFormData(prev => ({
-            ...prev,
-            email: ''
-          }));
+        } else {
+          setError(result.error || 'Error al registrar el usuario');
         }
       }
     } catch (error) {
+      console.error('Error en el registro:', error);
       setError('Hubo un error al intentar registrar el usuario. Por favor, intente nuevamente.');
     } finally {
       setIsLoading(false);
@@ -152,7 +183,7 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
         onClick={onClose}
       />
       {/* Formulario de registro */}
-      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#2d1830] p-8 rounded-xl shadow-lg z-50 w-96">
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#2d1830] p-8 rounded-xl shadow-lg z-50 max-w-3xl">
         {/* Cabecera del formulario */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-white text-xl font-semibold">Registro</h2>
@@ -183,79 +214,118 @@ export default function RegisterForm({ onClose, onRegisterSuccess, onShowLogin }
             </div>
           )}
 
-          {/* Campo de usuario */}
-          <div>
-            <label htmlFor="username" className="block text-white mb-2">Nombre de usuario:</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
-            />
+          <div className="grid grid-cols-2 gap-6">
+            {/* Columna izquierda */}
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="nombre" className="block text-white mb-2">Nombre:</label>
+                <input
+                  type="text"
+                  id="nombre"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-white mb-2">Email:</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-white mb-2">Contraseña:</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="fecha_nacimiento" className="block text-white mb-2">Fecha de nacimiento:</label>
+                <input
+                  type="date"
+                  id="fecha_nacimiento"
+                  name="fecha_nacimiento"
+                  value={formData.fecha_nacimiento}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Columna derecha */}
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="apellido" className="block text-white mb-2">Apellido:</label>
+                <input
+                  type="text"
+                  id="apellido"
+                  name="apellido"
+                  value={formData.apellido}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="telefono" className="block text-white mb-2">Teléfono:</label>
+                <input
+                  type="tel"
+                  id="telefono"
+                  name="telefono"
+                  value={formData.telefono}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-white mb-2">Confirmar contraseña:</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="mt-2">
+                <div className="text-[#a16bb7] text-sm">
+                  Requisitos de contraseña:
+                </div>
+                <ul className="text-[#a16bb7] text-sm list-disc list-inside mt-1">
+                  <li>Mínimo 8 caracteres</li>
+                  <li>Al menos 1 letra mayúscula</li>
+                  <li>Al menos 1 número</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
-          {/* Campo de email */}
-          <div>
-            <label htmlFor="email" className="block text-white mb-2">Email:</label>
-            <input
-              type="text"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Campo de fecha de nacimiento */}
-          <div>
-            <label htmlFor="birthdate" className="block text-white mb-2">Fecha de nacimiento:</label>
-            <input
-              type="date"
-              id="birthdate"
-              name="birthdate"
-              value={formData.birthdate}
-              onChange={handleChange}
-              max={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Campo de contraseña */}
-          <div>
-            <label htmlFor="password" className="block text-white mb-2">Contraseña:</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Campo de confirmación de contraseña */}
-          <div>
-            <label htmlFor="confirmPassword" className="block text-white mb-2">Confirmar contraseña:</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Botón de registro */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 mt-6">
             <button
               type="submit"
               className={`w-full py-2 rounded-md font-semibold transition-colors ${

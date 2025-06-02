@@ -1,5 +1,5 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework import viewsets, status, serializers
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -25,6 +25,38 @@ from .serializers import (
 from .permissions import *
 from django.utils import timezone
 from datetime import datetime
+
+# Mock users for testing with login attempts counter and lock status
+MOCK_USERS = {
+    "admin@admin.com": {
+        "id": 1,
+        "email": "admin@admin.com",
+        "password": "Admin123",
+        "nombre": "Admin",
+        "apellido": "Usuario",
+        "telefono": "123456789",
+        "fecha_nacimiento": "1990-01-01",
+        "rol": "admin",
+        "puesto": "Administrador General",
+        "localidad": 1,
+        "failed_attempts": 0,
+        "is_locked": False
+    },
+    "cliente@cliente.com": {
+        "id": 2,
+        "email": "cliente@cliente.com",
+        "password": "Cliente123",
+        "nombre": "Cliente",
+        "apellido": "Usuario",
+        "telefono": "987654321",
+        "fecha_nacimiento": "1995-01-01",
+        "rol": "cliente",
+        "puesto": None,
+        "localidad": 1,
+        "failed_attempts": 0,
+        "is_locked": False
+    }
+}
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -112,7 +144,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'error': 'Cuenta bloqueada. Por favor, use la clave de recuperación "123456789" para desbloquear su cuenta.'
                 }, status=status.HTTP_403_FORBIDDEN)
 
-            user = authenticate(username=email, password=password)
+            user = authenticate(request, email=email, password=password)
             
             if user is None:
                 user = Usuario.objects.get(email=email)
@@ -187,12 +219,19 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
-    permission_classes = [IsEmpleadoOrAdmin]
+    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return VehiculoCreateSerializer
-        return VehiculoSerializer
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsEmpleadoOrAdmin()]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -667,14 +706,32 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
-        alquiler = self.get_object()
-        if request.user.rol.id not in [2, 3]:  # No es empleado ni admin
-            return Response({'error': 'No tienes permiso para cancelar alquileres'}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
-        alquiler.estado_id = 3  # Estado "Cancelado"
-        alquiler.save()
-        return Response(AlquilerSerializer(alquiler).data)
+        try:
+            alquiler = self.get_object()
+            
+            # Verificar que el usuario sea el cliente dueño del alquiler
+            if request.user != alquiler.cliente:
+                return Response(
+                    {'error': 'Los datos ingresados son incorrectos'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = self.get_serializer(alquiler)
+            alquiler = serializer.cancel(alquiler)
+            
+            return Response({
+                'message': 'Alquiler cancelado exitosamente',
+                'alquiler': serializer.data,
+                'monto_devolucion': float(alquiler.monto_devolucion),
+                'porcentaje_devolucion': float(alquiler.vehiculo.politica.porcentaje)
+            }, status=status.HTTP_200_OK)
+            
+        except serializers.ValidationError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': 'Los datos ingresados son incorrectos'},
+                status=status.HTTP_400_BAD_REQUEST)
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
@@ -704,3 +761,175 @@ class EstadisticasViewSet(viewsets.ViewSet):
     def mas_alquilado(self, request):
         # Implementar lógica para obtener el vehículo más alquilado
         pass 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getDatosCategorias(request):
+    # Categories with direct image URLs
+    categories = [
+        {
+            "id": 1,
+            "name": "SUV",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+            "price": 150.00
+        },
+        {
+            "id": 2,
+            "name": "Chico",
+            "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
+            "price": 100.00
+        },
+        {
+            "id": 3,
+            "name": "Mediano",
+            "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
+            "price": 250.00
+        },
+        {
+            "id": 4,
+            "name": "Van",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+            "price": 180.00
+        },
+        {
+            "id": 5,
+            "name": "Deportivo",
+            "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&h=600",
+            "price": 300.00
+        }
+    ]
+    
+    return Response(categories)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def getMockLogin(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    # Find user with matching email
+    user = MOCK_USERS.get(email)
+
+    if not user:
+        return Response({
+            "error": "Credenciales inválidas"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check if account is locked
+    if user["is_locked"]:
+        return Response({
+            "error": "Cuenta bloqueada por múltiples intentos fallidos. Se le ha enviado un correo para recuperar su cuenta."
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    # Check password
+    if user["password"] != password:
+        user["failed_attempts"] += 1
+        
+        # Check if should lock account
+        if user["failed_attempts"] >= 3:
+            user["is_locked"] = True
+            return Response({
+                "error": "Cuenta bloqueada por múltiples intentos fallidos. Se le ha enviado un correo para recuperar su cuenta."
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        remaining_attempts = 3 - user["failed_attempts"]
+        return Response({
+            "error": f"Contraseña incorrecta. Intentos restantes: {remaining_attempts}"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Successful login - reset failed attempts
+    user["failed_attempts"] = 0
+    
+    # Create a mock token
+    mock_token = {
+        "refresh": "mock_refresh_token",
+        "access": "mock_access_token"
+    }
+
+    return Response({
+        "refresh": mock_token["refresh"],
+        "access": mock_token["access"],
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "nombre": user["nombre"],
+            "apellido": user["apellido"],
+            "telefono": user["telefono"],
+            "fecha_nacimiento": user["fecha_nacimiento"],
+            "rol": user["rol"],
+            "puesto": user["puesto"],
+            "localidad": user["localidad"]
+        }
+    })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def getMockRegister(request):
+    # Mock de usuarios existentes
+    existing_users = [
+        {
+            "email": "cliente@cliente.com",
+            "password": "Cliente123"  # Cumple con los requisitos
+        },
+        {
+            "email": "admin@admin.com",
+            "password": "Admin123"    # Cumple con los requisitos
+        }
+    ]
+
+    # Validar que todos los campos requeridos estén presentes
+    required_fields = ['nombre', 'apellido', 'email', 'telefono', 'password', 'fecha_nacimiento']
+    for field in required_fields:
+        if field not in request.data:
+            return Response({
+                'error': f'El campo {field} es requerido'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validar requisitos de contraseña
+    password = request.data['password']
+    if len(password) < 8:
+        return Response({
+            'error': 'La contraseña debe tener al menos 8 caracteres'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not any(c.isupper() for c in password):
+        return Response({
+            'error': 'La contraseña debe contener al menos una letra mayúscula'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not any(c.isdigit() for c in password):
+        return Response({
+            'error': 'La contraseña debe contener al menos un número'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verificar si el email ya existe
+    if any(user["email"] == request.data["email"] for user in existing_users):
+        return Response({
+            'error': 'El email ya está registrado en el sistema'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Simular registro exitoso
+    return Response({
+        'success': True,
+        'message': 'Usuario registrado exitosamente'
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getMockReservations(request):
+    # Add CORS headers
+    response = Response([
+        {
+            "id": "1",
+            "numeroReserva": "1234"
+        },
+        {
+            "id": "2",
+            "numeroReserva": "5678"
+        }
+    ])
+    response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+
