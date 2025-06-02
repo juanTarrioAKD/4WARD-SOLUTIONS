@@ -7,7 +7,7 @@ export interface User {
   apellido: string;
   telefono: string;
   fecha_nacimiento: string;
-  rol: number;
+  rol: number | { id: number; nombre: string };
   puesto: string | null;
   localidad: number | null;
 }

@@ -23,3 +23,4 @@ coverage.xml
 # Otros
 .DS_Store
 Thumbs.db
+node_modules

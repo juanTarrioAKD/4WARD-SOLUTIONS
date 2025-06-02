@@ -10,7 +10,8 @@ export default function AdminDashboard() {
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
     const user = getCurrentUser();
-    if (!user || user.role !== 'admin') {
+    const userRoleId = Number(user?.rol);
+    if (!user || userRoleId !== 3) {  // 3 es el ID del rol admin
       router.push('/'); // Redirigir al home si no es admin
     }
   }, [router]);

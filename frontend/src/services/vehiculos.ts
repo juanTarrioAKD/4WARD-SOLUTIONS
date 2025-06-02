@@ -7,21 +7,24 @@ export interface Vehiculo {
   marca: {
     id: number;
     nombre: string;
-  };
-  modelo: string;
+  } | null;
+  modelo: {
+    id: number;
+    nombre: string;
+  } | null;
   año_fabricacion: number;
   categoria: {
     id: number;
     nombre: string;
-  };
+  } | null;
   estado: {
     id: number;
     nombre: string;
-  };
+  } | null;
   sucursal: {
     id: number;
     nombre: string;
-  };
+  } | null;
   capacidad: number;
 }
 

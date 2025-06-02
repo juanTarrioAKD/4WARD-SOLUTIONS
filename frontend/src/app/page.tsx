@@ -109,7 +109,7 @@ export default function Home() {
         <div className="absolute left-8 -bottom-24 z-50 bg-transparent">
           <Image 
             src="/Icono_AlquilappCar.png" 
-            alt="Logo AlquilappCar" 
+            alt="Logo de AlquilappCar - Servicio de alquiler de vehículos" 
             width={200} 
             height={200}
             priority

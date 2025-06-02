@@ -22,7 +22,8 @@ export default function GestionVehiculos() {
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
     const user = getCurrentUser();
-    if (!user || user.rol !== 3) {
+    const userRoleId = Number(user?.rol);
+    if (!user || userRoleId !== 3) {
       router.push('/');
     }
   }, [router]);
@@ -177,10 +178,10 @@ export default function GestionVehiculos() {
                 {vehiculos.map((vehiculo) => (
                   <tr key={vehiculo.id} className="hover:bg-[#4c3246]/50">
                     <td className="px-6 py-4">{vehiculo.patente}</td>
-                    <td className="px-6 py-4">{vehiculo.marca.nombre}</td>
-                    <td className="px-6 py-4">{vehiculo.modelo}</td>
-                    <td className="px-6 py-4">{vehiculo.año}</td>
-                    <td className="px-6 py-4">{vehiculo.estado.nombre}</td>
+                    <td className="px-6 py-4">{typeof vehiculo.marca === 'object' && vehiculo.marca ? vehiculo.marca.nombre : 'N/A'}</td>
+                    <td className="px-6 py-4">{typeof vehiculo.modelo === 'object' && vehiculo.modelo ? vehiculo.modelo.nombre : 'N/A'}</td>
+                    <td className="px-6 py-4">{vehiculo.año_fabricacion}</td>
+                    <td className="px-6 py-4">{typeof vehiculo.estado === 'object' && vehiculo.estado ? vehiculo.estado.nombre : 'N/A'}</td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button

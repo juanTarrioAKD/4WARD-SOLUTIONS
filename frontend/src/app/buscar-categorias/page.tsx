@@ -1,133 +1,169 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Container } from '@mui/material';
-import { useRouter } from 'next/navigation';
-import { searchAvailableCategories, type Category } from '@/services/categories';
-import { CategoryList } from '@/components/categories/CategoryList';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import DatePicker from '@/components/DatePicker';
 
-export default function BuscarCategoriasPage() {
+export default function BuscarCategorias() {
   const router = useRouter();
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [searchPerformed, setSearchPerformed] = useState(false);
+  const searchParams = useSearchParams();
+  const categoryId = searchParams.get('categoria_id');
 
-  // Obtener la fecha actual en formato YYYY-MM-DD
-  const today = new Date().toISOString().split('T')[0];
+  const [fechaInicio, setFechaInicio] = useState<Date | null>(null);
+  const [fechaFin, setFechaFin] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFechaInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFechaInicio = e.target.value;
-    setFechaInicio(newFechaInicio);
-    // Si la fecha de fin es anterior a la nueva fecha de inicio, la reseteamos
-    if (fechaFin && fechaFin < newFechaInicio) {
-      setFechaFin('');
+  // Establecer la fecha mínima como el día actual a las 00:00
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Función para validar el rango de fechas
+  const validateDateRange = (start: Date | null, end: Date | null): string | null => {
+    if (!start || !end) {
+      return 'Por favor selecciona ambas fechas';
+    }
+
+    // Asegurarse de que las fechas estén en el mismo formato (sin hora)
+    const startDate = new Date(start.setHours(0, 0, 0, 0));
+    const endDate = new Date(end.setHours(0, 0, 0, 0));
+    const todayDate = new Date(today.setHours(0, 0, 0, 0));
+
+    if (startDate < todayDate) {
+      return 'La fecha de inicio no puede ser anterior a hoy';
+    }
+
+    if (endDate <= startDate) {
+      return 'La fecha de fin debe ser posterior a la fecha de inicio';
+    }
+
+    // Calcular la diferencia en días
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 30) {
+      return 'El período máximo de alquiler es de 30 días';
+    }
+
+    return null;
+  };
+
+  // Manejador para cambios en la fecha de inicio
+  const handleStartDateChange = (date: Date | null) => {
+    setFechaInicio(date);
+    setError(null);
+    
+    // Si la fecha de fin existe, validar el rango
+    if (fechaFin) {
+      const validationError = validateDateRange(date, fechaFin);
+      if (validationError) {
+        setError(validationError);
+      }
     }
   };
 
-  const handleBuscar = async () => {
-    if (!fechaInicio || !fechaFin) return;
+  // Manejador para cambios en la fecha de fin
+  const handleEndDateChange = (date: Date | null) => {
+    setFechaFin(date);
+    setError(null);
 
-    setIsLoading(true);
-    setSearchPerformed(false);
-
-    try {
-      const response = await searchAvailableCategories(fechaInicio, fechaFin);
-      setCategories(response.available_categories);
-      setSearchPerformed(true);
-    } catch (error) {
-      console.error('Error en la búsqueda:', error);
-      setCategories([]);
-    } finally {
-      setIsLoading(false);
+    // Si la fecha de inicio existe, validar el rango
+    if (fechaInicio) {
+      const validationError = validateDateRange(fechaInicio, date);
+      if (validationError) {
+        setError(validationError);
+      }
     }
   };
 
-  const handleSelectCategory = (categoryId: number) => {
-    // Aquí puedes manejar la selección de una categoría
-    console.log('Categoría seleccionada:', categoryId);
-    // Por ejemplo, redirigir a la página de detalles de la categoría
-    router.push(`/reservar/${categoryId}?fechaInicio=${fechaInicio}&fechaFin=${fechaFin}`);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!categoryId) {
+      setError('Categoría no seleccionada');
+      return;
+    }
+
+    if (!fechaInicio || !fechaFin) {
+      setError('Por favor selecciona las fechas de inicio y fin');
+      return;
+    }
+
+    const validationError = validateDateRange(fechaInicio, fechaFin);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    // Formatear las fechas para la URL (usando la zona horaria local)
+    const fechaInicioStr = new Date(fechaInicio.setHours(0, 0, 0, 0)).toISOString();
+    const fechaFinStr = new Date(fechaFin.setHours(23, 59, 59, 999)).toISOString();
+
+    // Navegar a la página de modelos disponibles con los parámetros
+    router.push(
+      `/modelos-disponibles?categoria_id=${categoryId}&fecha_inicio=${fechaInicioStr}&fecha_fin=${fechaFinStr}`
+    );
   };
 
   return (
-    <div className="min-h-screen bg-[#5e3e5a] py-12">
-      <Container maxWidth="lg">
-        <div className="bg-[#2d1830] p-8 rounded-xl shadow-lg">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-4xl font-bold text-white text-center">
-              Buscar Vehículos Disponibles
-            </h1>
-            
-            <p className="text-[#a16bb7] text-lg text-center">
-              Selecciona las fechas para tu alquiler
-            </p>
+    <div className="min-h-screen bg-[#5e3e5a] py-12 px-4">
+      <div className="max-w-md mx-auto bg-[#2d1830]/90 backdrop-blur-sm rounded-lg p-8 shadow-xl">
+        <h1 className="text-3xl font-bold text-white mb-8 text-center">
+          Selecciona las Fechas
+        </h1>
 
-            <div className="w-full space-y-4">
-              <div>
-                <label htmlFor="fechaInicio" className="block text-white mb-2">
-                  Fecha de inicio
-                </label>
-                <input
-                  type="date"
-                  id="fechaInicio"
-                  value={fechaInicio}
-                  onChange={handleFechaInicioChange}
-                  min={today}
-                  className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="fechaFin" className="block text-white mb-2">
-                  Fecha de fin
-                </label>
-                <input
-                  type="date"
-                  id="fechaFin"
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
-                  min={fechaInicio || today}
-                  disabled={!fechaInicio}
-                  className={`w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none ${
-                    !fechaInicio ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                />
-                {!fechaInicio && (
-                  <p className="text-[#e94b5a] text-sm mt-1">
-                    Primero selecciona una fecha de inicio
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={handleBuscar}
-                disabled={!fechaInicio || !fechaFin || isLoading}
-                className={`w-full bg-[#e94b5a] text-white py-3 rounded-md font-semibold hover:bg-[#b13e4a] transition-colors ${
-                  (!fechaInicio || !fechaFin || isLoading) ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {isLoading ? 'Buscando...' : 'Buscar Categorías Disponibles'}
-              </button>
-            </div>
-
-            {/* Mostrar resultados de la búsqueda */}
-            {searchPerformed && (
-              <div className="w-full mt-8">
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  Categorías Disponibles
-                </h2>
-                <CategoryList 
-                  categories={categories}
-                  fechaInicio={fechaInicio}
-                  fechaFin={fechaFin}
-                />
-              </div>
-            )}
+        {error && (
+          <div className="mb-6 p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+            {error}
           </div>
-        </div>
-      </Container>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-white mb-2">
+              Fecha de Inicio
+            </label>
+            <DatePicker
+              selected={fechaInicio}
+              onChange={handleStartDateChange}
+              minDate={today}
+              placeholderText="Selecciona fecha de inicio"
+              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-white mb-2">
+              Fecha de Fin
+            </label>
+            <DatePicker
+              selected={fechaFin}
+              onChange={handleEndDateChange}
+              minDate={fechaInicio || today}
+              placeholderText="Selecciona fecha de fin"
+              className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+              disabled={!fechaInicio}
+            />
+          </div>
+
+          <div className="flex justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex-1 px-6 py-2 text-white hover:text-[#e94b5a] transition-colors"
+            >
+              Volver
+            </button>
+            <button
+              type="submit"
+              disabled={!!error || !fechaInicio || !fechaFin}
+              className="flex-1 px-6 py-2 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Buscar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 } 

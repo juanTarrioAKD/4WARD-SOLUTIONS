@@ -1,5 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { crearVehiculo } from '@/services/vehiculos';
+import { API_BASE_URL } from '@/config/config';
+import { getAuthToken } from '@/services/auth';
+
+interface Marca {
+  id: number;
+  nombre: string;
+}
+
+interface Modelo {
+  id: number;
+  nombre: string;
+}
 
 interface AgregarVehiculoFormProps {
   onClose: () => void;
@@ -18,6 +30,54 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [modelos, setModelos] = useState<Modelo[]>([]);
+
+  // Cargar marcas al montar el componente
+  useEffect(() => {
+    const fetchMarcas = async () => {
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/api/marcas/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error('Error al cargar las marcas');
+        const data = await response.json();
+        setMarcas(data);
+      } catch (error) {
+        console.error('Error al cargar marcas:', error);
+        setError('Error al cargar las marcas');
+      }
+    };
+    fetchMarcas();
+  }, []);
+
+  // Cargar modelos cuando se selecciona una marca
+  useEffect(() => {
+    const fetchModelos = async () => {
+      if (!formData.marca) {
+        setModelos([]);
+        return;
+      }
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/api/modelos/?marca=${formData.marca}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error('Error al cargar los modelos');
+        const data = await response.json();
+        setModelos(data);
+      } catch (error) {
+        console.error('Error al cargar modelos:', error);
+        setError('Error al cargar los modelos');
+      }
+    };
+    fetchModelos();
+  }, [formData.marca]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +102,7 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
       const vehiculoData = {
         patente: formData.patente.toUpperCase(),
         marca: parseInt(formData.marca),
-        modelo: formData.modelo,
+        modelo: parseInt(formData.modelo),
         año_fabricacion: parseInt(formData.año.toString()),
         categoria: parseInt(formData.categoria),
         estado: parseInt(formData.estado),
@@ -65,7 +125,9 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      // Si se cambia la marca, resetear el modelo
+      ...(name === 'marca' ? { modelo: '' } : {})
     }));
   };
 
@@ -113,27 +175,27 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
                 required
               >
                 <option value="">Seleccionar marca</option>
-                <option value="1">Toyota</option>
-                <option value="2">Honda</option>
-                <option value="3">Volkswagen</option>
-                <option value="4">Ford</option>
-                <option value="5">Chevrolet</option>
-                <option value="6">Fiat</option>
-                <option value="7">Renault</option>
-                <option value="8">Peugeot</option>
+                {marcas.map(marca => (
+                  <option key={marca.id} value={marca.id}>{marca.nombre}</option>
+                ))}
               </select>
             </div>
 
             <div>
               <label className="block text-white mb-2">Modelo</label>
-              <input
-                type="text"
+              <select
                 name="modelo"
                 value={formData.modelo}
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
                 required
-              />
+                disabled={!formData.marca}
+              >
+                <option value="">Seleccionar modelo</option>
+                {modelos.map(modelo => (
+                  <option key={modelo.id} value={modelo.id}>{modelo.nombre}</option>
+                ))}
+              </select>
             </div>
 
             <div>
