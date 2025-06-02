@@ -68,16 +68,39 @@ class EstadoAlquiler(models.Model):
         db_table = 'estado_alquiler'
 
 class Alquiler(models.Model):
+    cliente = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='ID_Usuario')
+    vehiculo = models.ForeignKey('Vehiculo', on_delete=models.CASCADE, related_name='alquileres', db_column='ID_Vehiculo')
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField()
-    fecha_reserva = models.DateTimeField()
+    fecha_reserva = models.DateTimeField(auto_now_add=True)
     monto_total = models.DecimalField(max_digits=10, decimal_places=2)
-    estado = models.ForeignKey(EstadoAlquiler, on_delete=models.CASCADE, db_column='IDEstado')
-    cliente = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='alquileres')
-    vehiculo = models.ForeignKey('Vehiculo', on_delete=models.CASCADE, related_name='alquileres', null=True)
+    estado = models.ForeignKey(EstadoAlquiler, on_delete=models.CASCADE, db_column='ID_Estado')
 
     class Meta:
         db_table = 'alquiler'
+
+    def __str__(self):
+        return f"Alquiler {self.id} - {self.vehiculo} ({self.fecha_inicio} a {self.fecha_fin})"
+
+    def cancelar(self):
+        """
+        Cancela la reserva y actualiza el estado del vehículo si es necesario.
+        """
+        if self.estado.id in [2, 3]:  # Si ya está cancelado o finalizado
+            raise ValueError("No se puede cancelar una reserva que ya está cancelada o finalizada")
+            
+        # Obtener el estado "Cancelado"
+        estado_cancelado = EstadoAlquiler.objects.get(id=3)
+        
+        # Actualizar el estado del alquiler
+        self.estado = estado_cancelado
+        self.save()
+        
+        # Calcular el monto a devolver según la política de cancelación
+        porcentaje_devolucion = self.vehiculo.politica.porcentaje
+        monto_devolucion = self.monto_total * (porcentaje_devolucion / 100)
+        
+        return monto_devolucion
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=100)
@@ -96,6 +119,9 @@ class EstadoVehiculo(models.Model):
 
     class Meta:
         db_table = 'estado_vehiculo'
+
+    def __str__(self):
+        return self.nombre
 
 class Sucursal(models.Model):
     nombre = models.CharField(max_length=100)
@@ -134,6 +160,32 @@ class Vehiculo(models.Model):
 
     class Meta:
         db_table = 'vehiculo'
+
+    def __str__(self):
+        return f"{self.marca} {self.modelo} - {self.patente}"
+
+    def esta_disponible(self, fecha_inicio, fecha_fin):
+        """
+        Verifica si el vehículo está disponible para las fechas especificadas.
+        Un vehículo está disponible si:
+        1. Su estado es "Disponible" (id=1)
+        2. No tiene reservas confirmadas que se solapen con las fechas especificadas
+        """
+        # Verificar si el vehículo está en estado disponible
+        if self.estado.id != 1:  # Si no está disponible
+            return False
+            
+        # Verificar si hay reservas que se solapan
+        # Una reserva se solapa si:
+        # - La fecha de inicio de la reserva es menor o igual a la fecha de fin solicitada Y
+        # - La fecha de fin de la reserva es mayor o igual a la fecha de inicio solicitada
+        reservas_solapadas = self.alquileres.filter(
+            estado__id=1,  # Solo reservas confirmadas
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        ).exists()
+        
+        return not reservas_solapadas
 
 class Foto(models.Model):
     vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, db_column='ID_Vehi')
