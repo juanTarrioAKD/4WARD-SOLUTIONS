@@ -1,5 +1,6 @@
 import re
 from django.utils import timezone
+from django.db.models import Q
 
 from rest_framework import serializers
 from .models import (
@@ -96,6 +97,7 @@ class FotoSerializer(serializers.ModelSerializer):
 
 class VehiculoSerializer(serializers.ModelSerializer):
     marca = MarcaSerializer(read_only=True)
+    modelo = ModeloSerializer(read_only=True)
     estado = EstadoVehiculoSerializer(read_only=True)
     sucursal = SucursalSerializer(read_only=True)
     categoria = CategoriaSerializer(read_only=True)
@@ -160,71 +162,70 @@ class AlquilerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alquiler
         fields = ['id', 'fecha_inicio', 'fecha_fin', 'fecha_reserva', 'monto_total', 'estado', 'cliente', 'vehiculo']
+    
+    def cancel(self, instance):
+        try:
+            # Verificar si el alquiler ya está cancelado o finalizado
+            if instance.estado.id in [2, 3]:  # 2=Cancelado, 3=Finalizado
+                raise serializers.ValidationError("Solamente se puede cancelar una reserva activa")
+
+            # Obtener el estado "Cancelado"
+            estado_cancelado = EstadoAlquiler.objects.get(id=3)
+            
+            # Actualizar el estado del vehículo a "Disponible"
+            vehiculo = instance.vehiculo
+            vehiculo.estado = EstadoVehiculo.objects.get(id=1)
+            vehiculo.save()
+            
+            # Calcular el monto a devolver según la política de cancelación
+            porcentaje_devolucion = vehiculo.politica.porcentaje
+            monto_devolucion = instance.monto_total * (porcentaje_devolucion / 100)
+            
+            # Actualizar el estado del alquiler a "Cancelado"
+            instance.estado = estado_cancelado
+            instance.save()
+            
+            # Agregar el monto de devolución al resultado
+            instance.monto_devolucion = monto_devolucion
+            
+            return instance
+        except Exception:
+            raise serializers.ValidationError("Solamente se puede cancelar una reserva activa")
 
 class AlquilerCreateSerializer(serializers.ModelSerializer):
-    categoria_id = serializers.PrimaryKeyRelatedField(
-        queryset=Categoria.objects.all(),
-        write_only=True
-    )
-
     class Meta:
         model = Alquiler
-        fields = ['fecha_inicio', 'fecha_fin', 'categoria_id']
+        fields = ['cliente', 'vehiculo', 'fecha_inicio', 'fecha_fin', 'monto_total', 'estado']
 
     def validate(self, data):
-        fecha_inicio = data['fecha_inicio']
-        fecha_fin = data['fecha_fin']
+        fecha_inicio = data.get('fecha_inicio')
+        fecha_fin = data.get('fecha_fin')
+        vehiculo = data.get('vehiculo')
+        cliente = data.get('cliente')
 
+        # Validar que la fecha de inicio sea anterior a la fecha de fin
         if fecha_inicio >= fecha_fin:
             raise serializers.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin")
 
-        return data
+        # Validar que la fecha de inicio sea futura
+        if fecha_inicio <= timezone.now():
+            raise serializers.ValidationError("La fecha de inicio debe ser futura")
 
-    def create(self, validated_data):
-        categoria = validated_data.pop('categoria_id')
-        cliente = self.context['request'].user  # Obtenemos el usuario autenticado
-        
-        # Calcular la cantidad de días
-        dias = (validated_data['fecha_fin'] - validated_data['fecha_inicio']).days
-        
-        # Calcular el monto total
-        monto_total = categoria.precio * dias
-        
-        # Obtener el estado inicial (asumiendo que existe un estado "Pendiente" con ID 1)
-        estado = EstadoAlquiler.objects.get(id=1)
-
-        # Buscar un vehículo disponible de la categoría seleccionada
-        # Primero obtenemos el ID del estado "Disponible" (asumiendo que es 1)
-        estado_disponible = EstadoVehiculo.objects.get(id=1)
-        
-        # Buscamos un vehículo disponible de la categoría que no tenga alquileres en las fechas solicitadas
-        vehiculo_disponible = Vehiculo.objects.filter(
-            categoria=categoria,
-            estado=estado_disponible
-        ).exclude(
-            alquileres__fecha_inicio__lte=validated_data['fecha_fin'],
-            alquileres__fecha_fin__gte=validated_data['fecha_inicio']
-        ).first()
-
-        if not vehiculo_disponible:
-            raise serializers.ValidationError("No hay vehículos disponibles en la categoría seleccionada para las fechas especificadas")
-        
-        # 🔧 ACTUALIZAR ESTADO DEL VEHÍCULO
-        vehiculo_disponible.estado_id = 2  # "Alquilado"
-        vehiculo_disponible.save()
-
-        # Crear el alquiler con todos los datos necesarios
-        alquiler = Alquiler.objects.create(
-            fecha_inicio=validated_data['fecha_inicio'],
-            fecha_fin=validated_data['fecha_fin'],
-            fecha_reserva=timezone.now(),
+        # Verificar si el cliente ya tiene una reserva que se solapa
+        alquileres_confirmados = Alquiler.objects.filter(
             cliente=cliente,
-            vehiculo=vehiculo_disponible,
-            monto_total=monto_total,
-            estado=estado
+            estado__id=1,  # Solo reservas confirmadas
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
         )
-        
-        return alquiler
+        if alquileres_confirmados.exists():
+            raise serializers.ValidationError("Ya tienes una reserva confirmada que se solapa con estas fechas")
+
+        # Verificar si el vehículo está disponible
+        if not vehiculo.esta_disponible(fecha_inicio, fecha_fin):
+            raise serializers.ValidationError("El vehículo no está disponible para las fechas seleccionadas")
+
+        return data
 
 class EstadoAlquilerSerializer(serializers.ModelSerializer):
     class Meta:
