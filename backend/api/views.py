@@ -230,13 +230,47 @@ class VehiculoViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
-                return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        try:
+            # Obtener la categoría
+            categoria_id = data.get('categoria')
+            if not categoria_id:
+                return Response({'error': 'La categoría es requerida'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Obtener la política y capacidad según la categoría
+            categoria = Categoria.objects.get(id=categoria_id)
+            
+            # Asignar la política según la categoría
+            if categoria.id == 1:  # Apto discapacitados
+                data['politica'] = 1  # 100% devolución
+                data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+            elif categoria.id == 2:  # Chico
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 4  # Capacidad para autos chicos
+            elif categoria.id == 3:  # Deportivo
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 2  # Capacidad típica de deportivos
+            elif categoria.id == 4:  # Mediano
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 5  # Capacidad estándar
+            elif categoria.id == 5:  # SUV
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 7  # Capacidad típica de SUV
+            else:  # Van (id = 6)
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(data=data)
+            if serializer.is_valid():
+                if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
+                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -247,15 +281,45 @@ class VehiculoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
         vehiculo = self.get_object()
-        serializer = VehiculoCreateSerializer(vehiculo, data=request.data, partial=True)
-        if serializer.is_valid():
-            # Verificar si la patente ya existe (solo si se está modificando la patente)
-            if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
-                if Vehiculo.objects.filter(patente=request.data['patente']).exists():
-                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        
+        try:
+            # Si se está cambiando la categoría, actualizar la política y capacidad
+            if 'categoria' in data:
+                categoria = Categoria.objects.get(id=data['categoria'])
+                # Asignar la política y capacidad según la categoría
+                if categoria.id == 1:  # Apto discapacitados
+                    data['politica'] = 1  # 100% devolución
+                    data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+                elif categoria.id == 2:  # Chico
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 4  # Capacidad para autos chicos
+                elif categoria.id == 3:  # Deportivo
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 2  # Capacidad típica de deportivos
+                elif categoria.id == 4:  # Mediano
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 5  # Capacidad estándar
+                elif categoria.id == 5:  # SUV
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 7  # Capacidad típica de SUV
+                else:  # Van (id = 6)
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(vehiculo, data=data, partial=True)
+            if serializer.is_valid():
+                # Verificar si la patente ya existe (solo si se está modificando la patente)
+                if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
+                    if Vehiculo.objects.filter(patente=request.data['patente']).exists():
+                        return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def buscar_por_patente(self, request):

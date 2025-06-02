@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/services/auth';
+import { getCurrentUser, getAuthToken } from '@/services/auth';
 import { buscarVehiculoPorPatente, type Vehiculo } from '@/services/vehiculos';
+import { API_BASE_URL } from '@/config/config';
 import AgregarVehiculoForm from '@/components/vehicles/AgregarVehiculoForm';
+import EditarVehiculoForm from '@/components/vehicles/EditarVehiculoForm';
+import ConfirmarEliminarVehiculo from '@/components/vehicles/ConfirmarEliminarVehiculo';
 
 export default function GestionVehiculos() {
   const [patente, setPatente] = useState('');
@@ -12,6 +15,8 @@ export default function GestionVehiculos() {
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [vehiculoAEditar, setVehiculoAEditar] = useState<Vehiculo | null>(null);
+  const [vehiculoAEliminar, setVehiculoAEliminar] = useState<Vehiculo | null>(null);
   const router = useRouter();
 
   // Verificar que el usuario es admin al cargar la página
@@ -55,18 +60,51 @@ export default function GestionVehiculos() {
     }
   };
 
-  const handleEditVehicle = (id: number) => {
-    router.push(`/admin/vehiculos/editar/${id}`);
+  const handleEditVehicle = (vehiculo: Vehiculo) => {
+    setVehiculoAEditar(vehiculo);
   };
 
-  const handleDeleteVehicle = async (id: number) => {
-    // Implementar lógica de eliminación
-    console.log('Eliminar vehículo:', id);
+  const handleDeleteVehicle = (vehiculo: Vehiculo) => {
+    setVehiculoAEliminar(vehiculo);
+  };
+
+  const confirmarEliminarVehiculo = async () => {
+    if (!vehiculoAEliminar) return;
+
+    try {
+      const token = getAuthToken();
+      if (!token) {
+        throw new Error('No autorizado');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/vehiculos/${vehiculoAEliminar.id}/baja/`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.error) {
+          throw new Error(errorData.error);
+        }
+        throw new Error('Error al eliminar el vehículo');
+      }
+
+      // Actualizar la lista de vehículos
+      setVehiculos(vehiculos.filter(v => v.id !== vehiculoAEliminar.id));
+      setVehiculoAEliminar(null);
+    } catch (error) {
+      console.error('Error al eliminar vehículo:', error);
+      setError(error instanceof Error ? error.message : 'Error al eliminar el vehículo. Por favor, intente nuevamente.');
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#3d2342] p-8">
-      <div className={`max-w-6xl mx-auto transition-all duration-300 ${showAddForm ? 'blur-sm' : ''}`}>
+      <div className={`max-w-6xl mx-auto transition-all duration-300 ${showAddForm || vehiculoAEditar || vehiculoAEliminar ? 'blur-sm' : ''}`}>
         <h1 className="text-3xl font-bold text-white mb-8">Gestión de Vehículos</h1>
         
         {/* Barra de búsqueda y botón de agregar */}
@@ -146,16 +184,18 @@ export default function GestionVehiculos() {
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleEditVehicle(vehiculo.id)}
+                          onClick={() => handleEditVehicle(vehiculo)}
                           className="text-[#a16bb7] hover:text-[#e94b5a] transition-colors"
+                          title="Editar vehículo"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                           </svg>
                         </button>
                         <button
-                          onClick={() => handleDeleteVehicle(vehiculo.id)}
+                          onClick={() => handleDeleteVehicle(vehiculo)}
                           className="text-[#a16bb7] hover:text-[#e94b5a] transition-colors"
+                          title="Eliminar vehículo"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -176,6 +216,27 @@ export default function GestionVehiculos() {
         <AgregarVehiculoForm
           onClose={() => setShowAddForm(false)}
           onVehiculoCreado={handleVehiculoCreado}
+        />
+      )}
+
+      {/* Formulario de editar vehículo */}
+      {vehiculoAEditar && (
+        <EditarVehiculoForm
+          vehiculo={vehiculoAEditar}
+          onClose={() => setVehiculoAEditar(null)}
+          onVehiculoEditado={() => {
+            handleSearch();
+            setVehiculoAEditar(null);
+          }}
+        />
+      )}
+
+      {/* Diálogo de confirmación de eliminación */}
+      {vehiculoAEliminar && (
+        <ConfirmarEliminarVehiculo
+          patente={vehiculoAEliminar.patente}
+          onConfirm={confirmarEliminarVehiculo}
+          onCancel={() => setVehiculoAEliminar(null)}
         />
       )}
     </div>

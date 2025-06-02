@@ -1,20 +1,23 @@
-import { useState } from 'react';
-import { crearVehiculo } from '@/services/vehiculos';
+import { useState, useEffect } from 'react';
+import { Vehiculo, modificarVehiculo } from '@/services/vehiculos';
+import { API_BASE_URL } from '@/config/config';
+import { getAuthToken } from '@/services/auth';
 
-interface AgregarVehiculoFormProps {
+interface EditarVehiculoFormProps {
+  vehiculo: Vehiculo;
   onClose: () => void;
-  onVehiculoCreado: () => void;
+  onVehiculoEditado: () => void;
 }
 
-export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: AgregarVehiculoFormProps) {
+export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditado }: EditarVehiculoFormProps) {
   const [formData, setFormData] = useState({
-    patente: '',
-    marca: '',
-    modelo: '',
-    año: new Date().getFullYear(),
-    categoria: '',
-    estado: '',
-    sucursal: ''
+    patente: vehiculo.patente || '',
+    marca: vehiculo.marca?.id?.toString() || '',
+    modelo: vehiculo.modelo || '',
+    año_fabricacion: vehiculo.año_fabricacion?.toString() || new Date().getFullYear().toString(),
+    categoria: vehiculo.categoria?.id?.toString() || '',
+    estado: vehiculo.estado?.id?.toString() || '',
+    sucursal: vehiculo.sucursal?.id?.toString() || ''
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,35 +30,32 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
     try {
       // Validar que todos los campos requeridos estén completos
       if (!formData.patente || !formData.marca || !formData.modelo || 
-          !formData.año || !formData.categoria || !formData.estado || 
+          !formData.año_fabricacion || !formData.categoria || !formData.estado || 
           !formData.sucursal) {
         throw new Error('Todos los campos son requeridos');
       }
 
-      // Validar formato de patente (letras y números sin espacios ni caracteres especiales)
+      // Validar formato de patente
       const patenteRegex = /^[A-Z0-9]+$/;
       if (!patenteRegex.test(formData.patente)) {
         throw new Error('La patente solo debe contener letras y números');
       }
 
-      // Convertir los IDs a números y crear el objeto de datos
       const vehiculoData = {
         patente: formData.patente.toUpperCase(),
         marca: parseInt(formData.marca),
         modelo: formData.modelo,
-        año_fabricacion: parseInt(formData.año.toString()),
+        año_fabricacion: parseInt(formData.año_fabricacion),
         categoria: parseInt(formData.categoria),
         estado: parseInt(formData.estado),
         sucursal: parseInt(formData.sucursal)
       };
 
-      console.log('Enviando datos:', vehiculoData);
-      await crearVehiculo(vehiculoData);
-      onVehiculoCreado();
+      await modificarVehiculo(vehiculo.id, vehiculoData);
+      onVehiculoEditado();
       onClose();
     } catch (error) {
-      console.error('Error en el formulario:', error);
-      setError(error instanceof Error ? error.message : 'Error al crear el vehículo');
+      setError(error instanceof Error ? error.message : 'Error al actualizar el vehículo');
     } finally {
       setIsLoading(false);
     }
@@ -70,8 +70,8 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
   };
 
   return (
-    <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
-      <div className="bg-[#2d1830]/95 backdrop-blur-md rounded-lg p-8 max-w-2xl w-full mx-4 relative shadow-xl">
+    <div className="fixed inset-0 bg-[#3d2342]/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-[#2d1830] rounded-lg p-8 max-w-2xl w-full mx-4 relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white hover:text-[#e94b5a] transition-colors"
@@ -81,7 +81,7 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
           </svg>
         </button>
 
-        <h2 className="text-2xl font-bold text-white mb-6">Agregar Nuevo Vehículo</h2>
+        <h2 className="text-2xl font-bold text-white mb-6">Editar Vehículo</h2>
 
         {error && (
           <div className="mb-4 p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
@@ -116,11 +116,6 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
                 <option value="1">Toyota</option>
                 <option value="2">Honda</option>
                 <option value="3">Volkswagen</option>
-                <option value="4">Ford</option>
-                <option value="5">Chevrolet</option>
-                <option value="6">Fiat</option>
-                <option value="7">Renault</option>
-                <option value="8">Peugeot</option>
               </select>
             </div>
 
@@ -140,8 +135,8 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
               <label className="block text-white mb-2">Año de Fabricación</label>
               <input
                 type="number"
-                name="año"
-                value={formData.año}
+                name="año_fabricacion"
+                value={formData.año_fabricacion}
                 onChange={handleChange}
                 min="1900"
                 max={new Date().getFullYear() + 1}
@@ -160,12 +155,9 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
                 required
               >
                 <option value="">Seleccionar categoría</option>
-                <option value="1">Apto discapacitados</option>
-                <option value="2">Chico</option>
+                <option value="1">SUV</option>
+                <option value="2">Sedán</option>
                 <option value="3">Deportivo</option>
-                <option value="4">Mediano</option>
-                <option value="5">SUV</option>
-                <option value="6">Van</option>
               </select>
             </div>
 
@@ -215,7 +207,7 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
               disabled={isLoading}
               className="px-6 py-2 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Guardando...' : 'Guardar Vehículo'}
+              {isLoading ? 'Guardando...' : 'Guardar Cambios'}
             </button>
           </div>
         </form>
