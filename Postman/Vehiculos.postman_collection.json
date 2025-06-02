@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "c432a692-cd63-4aa2-8921-2615075db1b2",
+		"_postman_id": "1050613a-099b-4e0f-b9b3-3c4a1ba2b81c",
 		"name": "Vehiculos",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -9,6 +9,16 @@
 		{
 			"name": "Baja Vehiculo",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -21,7 +31,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/vehiculos/2/baja/",
+					"raw": "http://127.0.0.1:8000/api/vehiculos/151/baja/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -33,7 +43,7 @@
 					"path": [
 						"api",
 						"vehiculos",
-						"2",
+						"151",
 						"baja",
 						""
 					]
@@ -47,6 +57,16 @@
 				"disableBodyPruning": true
 			},
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwNDU5LCJpYXQiOjE3NDg0MDY4NTksImp0aSI6ImIwNDUwMGI1YmE5NjQ4MTk5MjU2MTJhOGI3YzNkNjI5IiwidXNlcl9pZCI6MX0.zGJC4HEV92zoec0B0lKzeArrHXa1V5MZ6vnfkZRGKHk",
+							"type": "string"
+						}
+					]
+				},
 				"method": "GET",
 				"header": [],
 				"body": {
@@ -81,13 +101,20 @@
 			"name": "Alta Vehiculo",
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA3NTM4LCJpYXQiOjE3NDg0MDM5MzgsImp0aSI6IjY3NmUxYjI5MDE2NDRhNzhhZjVjNDI1MWI4OTZjMTY1IiwidXNlcl9pZCI6MX0.5-tSZtpRg6xCtdPpC7NLJwfvzhGaD0ml_h6VixqedAg",
+							"type": "string"
+						}
+					]
 				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"patente\": \"OBV020\",\r\n    \"capacidad\": 5,\r\n    \"año_fabricacion\": 2015,\r\n    \"sucursal\": 1,\r\n    \"politica\": 1,\r\n    \"marca\": 1,\r\n    \"estado\": 1,\r\n    \"categoria\": 1\r\n}",
+					"raw": "{\r\n    \"patente\": \"PRUEBA ADMIN\",\r\n    \"capacidad\": 5,\r\n    \"año_fabricacion\": 2015,\r\n    \"sucursal\": 2,\r\n    \"politica\": 2,\r\n    \"marca\": 2,\r\n    \"estado\": 1,\r\n    \"categoria\": 3\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"

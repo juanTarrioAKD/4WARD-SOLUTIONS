@@ -452,14 +452,138 @@ POST /api/vehiculos/
 ``` 
 
 ### Crear Alquiler
+- Endpoint: `GET /api/alquileres/`
+- Request:
 ```json
-POST /api/alquileres/
 {
     "fecha_inicio": "2024-03-20T10:00:00Z",
     "fecha_fin": "2024-03-25T10:00:00Z",
     "fecha_reserva": "2024-03-19T10:00:00Z",
-    "categoria_id": 1,
+    "modelo_id": 1,
     "cliente_id": 1
+}
+```
+- Respuesta Exitosa (200):
+```json
+{
+    "id": 3,
+    "fecha_inicio": "2024-03-20T07:00:00-03:00",
+    "fecha_fin": "2024-03-25T07:00:00-03:00",
+    "fecha_reserva": "2024-03-19T07:00:00-03:00",
+    "monto_total": "50000.00",
+    "estado": "EstadoAlquiler object (1)",
+    "cliente": {
+        "id": 1,
+        "email": "dante@ejemplo.com",
+        "nombre": "Dante",
+        "apellido": "Zorzoli",
+        "telefono": "1234567890",
+        "fecha_nacimiento": "1990-01-01",
+        "rol": "cliente",
+        "puesto": null,
+        "localidad": null
+    },
+    "vehiculo": {
+        "id": 2,
+        "marca": {
+            "id": 1,
+            "nombre": "Toyota"
+        },
+        "estado": {
+            "id": 1,
+            "nombre": "Disponible"
+        },
+        "sucursal": {
+            "id": 1,
+            "nombre": "Sucursal Central",
+            "telefono": "1234567890",
+            "localidad": {
+                "id": 1,
+                "nombre": "La Plata"
+            },
+            "direccion": "Av. Principal 123"
+        },
+        "categoria": {
+            "id": 1,
+            "precio": "10000.00"
+        },
+        "politica": {
+            "id": 1,
+            "nombre": "Política Estándar",
+            "descripcion": "Cancelación con 24 horas de anticipación",
+            "porcentaje": "80.00"
+        },
+        "patente": "asdadasdas",
+        "capacidad": 5,
+        "año_fabricacion": 2015
+    }
+}
+```
+
+
+- Respuesta Error (400):
+```json
+{
+    "modelo_id": [
+        "Clave primaria \"1\" inválida - objeto no existe."
+    ],
+    "cliente_id": [
+        "Clave primaria \"1\" inválida - objeto no existe."
+    ]
+}
+```
+
+
+- Respuesta Error (400):
+```json
+[
+    "No hay vehículos disponibles del modelo seleccionado para las fechas especificadas"
+]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Listar estados
+- Endpoint: `GET /api/estados/`
+- Respuesta Exitosa (200):
+```json
+[
+    {
+        "id": 1,
+        "nombre": "Disponible"
+    }
+]
+```
+
+### Crear estado
+- Endpoint: `POST /api/estados/`
+- Request:
+```json
+{
+    "nombre": "Disponible"
+}
+```
+- Respuesta Exitosa (200):
+```json
+{
+    "id": 1,
+    "nombre": "Disponible"
+}
+```
+- Respuesta Error (400):
+```json
+{
+    "nombre": ["Este campo es requerido"]
 }
 ```
 

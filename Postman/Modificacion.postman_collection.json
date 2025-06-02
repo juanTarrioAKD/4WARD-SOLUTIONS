@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "9374e076-b874-48a4-9cd1-66f82197a725",
+		"_postman_id": "9948c556-b7c0-4b4b-988a-ebc02d8eb5ca",
 		"name": "Modificacion",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -9,6 +9,16 @@
 		{
 			"name": "Modificacion de Sucursal",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [],
 				"body": {
@@ -44,6 +54,16 @@
 		{
 			"name": "Modificacion de Categoria",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [],
 				"body": {

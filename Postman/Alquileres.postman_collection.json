@@ -1,0 +1,203 @@
+{
+	"info": {
+		"_postman_id": "3ba2a591-e3c4-4c53-8dda-b5ac0da44a9e",
+		"name": "Alquileres",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45108515"
+	},
+	"item": [
+		{
+			"name": "Listar Alquileres",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Alta Alquiler",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwMzQzLCJpYXQiOjE3NDg0MDY3NDMsImp0aSI6IjljY2FkNTVjMzMxZTQxMjdhZjlkNzJjNDZlZGNkY2FmIiwidXNlcl9pZCI6M30.VUSucQFT3bKu5MLA2y6ZkSVEhkXbnFpf4ZlHEFndtOM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"fecha_inicio\": \"2025-06-5T10:00:00Z\",\r\n    \"fecha_fin\": \"2025-06-20T10:00:00Z\",\r\n    \"categoria_id\": 3\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Baja Alquiler",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/1/baja/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						"1",
+						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Alquiler Especifico",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/1/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						"1",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Modificar Alquiler",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/2/modificar/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						"2",
+						"modificar",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

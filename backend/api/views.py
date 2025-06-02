@@ -1,5 +1,5 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework import viewsets, status, serializers
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -22,11 +22,46 @@ from .serializers import (
     EstadoAlquilerSerializer, CalificacionCreateSerializer,
     PreguntaCreateSerializer
 )
+from .permissions import *
+from django.utils import timezone
+from datetime import datetime
+
+# Mock users for testing with login attempts counter and lock status
+MOCK_USERS = {
+    "admin@admin.com": {
+        "id": 1,
+        "email": "admin@admin.com",
+        "password": "Admin123",
+        "nombre": "Admin",
+        "apellido": "Usuario",
+        "telefono": "123456789",
+        "fecha_nacimiento": "1990-01-01",
+        "rol": "admin",
+        "puesto": "Administrador General",
+        "localidad": 1,
+        "failed_attempts": 0,
+        "is_locked": False
+    },
+    "cliente@cliente.com": {
+        "id": 2,
+        "email": "cliente@cliente.com",
+        "password": "Cliente123",
+        "nombre": "Cliente",
+        "apellido": "Usuario",
+        "telefono": "987654321",
+        "fecha_nacimiento": "1995-01-01",
+        "rol": "cliente",
+        "puesto": None,
+        "localidad": 1,
+        "failed_attempts": 0,
+        "is_locked": False
+    }
+}
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Permitimos acceso público para registro y login
 
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
@@ -34,31 +69,56 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return UsuarioSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'register', 'login']:
+        if self.action in ['register', 'login', 'logout']:
             return [AllowAny()]
-        return [IsAuthenticated()]
+        elif self.action in ['modificar', 'baja']:
+            return [IsAuthenticated()]
+        return [IsAdmin()]
 
     @action(detail=True, methods=['put'])
-    def asignar_rol(self, request, pk=None):
-        if not request.user.is_authenticated or request.user.rol != 'administrador':
-            return Response({'error': 'No tiene permisos para realizar esta acción'}, 
+    def modificar(self, request, pk=None):
+        usuario = self.get_object()
+        if request.user != usuario and request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'No tienes permiso para modificar este usuario'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        usuario = self.get_object()
+        if request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'No tienes permiso para dar de baja usuarios'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        usuario.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['put'])
+    def cambiar_rol(self, request, pk=None):
+        if request.user.rol != 'admin':
+            return Response({'error': 'Solo los administradores pueden cambiar roles'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
         usuario = self.get_object()
-        rol = request.data.get('rol')
-        puesto_id = request.data.get('puesto_id')
-        
-        if not rol or rol not in dict(Usuario.ROL_CHOICES):
+        nuevo_rol = request.data.get('rol')
+        nuevo_puesto = request.data.get('puesto')
+        nueva_localidad = request.data.get('localidad')
+
+        if nuevo_rol not in ['cliente', 'empleado', 'admin']:
             return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        usuario.rol = rol
-        if puesto_id:
-            try:
-                usuario.puesto_id = puesto_id
-            except Exception:
-                return Response({'error': 'Puesto inválido'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
+        usuario.rol = nuevo_rol
+        if nuevo_puesto:
+            usuario.puesto = nuevo_puesto
+        if nueva_localidad:
+            usuario.localidad_id = nueva_localidad
         usuario.save()
+
         return Response(UsuarioSerializer(usuario).data)
 
     @action(detail=False, methods=['post'])
@@ -75,18 +135,49 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def login(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
-        if not email or not password:
-            return Response({'error': 'Por favor proporcione email y contraseña'}, status=status.HTTP_400_BAD_REQUEST)
-        user = authenticate(username=email, password=password)
-        if user:
+
+        try:
+            user = Usuario.objects.get(email=email)
+            
+            if user.is_locked:
+                return Response({
+                    'error': 'Cuenta bloqueada. Por favor, use la clave de recuperación "123456789" para desbloquear su cuenta.'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            user = authenticate(request, email=email, password=password)
+            
+            if user is None:
+                user = Usuario.objects.get(email=email)
+                user.increment_login_attempts()
+                return Response({
+                    'error': 'Credenciales inválidas'
+                }, status=status.HTTP_401_UNAUTHORIZED)
+
             refresh = RefreshToken.for_user(user)
+            user.reset_login_attempts()
+            
+            # Obtener el nombre del rol
+            rol_nombre = user.rol.nombre if user.rol else 'cliente'
+            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'user': UsuarioSerializer(user).data,
-                'message': 'Login exitoso. Use el token de acceso en el header Authorization: Bearer <token>'
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'nombre': user.nombre,
+                    'apellido': user.apellido,
+                    'telefono': user.telefono,
+                    'fecha_nacimiento': user.fecha_nacimiento,
+                    'rol': rol_nombre,
+                    'puesto': user.puesto,
+                    'localidad': user.localidad.id if user.localidad else None
+                }
             })
-        return Response({'error': 'Credenciales inválidas'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Usuario.DoesNotExist:
+            return Response({
+                'error': 'Credenciales inválidas'
+            }, status=status.HTTP_401_UNAUTHORIZED)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
@@ -104,21 +195,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(usuario)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
-        usuario = self.get_object()
-        usuario.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @action(detail=True, methods=['put', 'patch'])
-    def modificar(self, request, pk=None):
-        usuario = self.get_object()
-        serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):
         try:
@@ -128,6 +204,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                               status=status.HTTP_401_UNAUTHORIZED)
             
             alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            if not alquileres:
+                return Response({'error': 'No hay alquileres asociados al usuario'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
             serializer = AlquilerSerializer(alquileres, many=True)
             return Response({
                 'alquileres': serializer.data,
@@ -143,11 +222,19 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
+    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return VehiculoCreateSerializer
-        return VehiculoSerializer
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsEmpleadoOrAdmin()]
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+        response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response["Access-Control-Allow-Headers"] = "Content-Type"
+        return response
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -177,9 +264,125 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             return Response(VehiculoSerializer(vehiculo).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['get'])
+    def buscar_por_patente(self, request):
+        patente = request.query_params.get('patente', '')
+        vehiculos = Vehiculo.objects.filter(patente__icontains=patente)
+        serializer = self.get_serializer(vehiculos, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def modelos_disponibles(self, request):
+        """
+        Lista los modelos disponibles para una categoría y rango de fechas específico.
+        Body requerido:
+        {
+            "categoria_id": int,
+            "fecha_inicio": "YYYY-MM-DDTHH:MM:SSZ",
+            "fecha_fin": "YYYY-MM-DDTHH:MM:SSZ"
+        }
+        """
+        try:
+            # Obtener y validar parámetros del body
+            categoria_id = request.data.get('categoria_id')
+            fecha_inicio = request.data.get('fecha_inicio')
+            fecha_fin = request.data.get('fecha_fin')
+
+            if not all([categoria_id, fecha_inicio, fecha_fin]):
+                return Response(
+                    {"error": "Se requieren los parámetros: categoria_id, fecha_inicio y fecha_fin"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Convertir fechas
+            try:
+                fecha_inicio = datetime.fromisoformat(fecha_inicio.replace('Z', '+00:00'))
+                fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
+            except ValueError:
+                return Response(
+                    {"error": "Formato de fecha inválido. Use formato ISO (YYYY-MM-DDTHH:MM:SSZ)"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validar que la fecha de inicio sea anterior a la fecha de fin
+            if fecha_inicio >= fecha_fin:
+                return Response(
+                    {"error": "La fecha de inicio debe ser anterior a la fecha de fin"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Obtener vehículos de la categoría que estén disponibles
+            vehiculos_disponibles = Vehiculo.objects.filter(
+                categoria_id=categoria_id,
+                estado__id=1  # estado disponible
+            ).exclude(
+                # Excluir vehículos con reservas que se solapan
+                alquileres__estado__id=1,  # Solo reservas confirmadas
+                alquileres__fecha_inicio__lte=fecha_fin,
+                alquileres__fecha_fin__gte=fecha_inicio
+            ).distinct()
+
+            # Obtener los modelos únicos de los vehículos disponibles
+            modelos_disponibles = Modelo.objects.filter(
+                vehiculo__in=vehiculos_disponibles
+            ).distinct()
+
+            # Serializar los modelos con información adicional
+            modelos_data = []
+            for modelo in modelos_disponibles:
+                # Contar cuántos vehículos disponibles hay de este modelo
+                vehiculos_modelo = vehiculos_disponibles.filter(modelo=modelo)
+                cantidad_disponible = vehiculos_modelo.count()
+
+                # Obtener el precio de la categoría
+                precio_categoria = Categoria.objects.get(id=categoria_id).precio
+
+                modelos_data.append({
+                    'id': modelo.id,
+                    'nombre': modelo.nombre,
+                    'cantidad_disponible': cantidad_disponible,
+                    'precio_por_dia': precio_categoria,
+                    'vehiculos': [
+                        {
+                            'id': v.id,
+                            'patente': v.patente,
+                            'marca': v.marca.nombre,
+                            'año': v.año_fabricacion,
+                            'capacidad': v.capacidad
+                        } for v in vehiculos_modelo
+                    ]
+                })
+
+            return Response({
+                'categoria_id': categoria_id,
+                'fecha_inicio': fecha_inicio,
+                'fecha_fin': fecha_fin,
+                'modelos_disponibles': modelos_data
+            })
+
+        except Categoria.DoesNotExist:
+            return Response(
+                {"error": "Categoría no encontrada"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": f"Error al procesar la solicitud: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
     serializer_class = PublicacionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get_queryset(self):
+        return Publicacion.objects.all()
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -189,13 +392,39 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            publicacion = serializer.save()
-            return Response(PublicacionSerializer(publicacion).data, status=status.HTTP_201_CREATED)
+            # Verificar si ya existe una publicación para esta categoría
+            categoria_id = serializer.validated_data['categoria'].id
+            if Publicacion.objects.filter(categoria_id=categoria_id).exists():
+                return Response({
+                    'error': 'Ya existe una publicación activa para esta categoría'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer.save()
+            return Response({
+                'message': 'Alta de publicacion exitosa',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['put', 'patch'])
+    def modificar(self, request, pk=None):
+        publicacion = self.get_object()
+        serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
+        if serializer.is_valid():
+            publicacion = serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        publicacion = self.get_object()
+        publicacion.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
     serializer_class = SucursalSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -215,10 +444,12 @@ class SucursalViewSet(viewsets.ModelViewSet):
 class PoliticaDeCancelacionViewSet(viewsets.ModelViewSet):
     queryset = PoliticaDeCancelacion.objects.all()
     serializer_class = PoliticaDeCancelacionSerializer
+    permission_classes = [IsAdmin]
 
 class MarcaViewSet(viewsets.ModelViewSet):
     queryset = Marca.objects.all()
     serializer_class = MarcaSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -229,16 +460,19 @@ class MarcaViewSet(viewsets.ModelViewSet):
 class EstadoVehiculoViewSet(viewsets.ModelViewSet):
     queryset = EstadoVehiculo.objects.all()
     serializer_class = EstadoVehiculoSerializer
+    permission_classes = [IsAdmin]
 
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
+    permission_classes = [IsAdmin]
 
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
-        categoria = self.get_object()
-        categoria.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            categoria = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -249,10 +483,17 @@ class CategoriaViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['delete'])
+    def baja(self, request, pk=None):
+        categoria = self.get_object()
+        categoria.delete()
+        return Response( {'message': 'Categoria eliminada exitosamente'},
+                status=status.HTTP_200_OK)
+
 class CalificacionViewSet(viewsets.ModelViewSet):
     queryset = Calificacion.objects.all()
     serializer_class = CalificacionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsCliente]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -285,11 +526,13 @@ class CalificacionViewSet(viewsets.ModelViewSet):
     def baja(self, request, pk=None):
         calificacion = self.get_object()
         calificacion.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response( {'message': 'Calificacion eliminada exitosamente'},
+                status=status.HTTP_200_OK)
 
 class ModeloViewSet(viewsets.ModelViewSet):
     queryset = Modelo.objects.all()
     serializer_class = ModeloSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -300,6 +543,7 @@ class ModeloViewSet(viewsets.ModelViewSet):
 class LocalidadViewSet(viewsets.ModelViewSet):
     queryset = Localidad.objects.all()
     serializer_class = LocalidadSerializer
+    permission_classes = [IsAdmin]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -323,7 +567,7 @@ class LocalidadViewSet(viewsets.ModelViewSet):
 class PreguntaViewSet(viewsets.ModelViewSet):
     queryset = Pregunta.objects.all()
     serializer_class = PreguntaSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsClienteOrEmpleadoOrAdmin]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -343,10 +587,28 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         pregunta.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=['put'])
+    def responder(self, request, pk=None):
+        if request.user.rol not in ['admin', 'empleado']:
+            return Response({'error': 'Solo empleados y administradores pueden responder preguntas'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        pregunta = self.get_object()
+        respuesta = request.data.get('respuesta')
+        pregunta.respuesta = respuesta
+        pregunta.save()
+        return Response(PreguntaSerializer(pregunta).data)
+
 class AlquilerViewSet(viewsets.ModelViewSet):
     queryset = Alquiler.objects.all()
     serializer_class = AlquilerSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.rol.id == 1:  # Si es administrador
+            return Alquiler.objects.all()
+        return Alquiler.objects.filter(cliente=user)
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -354,11 +616,92 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         return AlquilerSerializer
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            alquiler = serializer.save()
-            return Response(AlquilerSerializer(alquiler).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Obtener el modelo del vehículo solicitado
+        modelo_id = request.data.get('modelo_id')
+        if not modelo_id:
+            return Response(
+                {"error": "Se requiere especificar el modelo del vehículo"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Calcular la cantidad de días
+        try:
+            fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
+            fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
+            dias = (fecha_fin - fecha_inicio).days
+        except ValueError as e:
+            return Response(
+                {"error": f"Formato de fecha inválido: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Buscar un vehículo disponible del modelo especificado
+        vehiculo_disponible = None
+        vehiculos_modelo = Vehiculo.objects.filter(modelo_id=modelo_id, estado__id=1)
+
+        for vehiculo in vehiculos_modelo:
+            if vehiculo.esta_disponible(fecha_inicio, fecha_fin):
+                vehiculo_disponible = vehiculo
+                break
+
+        if not vehiculo_disponible:
+            return Response(
+                {"error": "No hay vehículos disponibles del modelo seleccionado para las fechas especificadas"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Calcular el monto total basado en el precio de la categoría del vehículo
+        monto_total = vehiculo_disponible.categoria.precio * dias
+
+        # Obtener el estado "Confirmado" (ID 1)
+        try:
+            estado_confirmado = EstadoAlquiler.objects.get(id=1)
+        except EstadoAlquiler.DoesNotExist:
+            return Response(
+                {"error": "Estado de alquiler no encontrado"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        # Preparar los datos para crear el alquiler
+        alquiler_data = {
+            'cliente': request.user.id,
+            'vehiculo': vehiculo_disponible.id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'monto_total': monto_total,
+            'estado': estado_confirmado.id
+        }
+
+        serializer = self.get_serializer(data=alquiler_data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=False, methods=['get'], url_path='mis-alquileres')
+    def mis_alquileres(self, request):
+        try:
+            usuario = request.user
+            if not usuario:
+                return Response({'error': 'Usuario no encontrado en la solicitud'}, 
+                              status=status.HTTP_401_UNAUTHORIZED)
+            
+            alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+            if not alquileres:
+                return Response({'error': 'No hay alquileres asociados al usuario'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+            serializer = AlquilerSerializer(alquileres, many=True)
+            return Response({
+                'alquileres': serializer.data,
+                'usuario_id': usuario.id,
+                'usuario_email': usuario.email
+            })
+        except Exception as e:
+            return Response({
+                'error': f'Error al obtener alquileres: {str(e)}',
+                'user_info': str(request.user) if request.user else 'No user found'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -380,10 +723,10 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         try:
             alquiler = self.get_object()
             
-            # Verificar que el usuario sea el cliente dueño del alquiler y tenga rol de cliente
-            if request.user != alquiler.cliente or request.user.rol != 'cliente':
+            # Verificar que el usuario sea el cliente dueño del alquiler
+            if request.user != alquiler.cliente:
                 return Response(
-                    {'error': 'Solo el cliente dueño del alquiler puede cancelarlo'},
+                    {'error': 'Los datos ingresados son incorrectos'},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
@@ -401,16 +744,206 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
-                {'error': f'Error al cancelar el alquiler: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+                {'error': 'Los datos ingresados son incorrectos'},
+                status=status.HTTP_400_BAD_REQUEST)
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
+    permission_classes = [IsAdmin]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
         estado = self.get_object()
         estado.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT) 
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class EstadisticasViewSet(viewsets.ViewSet):
+    permission_classes = [IsAdmin]
+
+    @action(detail=False, methods=['get'])
+    def mejor_calificado(self, request):
+        # Implementar lógica para obtener el vehículo mejor calificado
+        pass
+
+    @action(detail=False, methods=['get'])
+    def registros_periodo(self, request):
+        # Implementar lógica para obtener registros en un período
+        pass
+
+    @action(detail=False, methods=['get'])
+    def mas_alquilado(self, request):
+        # Implementar lógica para obtener el vehículo más alquilado
+        pass 
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getDatosCategorias(request):
+    # Categories with direct image URLs
+    categories = [
+        {
+            "id": 1,
+            "name": "SUV",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+            "price": 150.00
+        },
+        {
+            "id": 2,
+            "name": "Chico",
+            "image": "https://images.unsplash.com/photo-1567818735868-e71b99932e29?auto=format&fit=crop&w=800&h=600",
+            "price": 100.00
+        },
+        {
+            "id": 3,
+            "name": "Mediano",
+            "image": "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&h=600",
+            "price": 250.00
+        },
+        {
+            "id": 4,
+            "name": "Van",
+            "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&h=600",
+            "price": 180.00
+        },
+        {
+            "id": 5,
+            "name": "Deportivo",
+            "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=800&h=600",
+            "price": 300.00
+        }
+    ]
+    
+    return Response(categories)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def getMockLogin(request):
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    # Find user with matching email
+    user = MOCK_USERS.get(email)
+
+    if not user:
+        return Response({
+            "error": "Credenciales inválidas"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check if account is locked
+    if user["is_locked"]:
+        return Response({
+            "error": "Cuenta bloqueada por múltiples intentos fallidos. Se le ha enviado un correo para recuperar su cuenta."
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    # Check password
+    if user["password"] != password:
+        user["failed_attempts"] += 1
+        
+        # Check if should lock account
+        if user["failed_attempts"] >= 3:
+            user["is_locked"] = True
+            return Response({
+                "error": "Cuenta bloqueada por múltiples intentos fallidos. Se le ha enviado un correo para recuperar su cuenta."
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        remaining_attempts = 3 - user["failed_attempts"]
+        return Response({
+            "error": f"Contraseña incorrecta. Intentos restantes: {remaining_attempts}"
+        }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Successful login - reset failed attempts
+    user["failed_attempts"] = 0
+    
+    # Create a mock token
+    mock_token = {
+        "refresh": "mock_refresh_token",
+        "access": "mock_access_token"
+    }
+
+    return Response({
+        "refresh": mock_token["refresh"],
+        "access": mock_token["access"],
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "nombre": user["nombre"],
+            "apellido": user["apellido"],
+            "telefono": user["telefono"],
+            "fecha_nacimiento": user["fecha_nacimiento"],
+            "rol": user["rol"],
+            "puesto": user["puesto"],
+            "localidad": user["localidad"]
+        }
+    })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def getMockRegister(request):
+    # Mock de usuarios existentes
+    existing_users = [
+        {
+            "email": "cliente@cliente.com",
+            "password": "Cliente123"  # Cumple con los requisitos
+        },
+        {
+            "email": "admin@admin.com",
+            "password": "Admin123"    # Cumple con los requisitos
+        }
+    ]
+
+    # Validar que todos los campos requeridos estén presentes
+    required_fields = ['nombre', 'apellido', 'email', 'telefono', 'password', 'fecha_nacimiento']
+    for field in required_fields:
+        if field not in request.data:
+            return Response({
+                'error': f'El campo {field} es requerido'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Validar requisitos de contraseña
+    password = request.data['password']
+    if len(password) < 8:
+        return Response({
+            'error': 'La contraseña debe tener al menos 8 caracteres'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not any(c.isupper() for c in password):
+        return Response({
+            'error': 'La contraseña debe contener al menos una letra mayúscula'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not any(c.isdigit() for c in password):
+        return Response({
+            'error': 'La contraseña debe contener al menos un número'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verificar si el email ya existe
+    if any(user["email"] == request.data["email"] for user in existing_users):
+        return Response({
+            'error': 'El email ya está registrado en el sistema'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Simular registro exitoso
+    return Response({
+        'success': True,
+        'message': 'Usuario registrado exitosamente'
+    }, status=status.HTTP_201_CREATED)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def getMockReservations(request):
+    # Add CORS headers
+    response = Response([
+        {
+            "id": "1",
+            "numeroReserva": "1234"
+        },
+        {
+            "id": "2",
+            "numeroReserva": "5678"
+        }
+    ])
+    response["Access-Control-Allow-Origin"] = "http://localhost:3000"
+    response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "Content-Type"
+    return response
+

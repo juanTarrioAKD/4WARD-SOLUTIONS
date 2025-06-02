@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "08ca3ee7-1557-49cf-8b48-e9acc1490f94",
+		"_postman_id": "dfd7d6d9-b44f-42ee-ac97-88ec7a9ef2d7",
 		"name": "Usuarios",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "45108515"
@@ -13,7 +13,41 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\": \"dante@ejemplo.com\",\r\n    \"password\": \"contraseña123\",\r\n    \"nombre\": \"Dante\",\r\n    \"apellido\": \"Zorzoli\",\r\n    \"telefono\": \"1234567890\",\r\n    \"fecha_nacimiento\": \"1990-01-01\",\r\n    \"rol\": \"cliente\"\r\n}",
+					"raw": "{\r\n    \"email\": \"dante@cliente.com\",\r\n    \"password\": \"Cliente1234\",\r\n    \"nombre\": \"Dante\",\r\n    \"apellido\": \"Puddu\",\r\n    \"telefono\": \"1234567890\",\r\n    \"fecha_nacimiento\": \"2004-06-30\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/usuarios/register/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"usuarios",
+						"register",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Registrar Admin",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\": \"admin3@admin.com\",\r\n    \"password\": \"Admin1234\",\r\n    \"nombre\": \"AdminNom\",\r\n    \"apellido\": \"AdminApe\",\r\n    \"telefono\": \"1234567890\",\r\n    \"fecha_nacimiento\": \"1990-01-01\",\r\n    \"rol\": 3\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -50,7 +84,44 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"email\": \"cliente@ejemplo.com\",\r\n    \"password\": \"contraseña123\"\r\n}",
+					"raw": "{\r\n    \"email\": \"dante@cliente.com\",\r\n    \"password\": \"Cliente1234\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/usuarios/login/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"usuarios",
+						"login",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Iniciar Sesion Admin",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\": \"admin1@admin.com\",\r\n    \"password\": \"Admin1234\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -87,7 +158,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n    \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc0Nzg3NzQwMCwiaWF0IjoxNzQ3NzkxMDAwLCJqdGkiOiI2NTkxNTU4ZjJlN2I0NzQ0ODk0MjFlZTQwZWQ2N2IwNiIsInVzZXJfaWQiOjF9.W3W7FNZWv8AolyDUK3xZjBhmDE6K0U4aI2lRUEsallI\"\r\n}",
+					"raw": "{\r\n    \"refresh\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc0ODQ4ODg2NiwiaWF0IjoxNzQ4NDAyNDY2LCJqdGkiOiJiOGZkZDcwNWQ1MGQ0ZTllYjIwM2IwN2Y4NTc3OGUzZiIsInVzZXJfaWQiOjN9.WR6wo5HVvsiGWnnPnM7_wkKpx2B9GJ70MTTfHu59Ba8\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -121,13 +192,25 @@
 			},
 			"request": {
 				"auth": {
-					"type": "noauth"
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA4NjI3LCJpYXQiOjE3NDg0MDUwMjcsImp0aSI6IjNhYzllODg0MzYyMjQ5Mjc4ZDQwYjlmNWFlZTlhOGQxIiwidXNlcl9pZCI6MX0.B1_Dci44mwZ8AHthAt-Mf0BjPRhNBApZUEVN3IOMvxo",
+							"type": "string"
+						}
+					]
 				},
 				"method": "GET",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": ""
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
 				},
 				"url": {
 					"raw": "http://127.0.0.1:8000/api/usuarios/",
@@ -151,6 +234,16 @@
 		{
 			"name": "Modificar Usuario",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "PUT",
 				"header": [],
 				"body": {
@@ -163,7 +256,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/usuarios/{id}/modificar/",
+					"raw": "http://127.0.0.1:8000/api/usuarios/3/modificar/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -175,7 +268,7 @@
 					"path": [
 						"api",
 						"usuarios",
-						"{id}",
+						"3",
 						"modificar",
 						""
 					]
@@ -186,6 +279,16 @@
 		{
 			"name": "Baja Usuario",
 			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDA2MDY2LCJpYXQiOjE3NDg0MDI0NjYsImp0aSI6ImIyMjRiNzNjZTVmNjRiNGZiYjIyYWQxMzAwMzVmMzdkIiwidXNlcl9pZCI6M30.3j0BnlHmBurL5BwWLVOiMRPPNHeBy_QXZ6P4ZTxpD2M",
+							"type": "string"
+						}
+					]
+				},
 				"method": "DELETE",
 				"header": [],
 				"body": {
@@ -198,7 +301,7 @@
 					}
 				},
 				"url": {
-					"raw": "http://127.0.0.1:8000/api/usuarios/{id}/baja/",
+					"raw": "http://127.0.0.1:8000/api/usuarios/1/baja/",
 					"protocol": "http",
 					"host": [
 						"127",
@@ -210,8 +313,43 @@
 					"path": [
 						"api",
 						"usuarios",
-						"{id}",
+						"1",
 						"baja",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Listar Alquileres de Usuario (Historial)",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQ4NDEwMzQzLCJpYXQiOjE3NDg0MDY3NDMsImp0aSI6IjljY2FkNTVjMzMxZTQxMjdhZjlkNzJjNDZlZGNkY2FmIiwidXNlcl9pZCI6M30.VUSucQFT3bKu5MLA2y6ZkSVEhkXbnFpf4ZlHEFndtOM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/alquileres/mis-alquileres/",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"alquileres",
+						"mis-alquileres",
 						""
 					]
 				}
