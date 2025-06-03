@@ -39,7 +39,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['register', 'login', 'logout']:
             return [AllowAny()]
-        elif self.action in ['modificar', 'baja']:
+        elif self.action in ['modificar', 'baja', 'perfil']:
             return [IsAuthenticated()]
         return [IsAdmin()]
 
@@ -50,7 +50,32 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             # Si se está cambiando la contraseña
             if 'contraseña' in request.data:
-                usuario.set_password(request.data['contraseña'])
+                contraseña = request.data['contraseña']
+                # Validar longitud mínima
+                if len(contraseña) < 8:
+                    return Response(
+                        {'error': 'La contraseña debe tener al menos 8 caracteres'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # Validar que contenga al menos una letra mayúscula
+                if not any(c.isupper() for c in contraseña):
+                    return Response(
+                        {'error': 'La contraseña debe contener al menos una letra mayúscula'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # Validar que contenga al menos una letra minúscula
+                if not any(c.islower() for c in contraseña):
+                    return Response(
+                        {'error': 'La contraseña debe contener al menos una letra minúscula'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # Validar que contenga al menos un número
+                if not any(c.isdigit() for c in contraseña):
+                    return Response(
+                        {'error': 'La contraseña debe contener al menos un número'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                usuario.set_password(contraseña)
                 usuario.save()
             
             # Actualizar los demás campos
@@ -159,11 +184,25 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         except Exception:
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['get'])
-    def perfil(self, request, pk=None):
-        usuario = self.get_object()
-        serializer = self.get_serializer(usuario)
-        return Response(serializer.data)
+    @action(detail=False, methods=['get'])
+    def perfil(self, request):
+        """
+        Obtiene los datos del usuario autenticado.
+        No requiere parámetros adicionales.
+        """
+        usuario = request.user
+        serializer = UsuarioSerializer(usuario)
+        return Response({
+            'id': usuario.id,
+            'email': usuario.email,
+            'nombre': usuario.nombre,
+            'apellido': usuario.apellido,
+            'telefono': usuario.telefono,
+            'fecha_nacimiento': usuario.fecha_nacimiento,
+            'rol': usuario.rol.nombre if usuario.rol else None,
+            'puesto': usuario.puesto,
+            'localidad': usuario.localidad.id if usuario.localidad else None
+        })
 
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):
