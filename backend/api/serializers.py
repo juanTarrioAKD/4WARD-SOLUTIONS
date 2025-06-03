@@ -167,7 +167,9 @@ class AlquilerSerializer(serializers.ModelSerializer):
         try:
             # Verificar si el alquiler ya está cancelado o finalizado
             if instance.estado.id in [2, 3]:  # 2=Cancelado, 3=Finalizado
-                raise serializers.ValidationError("Solamente se puede cancelar una reserva activa")
+                return Response(
+                {'error': 'Solamente se puede cancelar una reserva activa'},
+                status=status.HTTP_400_BAD_REQUEST)
 
             # Obtener el estado "Cancelado"
             estado_cancelado = EstadoAlquiler.objects.get(id=3)
@@ -190,7 +192,9 @@ class AlquilerSerializer(serializers.ModelSerializer):
             
             return instance
         except Exception:
-            raise serializers.ValidationError("Solamente se puede cancelar una reserva activa")
+            return Response(
+                {'error': 'Solamente se puede cancelar una reserva activa'},
+                status=status.HTTP_400_BAD_REQUEST)
 
 class AlquilerCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -219,7 +223,7 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
             fecha_fin__gte=fecha_inicio
         )
         if alquileres_confirmados.exists():
-            raise serializers.ValidationError("Ya tienes una reserva confirmada que se solapa con estas fechas")
+            raise serializers.ValidationError("Ya posees reservas activas en las fechas seleccionadas, por favor, seleccione un rango de fechas en donde no tenga reservas agendadas")
 
         # Verificar si el vehículo está disponible
         if not vehiculo.esta_disponible(fecha_inicio, fecha_fin):
