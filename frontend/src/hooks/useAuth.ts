@@ -1,15 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getCurrentUser } from '@/services/auth';
+import { getCurrentUser, LoginResponse } from '@/services/auth';
+import { AUTH_TOKEN_KEY } from '@/config/config';
 
-interface AuthUser {
-  token: string;
-  user: {
-    id: number;
-    email: string;
-    nombre: string;
-    rol: string;
-  };
-}
+type AuthUser = LoginResponse;
 
 export function useAuth() {
   const [token, setToken] = useState<string | null>(null);
@@ -17,7 +10,7 @@ export function useAuth() {
 
   useEffect(() => {
     // Intentar obtener el token del localStorage
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
     const currentUser = getCurrentUser();
 
     if (storedToken && currentUser) {
@@ -27,14 +20,14 @@ export function useAuth() {
   }, []);
 
   const login = (authData: AuthUser) => {
-    localStorage.setItem('token', authData.token);
+    localStorage.setItem(AUTH_TOKEN_KEY, authData.access);
     localStorage.setItem('user', JSON.stringify(authData.user));
-    setToken(authData.token);
+    setToken(authData.access);
     setUser(authData.user);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);

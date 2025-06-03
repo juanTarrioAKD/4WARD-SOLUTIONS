@@ -4,8 +4,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getCategories, type Category } from '@/services/categories';
+import { getAuthToken } from '@/services/auth';
 
-export default function CategoryList() {
+interface CategoryListProps {
+  setShowLoginForm: (show: boolean) => void;
+}
+
+export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +33,11 @@ export default function CategoryList() {
   }, []);
 
   const handleCategoryClick = (categoryId: number) => {
+    const token = getAuthToken();
+    if (!token) {
+      setShowLoginForm(true);
+      return;
+    }
     router.push(`/buscar-categorias?categoria_id=${categoryId}`);
   };
 

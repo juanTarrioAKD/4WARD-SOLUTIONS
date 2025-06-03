@@ -182,10 +182,9 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
-    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
     def get_permissions(self):
-        if self.action == 'list':
+        if self.action == 'modelos_disponibles' or (self.action == 'list' and 'modelo' in self.request.query_params):
             return [AllowAny()]
         return [IsEmpleadoOrAdmin()]
 
@@ -299,18 +298,15 @@ class VehiculoViewSet(viewsets.ModelViewSet):
     def modelos_disponibles(self, request):
         """
         Lista los modelos disponibles para una categoría y rango de fechas específico.
-        Body requerido:
-        {
-            "categoria_id": int,
-            "fecha_inicio": "YYYY-MM-DDTHH:MM:SSZ",
-            "fecha_fin": "YYYY-MM-DDTHH:MM:SSZ"
-        }
         """
+        print("Recibiendo solicitud de modelos disponibles:", request.data)
         try:
             # Obtener y validar parámetros del body
             categoria_id = request.data.get('categoria_id')
             fecha_inicio = request.data.get('fecha_inicio')
             fecha_fin = request.data.get('fecha_fin')
+
+            print(f"Parámetros recibidos: categoria_id={categoria_id}, fecha_inicio={fecha_inicio}, fecha_fin={fecha_fin}")
 
             if not all([categoria_id, fecha_inicio, fecha_fin]):
                 return Response(
@@ -322,9 +318,10 @@ class VehiculoViewSet(viewsets.ModelViewSet):
             try:
                 fecha_inicio = datetime.fromisoformat(fecha_inicio.replace('Z', '+00:00'))
                 fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
-            except ValueError:
+            except ValueError as e:
+                print(f"Error al convertir fechas: {str(e)}")
                 return Response(
-                    {"error": "Formato de fecha inválido. Use formato ISO (YYYY-MM-DDTHH:MM:SSZ)"},
+                    {"error": f"Formato de fecha inválido: {str(e)}"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -333,6 +330,15 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 return Response(
                     {"error": "La fecha de inicio debe ser anterior a la fecha de fin"},
                     status=status.HTTP_400_BAD_REQUEST
+                )
+
+            try:
+                # Verificar que la categoría existe
+                categoria = Categoria.objects.get(id=categoria_id)
+            except Categoria.DoesNotExist:
+                return Response(
+                    {"error": f"No se encontró la categoría con ID {categoria_id}"},
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
             # Obtener vehículos de la categoría que estén disponibles
@@ -346,10 +352,14 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 alquileres__fecha_fin__gte=fecha_inicio
             ).distinct()
 
+            print(f"Vehículos disponibles encontrados: {vehiculos_disponibles.count()}")
+
             # Obtener los modelos únicos de los vehículos disponibles
             modelos_disponibles = Modelo.objects.filter(
                 vehiculo__in=vehiculos_disponibles
             ).distinct()
+
+            print(f"Modelos disponibles encontrados: {modelos_disponibles.count()}")
 
             # Serializar los modelos con información adicional
             modelos_data = []
@@ -358,14 +368,11 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 vehiculos_modelo = vehiculos_disponibles.filter(modelo=modelo)
                 cantidad_disponible = vehiculos_modelo.count()
 
-                # Obtener el precio de la categoría
-                precio_categoria = Categoria.objects.get(id=categoria_id).precio
-
-                modelos_data.append({
+                modelo_data = {
                     'id': modelo.id,
                     'nombre': modelo.nombre,
                     'cantidad_disponible': cantidad_disponible,
-                    'precio_por_dia': precio_categoria,
+                    'precio_por_dia': float(categoria.precio),
                     'vehiculos': [
                         {
                             'id': v.id,
@@ -375,21 +382,23 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                             'capacidad': v.capacidad
                         } for v in vehiculos_modelo
                     ]
-                })
+                }
+                modelos_data.append(modelo_data)
+                print(f"Agregando modelo: {modelo.nombre} con {cantidad_disponible} vehículos")
 
-            return Response({
+            response_data = {
                 'categoria_id': categoria_id,
-                'fecha_inicio': fecha_inicio,
-                'fecha_fin': fecha_fin,
+                'fecha_inicio': fecha_inicio.isoformat(),
+                'fecha_fin': fecha_fin.isoformat(),
                 'modelos_disponibles': modelos_data
-            })
+            }
+            print("Enviando respuesta:", response_data)
+            return Response(response_data)
 
-        except Categoria.DoesNotExist:
-            return Response(
-                {"error": "Categoría no encontrada"},
-                status=status.HTTP_404_NOT_FOUND
-            )
         except Exception as e:
+            print(f"Error inesperado: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return Response(
                 {"error": f"Error al procesar la solicitud: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -546,7 +555,7 @@ class CalificacionViewSet(viewsets.ModelViewSet):
 class ModeloViewSet(viewsets.ModelViewSet):
     queryset = Modelo.objects.all()
     serializer_class = ModeloSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]  # Permitir acceso público
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -630,75 +639,78 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         return Alquiler.objects.filter(cliente=user)
 
     def create(self, request, *args, **kwargs):
-        # Obtener la categoría del vehículo solicitado
-        categoria_id = request.data.get('categoria_id')
-        if not categoria_id:
-            return Response(
-                {"error": "Se requiere especificar la categoría del vehículo"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Calcular la cantidad de días
         try:
-            fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
-            fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
-            dias = (fecha_fin - fecha_inicio).days
-        except ValueError as e:
-            return Response(
-                {"error": f"Formato de fecha inválido: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
+            # Obtener datos del request
+            fecha_inicio = request.data.get('fecha_inicio')
+            fecha_fin = request.data.get('fecha_fin')
+            vehiculo_id = request.data.get('vehiculo_id')
+
+            if not all([fecha_inicio, fecha_fin, vehiculo_id]):
+                return Response(
+                    {"error": "Se requieren todos los campos: fecha_inicio, fecha_fin, vehiculo_id"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Convertir fechas
+            try:
+                fecha_inicio = datetime.fromisoformat(fecha_inicio.replace('Z', '+00:00'))
+                fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
+                dias = (fecha_fin - fecha_inicio).days
+            except ValueError as e:
+                return Response(
+                    {"error": f"Formato de fecha inválido: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Obtener el vehículo
+            try:
+                vehiculo = Vehiculo.objects.get(id=vehiculo_id)
+            except Vehiculo.DoesNotExist:
+                return Response(
+                    {"error": "Vehículo no encontrado"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Verificar disponibilidad del vehículo
+            if not vehiculo.esta_disponible(fecha_inicio, fecha_fin):
+                return Response(
+                    {"error": "El vehículo no está disponible para las fechas especificadas"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Calcular monto total
+            monto_total = vehiculo.categoria.precio * dias
+
+            # Obtener el estado "Confirmado" (ID 1)
+            try:
+                estado_confirmado = EstadoAlquiler.objects.get(id=1)
+            except EstadoAlquiler.DoesNotExist:
+                return Response(
+                    {"error": "Estado de alquiler no encontrado"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Crear el alquiler
+            alquiler = Alquiler.objects.create(
+                cliente=request.user,
+                vehiculo=vehiculo,
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                monto_total=monto_total,
+                estado=estado_confirmado
             )
 
-        # Obtener la categoría y calcular el monto total
-        try:
-            categoria = Categoria.objects.get(id=categoria_id)
-            monto_total = categoria.precio * dias
-        except Categoria.DoesNotExist:
             return Response(
-                {"error": "Categoría no encontrada"},
-                status=status.HTTP_404_NOT_FOUND
+                AlquilerSerializer(alquiler).data,
+                status=status.HTTP_201_CREATED
             )
 
-        # Buscar un vehículo disponible
-        vehiculo_disponible = None
-        vehiculos_categoria = Vehiculo.objects.filter(categoria=categoria, estado__id=1)  # estado disponible
-
-        for vehiculo in vehiculos_categoria:
-            if vehiculo.esta_disponible(fecha_inicio, fecha_fin):
-                vehiculo_disponible = vehiculo
-                break
-
-        if not vehiculo_disponible:
+        except Exception as e:
             return Response(
-                {"error": "No hay vehículos disponibles en la categoría seleccionada para las fechas especificadas"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Obtener el estado "Confirmado" (ID 1)
-        try:
-            estado_confirmado = EstadoAlquiler.objects.get(id=1)
-        except EstadoAlquiler.DoesNotExist:
-            return Response(
-                {"error": "Estado de alquiler no encontrado"},
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        # Preparar los datos para crear el alquiler
-        alquiler_data = {
-            'cliente': request.user.id,
-            'vehiculo': vehiculo_disponible.id,
-            'fecha_inicio': fecha_inicio,
-            'fecha_fin': fecha_fin,
-            'monto_total': monto_total,
-            'estado': estado_confirmado.id
-        }
-
-        serializer = self.get_serializer(data=alquiler_data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):
         try:

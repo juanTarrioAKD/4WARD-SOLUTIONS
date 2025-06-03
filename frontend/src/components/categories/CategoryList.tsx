@@ -50,7 +50,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({
       const alquilerData = {
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
-        categoria_id: categoryId
+        modelo_id: categoryId
       };
 
       console.log('Creando alquiler con datos:', alquilerData);

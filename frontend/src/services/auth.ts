@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/config/config';
+import { API_BASE_URL, AUTH_TOKEN_KEY } from '@/config/config';
 
 export interface User {
   id: number;
@@ -12,7 +12,7 @@ export interface User {
   localidad: number | null;
 }
 
-interface LoginResponse {
+export interface LoginResponse {
   access: string;
   refresh: string;
   user: User;
@@ -35,8 +35,8 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 
     const data = await response.json();
     
-    // Guardar el token y la información del usuario
-    localStorage.setItem('token', data.access);
+    // Guardar el token y la información del usuario usando la clave correcta
+    localStorage.setItem(AUTH_TOKEN_KEY, data.access);
     localStorage.setItem('user', JSON.stringify(data.user));
     
     return data;
@@ -47,7 +47,7 @@ export const login = async (email: string, password: string): Promise<LoginRespo
 };
 
 export const logout = () => {
-  localStorage.removeItem('token');
+  localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem('user');
 };
 
@@ -62,6 +62,11 @@ export const getCurrentUser = () => {
   }
 };
 
-export const getAuthToken = () => {
-  return localStorage.getItem('token');
+export const getAuthToken = (): string | null => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) {
+    console.warn('No authentication token found');
+    return null;
+  }
+  return token;
 }; 

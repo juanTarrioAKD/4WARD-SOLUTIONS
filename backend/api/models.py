@@ -188,7 +188,7 @@ class Vehiculo(models.Model):
         return not reservas_solapadas
 
 class Foto(models.Model):
-    vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, db_column='ID_Vehi')
+    vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, db_column='IDVehi')
     imagen = models.ImageField(upload_to='vehiculos/')
 
     class Meta:
@@ -203,23 +203,23 @@ class Publicacion(models.Model):
 
 class Calificacion(models.Model):
     puntaje = models.IntegerField()
-    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='ID_Publi')
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='ID_Usuario')
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='IDPubli')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='IDUsuario')
 
     class Meta:
         db_table = 'calificacion'
 
 class Pregunta(models.Model):
-    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='ID_Publi')
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='IDPubli')
     comentario = models.TextField()
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='ID_Usuario')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='IDUsuario')
 
     class Meta:
         db_table = 'pregunta'
 
 class Respuesta(models.Model):
     comentario = models.TextField()
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, blank=True, db_column='ID_Usuario')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, blank=True, db_column='IDUsuario')
 
     class Meta:
         db_table = 'respuesta' 

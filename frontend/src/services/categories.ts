@@ -1,5 +1,6 @@
-import { API_BASE_URL } from '@/config/config';
+import { API_BASE_URL, AUTH_TOKEN_KEY } from '@/config/config';
 import { getAuthToken } from '@/services/auth';
+import { ModelsResponse, Model } from '@/types/models';
 
 export interface Category {
   id: number;
@@ -7,6 +8,8 @@ export interface Category {
   image: string;
   price: number;
   description?: string;
+  available_vehicles: number;
+  features: string[];
 }
 
 export interface Vehicle {
@@ -20,22 +23,25 @@ export interface Vehicle {
 export interface AvailableModel {
   id: number;
   nombre: string;
-  cantidad_disponible: number;
+  descripcion: string;
+  imagen_url: string;
   precio_por_dia: number;
+  capacidad: number;
+  cantidad_disponible: number;
   vehiculos: Vehicle[];
+  categoria_id: number;
 }
 
-export interface CategoryWithModels {
-  id: number;
-  name: string;
-  image: string;
-  price: number;
-  description?: string;
-  modelos_disponibles: AvailableModel[];
+export interface CategoryWithModels extends Category {
+  modelos_disponibles: Model[];
 }
 
 export interface SearchCategoriesResponse {
   available_categories: CategoryWithModels[];
+}
+
+export interface CategoryResponse {
+  modelos_disponibles: AvailableModel[];
 }
 
 export const searchAvailableCategories = async (
@@ -100,13 +106,14 @@ export const getCategories = async (): Promise<Category[]> => {
     const data = await response.json();
     console.log('Categories data received:', data);
     
-    // Transformar los datos del backend al formato del frontend
     return data.map((category: any) => ({
       id: category.id,
       name: category.nombre || '',
       image: category.imagen || '/default-category.jpg',
       price: parseFloat(category.precio) || 0,
-      description: category.descripcion || ''
+      description: category.descripcion || '',
+      available_vehicles: category.vehiculos_disponibles || 0,
+      features: category.caracteristicas || []
     }));
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -118,4 +125,114 @@ export const getCategories = async (): Promise<Category[]> => {
 export const getImageUrl = (imageUrl: string | undefined): string => {
   if (!imageUrl) return '/default-category.jpg';
   return imageUrl.startsWith('http') ? imageUrl : `/${imageUrl}`;
+};
+
+export const getAvailableModels = async (
+  categoryId: number,
+  fechaInicio: string,
+  fechaFin: string
+): Promise<CategoryResponse> => {
+  try {
+    console.log('Enviando solicitud con:', { categoryId, fechaInicio, fechaFin });
+    
+    const response = await fetch(`${API_BASE_URL}/api/vehiculos/modelos-disponibles/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        categoria_id: categoryId,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin
+      })
+    });
+
+    const data = await response.json().catch(() => null);
+    console.log('Respuesta recibida:', {
+      status: response.status,
+      statusText: response.statusText,
+      data
+    });
+    
+    if (!response.ok) {
+      throw new Error(
+        data?.error || 
+        `Error al obtener modelos disponibles (${response.status}): ${response.statusText}`
+      );
+    }
+
+    if (!data) {
+      throw new Error('No se recibieron datos del servidor');
+    }
+
+    return {
+      modelos_disponibles: data.modelos_disponibles || []
+    };
+  } catch (error) {
+    console.error('Error al obtener los modelos disponibles:', error);
+    throw error;
+  }
+};
+
+export const getModeloById = async (modeloId: number): Promise<AvailableModel> => {
+  try {
+    console.log('Obteniendo detalles del modelo:', modeloId);
+    
+    // Primero obtenemos los detalles básicos del modelo
+    const modeloResponse = await fetch(`${API_BASE_URL}/api/modelos/${modeloId}/`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!modeloResponse.ok) {
+      throw new Error('Error al obtener los detalles básicos del modelo');
+    }
+
+    const modeloData = await modeloResponse.json();
+
+    // Luego obtenemos los detalles adicionales del vehículo asociado
+    const vehiculoResponse = await fetch(`${API_BASE_URL}/api/vehiculos/?modelo=${modeloId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!vehiculoResponse.ok) {
+      throw new Error('Error al obtener los detalles del vehículo');
+    }
+
+    const vehiculos = await vehiculoResponse.json();
+    const vehiculo = vehiculos[0]; // Tomamos el primer vehículo como referencia
+
+    if (!vehiculo) {
+      throw new Error('No se encontró ningún vehículo para este modelo');
+    }
+
+    return {
+      id: modeloId,
+      nombre: modeloData.nombre,
+      descripcion: vehiculo.descripcion || '',
+      imagen_url: vehiculo.imagen_url || '',
+      precio_por_dia: vehiculo.categoria.precio,
+      capacidad: vehiculo.capacidad,
+      cantidad_disponible: vehiculos.length,
+      vehiculos: vehiculos.map((v: any) => ({
+        id: v.id,
+        patente: v.patente,
+        marca: v.marca,
+        año: v.año,
+        capacidad: v.capacidad
+      })),
+      categoria_id: vehiculo.categoria.id
+    };
+  } catch (error) {
+    console.error('Error al obtener los detalles del modelo:', error);
+    throw error;
+  }
 }; 

@@ -15,23 +15,49 @@ sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
 @permission_classes([AllowAny])
 def create_payment_preference(request):
     """
-    Crea una preferencia de pago mock para pruebas
+    Crea una preferencia de pago en Mercado Pago
     """
     try:
         alquiler_id = request.data.get('alquiler_id')
-        
-        # Para el mock, redirigimos directamente a la página de éxito
-        # Ya que no tenemos integración real con Mercado Pago
-        success_url = f"{settings.FRONTEND_URL}/pagos/success?alquiler_id={alquiler_id}"
-        
-        # Crear una preferencia mock
-        preference_response = {
-            "id": "mock_preference_id",
-            "init_point": success_url,
-            "alquiler_id": alquiler_id
+        if not alquiler_id:
+            return Response({"error": "ID de alquiler no proporcionado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return Response({"error": "Alquiler no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Crear preferencia en Mercado Pago
+        preference_data = {
+            "items": [
+                {
+                    "title": f"Alquiler de vehículo - {alquiler.vehiculo.modelo.nombre}",
+                    "quantity": 1,
+                    "currency_id": "ARS",
+                    "unit_price": float(alquiler.monto_total)
+                }
+            ],
+            "back_urls": {
+                "success": f"{settings.FRONTEND_URL}/pagos/success?alquiler_id={alquiler_id}",
+                "failure": f"{settings.FRONTEND_URL}/pagos/failure?alquiler_id={alquiler_id}",
+                "pending": f"{settings.FRONTEND_URL}/pagos/pending?alquiler_id={alquiler_id}"
+            },
+            "auto_return": "approved",
+            "external_reference": str(alquiler_id)
         }
 
-        return Response(preference_response)
+        # Crear preferencia usando el SDK de Mercado Pago
+        preference = sdk.preference().create(preference_data)
+
+        if not preference or "response" not in preference:
+            raise Exception("Error al crear la preferencia de pago")
+
+        return Response({
+            "id": preference["response"]["id"],
+            "init_point": preference["response"]["init_point"],
+            "alquiler_id": alquiler_id
+        })
 
     except Exception as e:
         return Response({

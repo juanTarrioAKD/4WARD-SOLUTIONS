@@ -39,5 +39,6 @@ urlpatterns = [
     path('pagos/webhook/', payment_webhook, name='payment-webhook'),
     path('search-available-categories/', searchAvailableCategories, name='search-available-categories'),
     path('alquileres/crear/', createMockAlquiler, name='create-mock-alquiler'),
+    path('vehiculos/modelos-disponibles/', VehiculoViewSet.as_view({'post': 'modelos_disponibles'}), name='modelos-disponibles'),
     path('', include(router.urls)),
 ] 

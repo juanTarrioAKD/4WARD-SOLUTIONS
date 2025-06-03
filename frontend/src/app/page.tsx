@@ -344,7 +344,7 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="mt-12">
-                  <CategoryList />
+                  <CategoryList setShowLoginForm={setShowLoginForm} />
                 </div>
               </>
             )}
