@@ -167,7 +167,7 @@ SIMPLE_JWT = {
 
 # Configuración de CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "http://localhost:3000",  # Frontend development
 ]
 
 CORS_ALLOW_METHODS = [
@@ -192,6 +192,19 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # Mercado Pago Configuration
-MERCADOPAGO_ACCESS_TOKEN = 'TEST-3886104043565544-053014-c3e799aa3cddd0a35739e6efdf6c3d12-459089512'  # Reemplazar con tu token real
+
+# Credenciales del VENDEDOR (tu negocio)
+# Vendedor de prueba:
+# - Usuario: TESTUSER84083524
+# - Contraseña: 94HfhTYtnl
+# Obtener el Access Token desde: https://www.mercadopago.com.ar/developers/panel/credentials
+MERCADOPAGO_ACCESS_TOKEN = 'TEST-3886104043565544-053014-c3e799aa3cddd0a35739e6efdf6c3d12-459089512'
+
+
+# Credenciales del COMPRADOR (para pruebas)
+# Comprador de prueba:
+# - Usuario: TESTUSER511659300
+# - Contraseña: 6YJYURFULI
+
 FRONTEND_URL = 'http://localhost:3000'  # URL del frontend
 BACKEND_URL = 'http://localhost:8000'  # URL del backend

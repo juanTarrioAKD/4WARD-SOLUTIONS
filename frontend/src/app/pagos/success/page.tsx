@@ -1,21 +1,16 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Container, Typography, Button, Box, Paper } from '@mui/material';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EmailIcon from '@mui/icons-material/Email';
+import Link from 'next/link';
 
 export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const alquilerId = searchParams.get('alquiler_id');
-
-  useEffect(() => {
-    // Aquí podrías hacer una llamada a la API para obtener más detalles del alquiler
-    console.log('Alquiler completado:', alquilerId);
-  }, [alquilerId]);
 
   return (
     <Box
@@ -66,30 +61,32 @@ export default function PaymentSuccessPage() {
               ¡Reserva Confirmada!
             </Typography>
 
-            <Box
-              sx={{
-                backgroundColor: '#f8f0ff',
-                p: 2,
-                borderRadius: 2,
-                width: '100%',
-                textAlign: 'center',
-                border: '2px dashed #a16bb7'
-              }}
-            >
-              <Typography variant="h6" sx={{ color: '#3d2342' }}>
-                Número de Reserva
-              </Typography>
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  color: '#e94b5a',
-                  fontWeight: 'bold',
-                  letterSpacing: 1
+            {alquilerId && (
+              <Box
+                sx={{
+                  backgroundColor: '#f8f0ff',
+                  p: 2,
+                  borderRadius: 2,
+                  width: '100%',
+                  textAlign: 'center',
+                  border: '2px dashed #a16bb7'
                 }}
               >
-                #{alquilerId}
-              </Typography>
-            </Box>
+                <Typography variant="h6" sx={{ color: '#3d2342' }}>
+                  Número de Reserva
+                </Typography>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    color: '#e94b5a',
+                    fontWeight: 'bold',
+                    letterSpacing: 1
+                  }}
+                >
+                  #{alquilerId}
+                </Typography>
+              </Box>
+            )}
 
             <Box sx={{ width: '100%', my: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -107,8 +104,8 @@ export default function PaymentSuccessPage() {
               </Box>
             </Box>
 
-            <Box 
-              sx={{ 
+            <Box
+              sx={{
                 display: 'flex', 
                 gap: 2, 
                 flexDirection: { xs: 'column', sm: 'row' },
