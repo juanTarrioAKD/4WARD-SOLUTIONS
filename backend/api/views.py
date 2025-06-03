@@ -239,7 +239,15 @@ class VehiculoViewSet(viewsets.ModelViewSet):
         return [IsEmpleadoOrAdmin()]
 
     def list(self, request, *args, **kwargs):
-        response = super().list(request, *args, **kwargs)
+        queryset = self.get_queryset()
+        if not queryset.exists():
+            return Response(
+                {'error': 'No hay vehículos registrados'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = self.get_serializer(queryset, many=True)
+        response = Response(serializer.data)
         response["Access-Control-Allow-Origin"] = "http://localhost:3000"
         response["Access-Control-Allow-Methods"] = "GET, OPTIONS"
         response["Access-Control-Allow-Headers"] = "Content-Type"
