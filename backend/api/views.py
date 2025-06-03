@@ -344,6 +344,12 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 vehiculo__in=vehiculos_disponibles
             ).distinct()
 
+            if not modelos_disponibles.exists():
+                return Response(
+                    {"error": "No se encuentran autos disponibles en las fechas seleccionadas"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
             # Serializar los modelos con información adicional
             modelos_data = []
             for modelo in modelos_disponibles:
