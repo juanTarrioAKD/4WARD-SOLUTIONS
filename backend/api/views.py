@@ -130,6 +130,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def login(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
+        codigo_admin = request.data.get('codigo_admin')
 
         try:
             user = Usuario.objects.get(email=email)
@@ -148,6 +149,27 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'error': 'Credenciales inválidas'
                 }, status=status.HTTP_401_UNAUTHORIZED)
 
+            # Verificar si es administrador
+            if user.rol and user.rol.id == 3:
+                # Si es admin y no se proporcionó código, pedir código
+                if not codigo_admin:
+                    return Response({
+                        'error': 'Se requiere código de administrador',
+                        'require_admin_code': True
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Si es admin y se proporcionó código, verificar
+                if codigo_admin != "12345":
+                    user.increment_admin_code_attempts()
+                    if user.admin_code_attempts >= 3:
+                        return Response({
+                            'error': 'La clave ingresada es incorrecta. Se ha bloqueado la cuenta y se ha enviado un email al correo asociado'
+                        }, status=status.HTTP_403_FORBIDDEN)
+                    return Response({
+                        'error': 'La clave ingresada es incorrecta'
+                    }, status=status.HTTP_401_UNAUTHORIZED)
+
+            # Si llegamos aquí, el login es válido
             refresh = RefreshToken.for_user(user)
             user.reset_login_attempts()
             
