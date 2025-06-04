@@ -20,9 +20,11 @@ class Usuario(AbstractUser):
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
     puesto = models.CharField(max_length=100, null=True, blank=True)
     localidad = models.ForeignKey('Localidad', on_delete=models.SET_NULL, null=True, blank=True)
-    login_attempts = models.IntegerField(default=0)
     is_locked = models.BooleanField(default=False)
+    login_attempts = models.IntegerField(default=0)
+    admin_code_attempts = models.IntegerField(default=0)
     last_login_attempt = models.DateTimeField(null=True, blank=True)
+    last_admin_code_attempt = models.DateTimeField(null=True, blank=True)
 
     # Eliminamos los campos redundantes
     first_name = None
@@ -38,8 +40,16 @@ class Usuario(AbstractUser):
             self.is_locked = True
         self.save()
 
+    def increment_admin_code_attempts(self):
+        self.admin_code_attempts += 1
+        self.last_admin_code_attempt = timezone.now()
+        if self.admin_code_attempts >= 3:
+            self.is_locked = True
+        self.save()
+
     def reset_login_attempts(self):
         self.login_attempts = 0
+        self.admin_code_attempts = 0
         self.is_locked = False
         self.save()
 
