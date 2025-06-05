@@ -141,15 +141,21 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'error': 'Cuenta bloqueada. Por favor, use la clave de recuperación "123456789" para desbloquear su cuenta.'
                 }, status=status.HTTP_403_FORBIDDEN)
 
-            user = authenticate(request, email=email, password=password)
+            authenticated_user = authenticate(request, email=email, password=password)
             
-            if user is None:
+            if authenticated_user is None:
+                # Incrementar contador de intentos fallidos
+                user.increment_login_attempts()
+                if user.is_locked:
+                    return Response({
+                        'error': 'Demasiados intentos fallidos. La cuenta ha sido bloqueada.'
+                    }, status=status.HTTP_403_FORBIDDEN)
                 return Response({
                     'error': 'Credenciales inválidas'
                 }, status=status.HTTP_401_UNAUTHORIZED)
 
             # Verificar si es administrador
-            if user.rol and user.rol.id == 3:
+            if authenticated_user.rol and authenticated_user.rol.id == 3:
                 # Si es admin y no se proporcionó código, pedir código
                 if not codigo_admin:
                     return Response({
@@ -159,8 +165,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 
                 # Si es admin y se proporcionó código, verificar
                 if codigo_admin != "12345":
-                    user.increment_admin_code_attempts()
-                    if user.admin_code_attempts >= 3:
+                    authenticated_user.increment_admin_code_attempts()
+                    if authenticated_user.admin_code_attempts >= 3:
                         return Response({
                             'error': 'La clave ingresada es incorrecta. Se ha bloqueado la cuenta y se ha enviado un email al correo asociado'
                         }, status=status.HTTP_403_FORBIDDEN)
@@ -169,28 +175,32 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     }, status=status.HTTP_401_UNAUTHORIZED)
 
             # Si llegamos aquí, el login es válido
-            refresh = RefreshToken.for_user(user)
-            user.reset_login_attempts()
+            refresh = RefreshToken.for_user(authenticated_user)
+            authenticated_user.reset_login_attempts()
             
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'nombre': user.nombre,
-                    'apellido': user.apellido,
-                    'telefono': user.telefono,
-                    'fecha_nacimiento': user.fecha_nacimiento,
-                    'rol': user.rol.id if user.rol else 1,  # 1 es cliente por defecto
-                    'puesto': user.puesto,
-                    'localidad': user.localidad.id if user.localidad else None
+                    'id': authenticated_user.id,
+                    'email': authenticated_user.email,
+                    'nombre': authenticated_user.nombre,
+                    'apellido': authenticated_user.apellido,
+                    'telefono': authenticated_user.telefono,
+                    'fecha_nacimiento': authenticated_user.fecha_nacimiento,
+                    'rol': authenticated_user.rol.id if authenticated_user.rol else 1,  # 1 es cliente por defecto
+                    'puesto': authenticated_user.puesto,
+                    'localidad': authenticated_user.localidad.id if authenticated_user.localidad else None
                 }
             })
-        except Exception as e:
+        except Usuario.DoesNotExist:
             return Response({
                 'error': 'Credenciales inválidas'
             }, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({
+                'error': 'Error al procesar la solicitud'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
@@ -861,7 +871,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
                     {'error': f'Error al calcular el monto de devolución: {str(e)}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+                
             return Response({
                 'message': 'Alquiler cancelado exitosamente',
                 'alquiler': serialized_data,

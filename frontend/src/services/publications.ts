@@ -54,9 +54,15 @@ export const createPublication = async (data: CreatePublicationData): Promise<Pu
       throw new Error(errorData.error || 'Error al crear la publicación');
     }
 
-    const publicationData = await response.json();
-    console.log('Response from create publication:', publicationData);
-    return publicationData;
+    const responseData = await response.json();
+    console.log('Response from create publication:', responseData);
+
+    // Verificar si la respuesta tiene el formato esperado
+    if (responseData.data && responseData.data.categoria) {
+      return responseData.data;
+    } else {
+      throw new Error('La publicación no contiene los datos de la categoría');
+    }
   } catch (error) {
     console.error('Error en createPublication:', error);
     throw error;
