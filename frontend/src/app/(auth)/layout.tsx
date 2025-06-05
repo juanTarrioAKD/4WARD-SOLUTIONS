@@ -25,8 +25,8 @@ export default function AuthLayout({
     <div className="min-h-screen bg-[#3d2342]">
       {pathname !== '/' && <BackButton />}
       <div className="pt-16">
-        {/* Aquí podrías agregar una barra de navegación específica para usuarios autenticados */}
-        {children}
+      {/* Aquí podrías agregar una barra de navegación específica para usuarios autenticados */}
+      {children}
       </div>
     </div>
   );

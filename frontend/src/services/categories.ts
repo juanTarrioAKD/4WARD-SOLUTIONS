@@ -44,6 +44,14 @@ export interface CategoryResponse {
   modelos_disponibles: AvailableModel[];
 }
 
+export interface CategoryFormData {
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  imagen: File | null;
+  caracteristicas: string[];
+}
+
 export const searchAvailableCategories = async (
   fechaInicio: string,
   fechaFin: string
@@ -233,6 +241,102 @@ export const getModeloById = async (modeloId: number): Promise<AvailableModel> =
     };
   } catch (error) {
     console.error('Error al obtener los detalles del modelo:', error);
+    throw error;
+  }
+};
+
+// Funciones de administración de categorías
+export const createCategory = async (categoryData: CategoryFormData): Promise<any> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('No autorizado');
+
+  const formData = new FormData();
+  formData.append('nombre', categoryData.nombre);
+  formData.append('descripcion', categoryData.descripcion);
+  formData.append('precio', categoryData.precio.toString());
+  if (categoryData.imagen) {
+    formData.append('imagen', categoryData.imagen);
+  }
+  categoryData.caracteristicas.forEach(caracteristica => {
+    formData.append('caracteristicas', caracteristica);
+  });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/categorias/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al crear la categoría');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en createCategory:', error);
+    throw error;
+  }
+};
+
+export const updateCategory = async (id: number, categoryData: CategoryFormData): Promise<any> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('No autorizado');
+
+  const formData = new FormData();
+  formData.append('nombre', categoryData.nombre);
+  formData.append('descripcion', categoryData.descripcion);
+  formData.append('precio', categoryData.precio.toString());
+  if (categoryData.imagen) {
+    formData.append('imagen', categoryData.imagen);
+  }
+  categoryData.caracteristicas.forEach(caracteristica => {
+    formData.append('caracteristicas', caracteristica);
+  });
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/categorias/${id}/`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al actualizar la categoría');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en updateCategory:', error);
+    throw error;
+  }
+};
+
+export const deleteCategory = async (id: number): Promise<void> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('No autorizado');
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/categorias/${id}/`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al eliminar la categoría');
+    }
+  } catch (error) {
+    console.error('Error en deleteCategory:', error);
     throw error;
   }
 }; 

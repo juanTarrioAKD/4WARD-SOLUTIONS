@@ -51,10 +51,10 @@ export default function AdminDashboard() {
         {/* Tarjeta de Gestión de Publicaciones */}
         <div 
           className="bg-[#2d1830] p-6 rounded-lg shadow-lg cursor-pointer hover:bg-[#3d2342] transition-colors"
-          onClick={() => router.push('/admin/publicaciones')}
+          onClick={() => router.push('/admin/categorias')}
         >
-          <h2 className="text-xl font-semibold text-white mb-2">Gestión de Publicaciones</h2>
-          <p className="text-[#a16bb7]">Administrar publicaciones y ofertas</p>
+          <h2 className="text-xl font-semibold text-white mb-2">Gestión de Categorías</h2>
+          <p className="text-[#a16bb7]">Administrar categorías de vehículos</p>
         </div>
       </div>
     </div>

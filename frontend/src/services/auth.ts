@@ -54,7 +54,7 @@ export const login = async (
       }
       throw new Error(data.error || 'Credenciales inválidas');
     }
-
+    
     // Si el login fue exitoso, guardamos los datos
     localStorage.setItem(AUTH_TOKEN_KEY, data.access);
     localStorage.setItem('user', JSON.stringify(data.user));

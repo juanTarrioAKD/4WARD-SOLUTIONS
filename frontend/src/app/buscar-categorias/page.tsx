@@ -273,20 +273,20 @@ export default function BuscarCategorias() {
           </form>
 
           {categoryDetails && (
-            <div className="mt-8 pt-8 border-t border-[#a16bb7]/30">
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold text-white mb-2">
+          <div className="mt-8 pt-8 border-t border-[#a16bb7]/30">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold text-white mb-2">
                   {categoryDetails.name}
-                </h2>
-                <div className="inline-block px-6 py-3 bg-[#3d2342] rounded-lg">
-                  <p className="text-[#a16bb7] text-sm mb-1">Precio por día</p>
+              </h2>
+              <div className="inline-block px-6 py-3 bg-[#3d2342] rounded-lg">
+                <p className="text-[#a16bb7] text-sm mb-1">Precio por día</p>
                   <p className="text-white text-3xl font-bold">${categoryDetails.price.toLocaleString()}</p>
-                </div>
-                <p className="text-[#a16bb7] mt-4 text-sm">
-                  {categoryDetails.description}
-                </p>
               </div>
+              <p className="text-[#a16bb7] mt-4 text-sm">
+                  {categoryDetails.description}
+              </p>
             </div>
+          </div>
           )}
         </div>
 

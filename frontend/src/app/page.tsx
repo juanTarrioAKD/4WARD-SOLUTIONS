@@ -316,9 +316,9 @@ export default function Home() {
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                  onClick={() => router.push('/admin/publicaciones')}
+                  onClick={() => router.push('/admin/categorias')}
                 >
-                  Gestionar publicaciones
+                  Gestionar categorías
                 </button>
                 <button 
                   className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
