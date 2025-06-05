@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -86,7 +87,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
         usuario = self.get_object()
-        if request.user.rol not in ['admin', 'empleado']:
+        if request.user.rol.id not in [2, 3]:  # 2: empleado, 3: admin
             return Response({'error': 'No tienes permiso para dar de baja usuarios'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -95,7 +96,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'])
     def cambiar_rol(self, request, pk=None):
-        if request.user.rol != 'admin':
+        if request.user.rol.id != 3:  # 3: admin
             return Response({'error': 'Solo los administradores pueden cambiar roles'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -104,7 +105,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         nuevo_puesto = request.data.get('puesto')
         nueva_localidad = request.data.get('localidad')
 
-        if nuevo_rol not in ['cliente', 'empleado', 'admin']:
+        if nuevo_rol not in [1, 2, 3]:  # 1: cliente, 2: empleado, 3: admin
             return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
 
         usuario.rol = nuevo_rol
@@ -143,8 +144,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             user = authenticate(request, email=email, password=password)
             
             if user is None:
-                user = Usuario.objects.get(email=email)
-                user.increment_login_attempts()
                 return Response({
                     'error': 'Credenciales inválidas'
                 }, status=status.HTTP_401_UNAUTHORIZED)
@@ -173,9 +172,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             refresh = RefreshToken.for_user(user)
             user.reset_login_attempts()
             
-            # Obtener el nombre del rol
-            rol_nombre = user.rol.nombre if user.rol else 'cliente'
-            
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
@@ -186,12 +182,12 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'apellido': user.apellido,
                     'telefono': user.telefono,
                     'fecha_nacimiento': user.fecha_nacimiento,
-                    'rol': rol_nombre,
+                    'rol': user.rol.id if user.rol else 1,  # 1 es cliente por defecto
                     'puesto': user.puesto,
                     'localidad': user.localidad.id if user.localidad else None
                 }
             })
-        except Usuario.DoesNotExist:
+        except Exception as e:
             return Response({
                 'error': 'Credenciales inválidas'
             }, status=status.HTTP_401_UNAUTHORIZED)
@@ -253,7 +249,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
-    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
     def get_permissions(self):
         if self.action in ['list', 'modelos_disponibles']:
@@ -276,13 +271,47 @@ class VehiculoViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
-                return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        try:
+            # Obtener la categoría
+            categoria_id = data.get('categoria')
+            if not categoria_id:
+                return Response({'error': 'La categoría es requerida'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Obtener la política y capacidad según la categoría
+            categoria = Categoria.objects.get(id=categoria_id)
+            
+            # Asignar la política según la categoría
+            if categoria.id == 1:  # Apto discapacitados
+                data['politica'] = 1  # 100% devolución
+                data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+            elif categoria.id == 2:  # Chico
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 4  # Capacidad para autos chicos
+            elif categoria.id == 3:  # Deportivo
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 2  # Capacidad típica de deportivos
+            elif categoria.id == 4:  # Mediano
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 5  # Capacidad estándar
+            elif categoria.id == 5:  # SUV
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 7  # Capacidad típica de SUV
+            else:  # Van (id = 6)
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(data=data)
+            if serializer.is_valid():
+                if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
+                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -293,15 +322,45 @@ class VehiculoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
         vehiculo = self.get_object()
-        serializer = VehiculoCreateSerializer(vehiculo, data=request.data, partial=True)
-        if serializer.is_valid():
-            # Verificar si la patente ya existe (solo si se está modificando la patente)
-            if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
-                if Vehiculo.objects.filter(patente=request.data['patente']).exists():
-                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        
+        try:
+            # Si se está cambiando la categoría, actualizar la política y capacidad
+            if 'categoria' in data:
+                categoria = Categoria.objects.get(id=data['categoria'])
+                # Asignar la política y capacidad según la categoría
+                if categoria.id == 1:  # Apto discapacitados
+                    data['politica'] = 1  # 100% devolución
+                    data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+                elif categoria.id == 2:  # Chico
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 4  # Capacidad para autos chicos
+                elif categoria.id == 3:  # Deportivo
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 2  # Capacidad típica de deportivos
+                elif categoria.id == 4:  # Mediano
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 5  # Capacidad estándar
+                elif categoria.id == 5:  # SUV
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 7  # Capacidad típica de SUV
+                else:  # Van (id = 6)
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(vehiculo, data=data, partial=True)
+            if serializer.is_valid():
+                # Verificar si la patente ya existe (solo si se está modificando la patente)
+                if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
+                    if Vehiculo.objects.filter(patente=request.data['patente']).exists():
+                        return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def buscar_por_patente(self, request):
@@ -510,7 +569,11 @@ class EstadoVehiculoViewSet(viewsets.ModelViewSet):
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAdmin()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -577,7 +640,7 @@ class CalificacionViewSet(viewsets.ModelViewSet):
 class ModeloViewSet(viewsets.ModelViewSet):
     queryset = Modelo.objects.all()
     serializer_class = ModeloSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]  # Permitir acceso público
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -632,9 +695,9 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         pregunta.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['put'])
+    @action(detail=True, methods=['post'])
     def responder(self, request, pk=None):
-        if request.user.rol not in ['admin', 'empleado']:
+        if request.user.rol.id not in [2, 3]:  # 2: empleado, 3: admin
             return Response({'error': 'Solo empleados y administradores pueden responder preguntas'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -819,4 +882,33 @@ class EstadisticasViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def mas_alquilado(self, request):
         # Implementar lógica para obtener el vehículo más alquilado
-        pass 
+        pass
+
+def searchAvailableCategories(request):
+    """
+    Busca las categorías que tienen vehículos disponibles.
+    """
+    try:
+        # Obtener todas las categorías que tienen al menos un vehículo disponible
+        categorias_disponibles = Categoria.objects.filter(
+            vehiculo__estado__id=1  # estado disponible
+        ).distinct()
+
+        if not categorias_disponibles.exists():
+            return Response(
+                {"error": "No hay categorías con vehículos disponibles"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Serializar las categorías
+        serializer = CategoriaSerializer(categorias_disponibles, many=True)
+        
+        return Response({
+            "categorias": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"error": f"Error al buscar categorías disponibles: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        ) 

@@ -6,8 +6,9 @@ from .views import (
     SucursalViewSet, CategoriaViewSet, PoliticaDeCancelacionViewSet,
     CalificacionViewSet, LocalidadViewSet,
     PreguntaViewSet, AlquilerViewSet, EstadoAlquilerViewSet,
-    EstadisticasViewSet
+    EstadisticasViewSet, searchAvailableCategories
 )
+from .payment_views import create_payment_preference, payment_webhook
 
 router = DefaultRouter()
 router.register(r'usuarios', UsuarioViewSet)
@@ -27,5 +28,14 @@ router.register(r'estados-alquiler', EstadoAlquilerViewSet)
 router.register(r'estadisticas', EstadisticasViewSet, basename='estadisticas')
 
 urlpatterns = [
+    # path('get-categories/', getDatosCategorias, name='get-categories'),  # Mock endpoint comentado
+    
+    # path('register/', getMockRegister, name='register'),  # Mock endpoint comentado
+    # path('mock-reservations/', getMockReservations, name='mock-reservations'),  # Mock endpoint comentado
+    # path('mock-policies/', getMockPolicies, name='mock-policies'),  # Mock endpoint comentado
+    path('pagos/crear-preferencia/', create_payment_preference, name='create-payment-preference'),
+    path('pagos/webhook/', payment_webhook, name='payment-webhook'),
+    path('search-available-categories/', searchAvailableCategories, name='search-available-categories'),
+    path('vehiculos/modelos-disponibles/', VehiculoViewSet.as_view({'post': 'modelos_disponibles'}), name='modelos-disponibles'),
     path('', include(router.urls)),
 ] 
