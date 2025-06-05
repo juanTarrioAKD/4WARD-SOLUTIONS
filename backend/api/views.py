@@ -864,7 +864,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             # Calcular el monto de devolución basado en la política
             try:
                 monto_total = float(serialized_data.get('monto_total', 0))
-                porcentaje_devolucion = float(alquiler.vehiculo.politica.porcentaje)
+                porcentaje_devolucion = float(serialized_data.get('vehiculo', {}).get('politica', {}).get('porcentaje', 0))
                 monto_devolucion = (monto_total * porcentaje_devolucion) / 100
             except (ValueError, AttributeError) as e:
                 return Response(
