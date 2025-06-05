@@ -736,6 +736,17 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         try:
             fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
             fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
+
+            # Validar que la fecha de inicio sea futura
+            ahora = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_inicio_sin_hora = fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            if fecha_inicio_sin_hora < ahora:
+                return Response(
+                    {"error": "La fecha de inicio debe ser futura"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             dias = (fecha_fin - fecha_inicio).days
         except ValueError as e:
             return Response(
@@ -782,10 +793,12 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(data=alquiler_data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        alquiler = serializer.save()
 
+        # Usar el AlquilerSerializer para la respuesta
+        response_serializer = AlquilerSerializer(alquiler)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):

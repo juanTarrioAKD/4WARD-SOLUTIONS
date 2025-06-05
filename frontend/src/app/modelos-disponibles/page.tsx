@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { searchAvailableCategories, type AvailableModel } from '@/services/categories';
+import { CreateAlquilerData } from '@/services/alquiler';
+import { createAlquiler } from '@/services/alquiler';
 
 export default function ModelosDisponibles() {
   const searchParams = useSearchParams();
@@ -53,7 +55,43 @@ export default function ModelosDisponibles() {
   }, [categoryId, fechaInicio, fechaFin]);
 
   const handleSelectModelo = (modeloId: number) => {
-    router.push(`/confirmar-reserva?modelo_id=${modeloId}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+    if (!fechaInicio || !fechaFin) {
+      setError('Fechas no especificadas');
+      return;
+    }
+
+    // Asegurarse de que las fechas estén en el formato correcto
+    const data: CreateAlquilerData = {
+      modelo_id: modeloId,
+      fecha_inicio: new Date(fechaInicio).toISOString(),
+      fecha_fin: new Date(fechaFin).toISOString()
+    };
+    
+    console.log('Datos a enviar:', data);
+
+    // Intentar crear el alquiler
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No se encontró token de autenticación');
+        router.push('/login');
+        return;
+      }
+
+      console.log('Token encontrado, procediendo con la creación del alquiler');
+      createAlquiler(data, token)
+        .then(response => {
+          console.log('Alquiler creado exitosamente:', response);
+          router.push(`/confirmar-reserva?alquiler_id=${response.id}`);
+        })
+        .catch(error => {
+          console.error('Error detallado al procesar la reserva:', error);
+          setError(error.message || 'Error al procesar la reserva');
+        });
+    } catch (error) {
+      console.error('Error al procesar la reserva:', error);
+      setError('Error al procesar la reserva');
+    }
   };
 
   if (isLoading) {

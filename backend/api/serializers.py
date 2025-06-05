@@ -202,16 +202,9 @@ class AlquilerSerializer(serializers.ModelSerializer):
 class AlquilerCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Alquiler
-        fields = ['cliente', 'vehiculo', 'fecha_inicio', 'fecha_fin', 'monto_total', 'estado']
-        fields = ['cliente', 'vehiculo', 'fecha_inicio', 'fecha_fin', 'monto_total', 'estado']
+        fields = ['id', 'cliente', 'vehiculo', 'fecha_inicio', 'fecha_fin', 'monto_total', 'estado']
 
     def validate(self, data):
-        fecha_inicio = data.get('fecha_inicio')
-        fecha_fin = data.get('fecha_fin')
-        vehiculo = data.get('vehiculo')
-        cliente = data.get('cliente')
-
-        # Validar que la fecha de inicio sea anterior a la fecha de fin
         fecha_inicio = data.get('fecha_inicio')
         fecha_fin = data.get('fecha_fin')
         vehiculo = data.get('vehiculo')
@@ -222,13 +215,10 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin")
 
         # Validar que la fecha de inicio sea futura
-        if fecha_inicio <= timezone.now():
-            raise serializers.ValidationError("La fecha de inicio debe ser futura")
-
-        # Verificar si el cliente ya tiene una reserva que se solapa
-        alquileres_confirmados = Alquiler.objects.filter()
-        # Validar que la fecha de inicio sea futura
-        if fecha_inicio <= timezone.now():
+        ahora = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        fecha_inicio_sin_hora = fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        if fecha_inicio_sin_hora < ahora:
             raise serializers.ValidationError("La fecha de inicio debe ser futura")
 
         # Verificar si el cliente ya tiene una reserva que se solapa

@@ -32,9 +32,12 @@ export default function BuscarCategorias() {
     }
 
     // Asegurarse de que las fechas estén en el mismo formato (sin hora)
-    const startDate = new Date(start.setHours(0, 0, 0, 0));
-    const endDate = new Date(end.setHours(0, 0, 0, 0));
-    const todayDate = new Date(today.setHours(0, 0, 0, 0));
+    const startDate = new Date(start);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(end);
+    endDate.setHours(0, 0, 0, 0);
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
 
     if (startDate < todayDate) {
       return 'La fecha de inicio no puede ser anterior a hoy';
@@ -142,27 +145,20 @@ export default function BuscarCategorias() {
   };
 
   const handleSelectModel = async (modelId: number) => {
-    if (!fechaInicio || !fechaFin || !categoryId) return;
+    if (!fechaInicio || !fechaFin || !categoryId) {
+      setError('Faltan datos necesarios para la reserva');
+      return;
+    }
 
     try {
       setIsLoading(true);
+      setError(''); // Limpiar error anterior
+      
       const token = getAuthToken();
       if (!token) {
         router.push('/login');
         return;
       }
-
-      // Encontrar el modelo seleccionado para obtener su precio
-      const modeloSeleccionado = modelos.find(m => m.id === modelId);
-      if (!modeloSeleccionado) {
-        throw new Error('Modelo no encontrado');
-      }
-
-      // Obtener el primer vehículo disponible del modelo
-      if (!modeloSeleccionado.vehiculos || modeloSeleccionado.vehiculos.length === 0) {
-        throw new Error('No hay vehículos disponibles para este modelo');
-      }
-      const vehiculo = modeloSeleccionado.vehiculos[0];
 
       // Formatear las fechas para la API
       const fechaInicio_temp = new Date(fechaInicio.getTime());
@@ -173,31 +169,20 @@ export default function BuscarCategorias() {
       fechaFin_temp.setHours(23, 59, 59, 999);
       const fechaFinStr = fechaFin_temp.toISOString();
 
-      console.log('Fechas formateadas para la API:', {
-        fechaInicioStr,
-        fechaFinStr,
-        fechaInicio_temp,
-        fechaFin_temp
-      });
-
       const alquilerData = {
+        modelo_id: modelId,
         fecha_inicio: fechaInicioStr,
         fecha_fin: fechaFinStr,
-        vehiculo_id: vehiculo.id,
-        fecha_reserva: new Date().toISOString()
       };
 
       console.log('Datos del alquiler a enviar:', alquilerData);
-
       const alquiler = await createAlquiler(alquilerData, token);
-      if (!alquiler || !alquiler.id) {
-        throw new Error('No se pudo crear el alquiler');
-      }
-
-      // Redirigir a la página de confirmación con el ID del alquiler
+      
+      // Redirigir a la página de confirmación de reserva con el ID del alquiler
       router.push(`/confirmar-reserva?alquiler_id=${alquiler.id}`);
     } catch (error) {
-      console.error('Error al procesar la reserva:', error);
+      console.error('Error detallado al procesar la reserva:', error);
+      // Mostrar el mensaje de error específico del backend
       setError(error instanceof Error ? error.message : 'Error al procesar la reserva');
     } finally {
       setIsLoading(false);

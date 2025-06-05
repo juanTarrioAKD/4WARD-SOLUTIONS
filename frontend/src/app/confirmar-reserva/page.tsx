@@ -35,7 +35,13 @@ export default function ConfirmarReserva() {
           throw new Error('ID de alquiler no proporcionado');
         }
 
-        const alquiler = await getAlquilerById(parseInt(alquilerId), token);
+        // Convertir a número y validar
+        const alquilerIdNum = parseInt(alquilerId);
+        if (isNaN(alquilerIdNum)) {
+          throw new Error('ID de alquiler inválido');
+        }
+
+        const alquiler = await getAlquilerById(alquilerIdNum, token);
         if (!alquiler) {
           throw new Error('No se pudo obtener la información del alquiler');
         }
@@ -47,7 +53,7 @@ export default function ConfirmarReserva() {
           precioTotal: parseFloat(alquiler.monto_total)
         });
 
-        setAlquilerId(parseInt(alquilerId));
+        setAlquilerId(alquilerIdNum);
 
       } catch (error) {
         console.error('Error al cargar los detalles:', error);

@@ -19,11 +19,15 @@ const DatePicker: React.FC<DatePickerProps> = ({
   placeholderText,
   isDisabled = false
 }) => {
+  // Asegurarnos de que minDate esté normalizado a medianoche
+  const normalizedMinDate = minDate ? new Date(minDate.getTime()) : new Date();
+  normalizedMinDate.setHours(0, 0, 0, 0);
+
   return (
     <ReactDatePicker
       selected={selected}
       onChange={onChange}
-      minDate={minDate}
+      minDate={normalizedMinDate}
       placeholderText={placeholderText}
       className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
       dateFormat="dd/MM/yyyy"
