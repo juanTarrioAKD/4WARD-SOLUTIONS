@@ -66,24 +66,20 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
           onClick={() => handleCategoryClick(category.id)}
         >
           <div className="relative h-48">
-            <Image
-              src={category.image || '/default-category.jpg'}
-              alt={category.name}
+  
+              alt={category.nombre}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
+            
           </div>
           <div className="p-6">
             <h3 className="text-xl font-semibold text-white mb-2">
-              {category.name}
+              {category.nombre}
             </h3>
-            <p className="text-[#a16bb7] mb-4">
-              {category.description || 'Explora nuestros vehículos disponibles'}
-            </p>
             <div className="flex justify-between items-center">
               <span className="text-white font-bold">
-                Desde ${category.price}/día
+                Desde ${category.precio}/día
               </span>
               <button className="px-4 py-2 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors">
                 Ver más

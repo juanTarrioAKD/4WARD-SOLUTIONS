@@ -207,6 +207,7 @@ class Foto(models.Model):
 class Publicacion(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    imagen = models.ImageField(upload_to='publicaciones/', null=True, blank=True)
 
     class Meta:
         db_table = 'publicacion'

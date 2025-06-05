@@ -141,13 +141,13 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
           </button>
 
           {!requireAdminCode && (
-            <button
-              type="button"
-              className="text-white text-sm hover:text-[#e94b5a] transition-colors"
-              disabled={isLoading}
-            >
-              Olvidé mi contraseña
-            </button>
+          <button
+            type="button"
+            className="text-white text-sm hover:text-[#e94b5a] transition-colors"
+            disabled={isLoading}
+          >
+            Olvidé mi contraseña
+          </button>
           )}
         </form>
       </div>

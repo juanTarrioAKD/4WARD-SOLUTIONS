@@ -483,10 +483,10 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'list':
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsAdmin()]
 
     def get_queryset(self):
-        return Publicacion.objects.all()
+        return Publicacion.objects.all().select_related('categoria')
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -494,6 +494,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         return PublicacionSerializer
 
     def create(self, request, *args, **kwargs):
+        print("Datos recibidos:", request.data)  # Debug
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             # Verificar si ya existe una publicación para esta categoría
@@ -503,27 +504,20 @@ class PublicacionViewSet(viewsets.ModelViewSet):
                     'error': 'Ya existe una publicación activa para esta categoría'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            serializer.save()
-            return Response({
-                'message': 'Alta de publicacion exitosa',
-                'data': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['put', 'patch'])
-    def modificar(self, request, pk=None):
-        publicacion = self.get_object()
-        serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
-        if serializer.is_valid():
             publicacion = serializer.save()
-            return Response(serializer.data)
+            # Recargar la publicación con todos los datos de la categoría
+            publicacion = Publicacion.objects.select_related('categoria').get(id=publicacion.id)
+            serialized_data = PublicacionSerializer(publicacion).data
+            print("Datos a enviar:", serialized_data)  # Debug
+            return Response(serialized_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
+    def destroy(self, request, *args, **kwargs):
         publicacion = self.get_object()
         publicacion.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'message': 'Publicación dada de baja exitosamente'
+        }, status=status.HTTP_200_OK)
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()

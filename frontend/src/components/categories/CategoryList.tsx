@@ -1,5 +1,8 @@
+'use client';
+
 import React from 'react';
-import { Box, Typography, Card, CardContent, CardMedia, Chip, Button, Alert, CircularProgress } from '@mui/material';
+import Image from 'next/image';
+import { Box, Typography, Card, CardContent, Chip, Button, Alert, CircularProgress } from '@mui/material';
 import { Category } from '@/services/categories';
 import { createAlquiler } from '@/services/alquiler';
 import { createPaymentPreference } from '@/services/payment';
@@ -107,16 +110,19 @@ export const CategoryList: React.FC<CategoryListProps> = ({
 
       {categories.map((category) => (
         <Card key={category.id}>
-          <CardMedia
-            component="img"
-            height="200"
-            image={category.image}
-            alt={category.name}
-          />
+          <div className="relative h-48">
+            <Image
+              src={category.image}
+              alt={category.nombre}
+              width={500}
+              height={300}
+              className="w-full h-full object-cover"
+            />
+          </div>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6" component="div">
-                {category.name}
+                {category.nombre}
               </Typography>
               <Chip 
                 label={`${category.available_vehicles} disponibles`}
@@ -130,7 +136,7 @@ export const CategoryList: React.FC<CategoryListProps> = ({
             </Typography>
             
             <Typography variant="h6" color="primary" sx={{ mb: 2 }}>
-              ${category.price.toFixed(2)} /día
+              ${category.precio.toFixed(2)} /día
             </Typography>
 
             <Box sx={{ mb: 2 }}>

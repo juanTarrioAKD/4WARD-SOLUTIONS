@@ -115,15 +115,22 @@ class VehiculoCreateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class PublicacionSerializer(serializers.ModelSerializer):
-    categoria = CategoriaSerializer(read_only=True)
+    categoria = CategoriaSerializer()
+    
     class Meta:
         model = Publicacion
-        fields = '__all__'
+        fields = ['id', 'categoria', 'fecha_creacion', 'imagen']
 
 class PublicacionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Publicacion
-        fields = '__all__'
+        fields = ['categoria', 'imagen']
+
+    def to_representation(self, instance):
+        """
+        Convierte la instancia en una representación después de crear/actualizar.
+        """
+        return PublicacionSerializer(instance).data
 
 class CalificacionSerializer(serializers.ModelSerializer):
     usuario = UsuarioSerializer(read_only=True)

@@ -4,12 +4,14 @@ import { ModelsResponse, Model } from '@/types/models';
 
 export interface Category {
   id: number;
-  name: string;
+  nombre: string;
+  precio: number;
   image: string;
-  price: number;
-  description?: string;
+  description: string;
   available_vehicles: number;
   features: string[];
+  name?: string; // Para compatibilidad con el componente existente
+  price?: number; // Para compatibilidad con el componente existente
 }
 
 export interface Vehicle {
@@ -116,9 +118,11 @@ export const getCategories = async (): Promise<Category[]> => {
     
     return data.map((category: any) => ({
       id: category.id,
-      name: category.nombre || '',
+      nombre: category.nombre || '',
+      precio: parseFloat(category.precio) || 0,
       image: category.imagen || '/default-category.jpg',
-      price: parseFloat(category.precio) || 0,
+      name: category.nombre || '', // Para compatibilidad con el componente
+      price: parseFloat(category.precio) || 0, // Para compatibilidad con el componente
       description: category.descripcion || '',
       available_vehicles: category.vehiculos_disponibles || 0,
       features: category.caracteristicas || []
@@ -147,7 +151,7 @@ export const getAvailableModels = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         categoria_id: categoryId,
@@ -156,187 +160,13 @@ export const getAvailableModels = async (
       })
     });
 
-    const data = await response.json().catch(() => null);
-    console.log('Respuesta recibida:', {
-      status: response.status,
-      statusText: response.statusText,
-      data
-    });
-    
     if (!response.ok) {
-      throw new Error(
-        data?.error || 
-        `Error al obtener modelos disponibles (${response.status}): ${response.statusText}`
-      );
-    }
-
-    if (!data) {
-      throw new Error('No se recibieron datos del servidor');
-    }
-
-    return {
-      modelos_disponibles: data.modelos_disponibles || []
-    };
-  } catch (error) {
-    console.error('Error al obtener los modelos disponibles:', error);
-    throw error;
-  }
-};
-
-export const getModeloById = async (modeloId: number): Promise<AvailableModel> => {
-  try {
-    console.log('Obteniendo detalles del modelo:', modeloId);
-    
-    // Primero obtenemos los detalles básicos del modelo
-    const modeloResponse = await fetch(`${API_BASE_URL}/api/modelos/${modeloId}/`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!modeloResponse.ok) {
-      throw new Error('Error al obtener los detalles básicos del modelo');
-    }
-
-    const modeloData = await modeloResponse.json();
-
-    // Luego obtenemos los detalles adicionales del vehículo asociado
-    const vehiculoResponse = await fetch(`${API_BASE_URL}/api/vehiculos/?modelo=${modeloId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!vehiculoResponse.ok) {
-      throw new Error('Error al obtener los detalles del vehículo');
-    }
-
-    const vehiculos = await vehiculoResponse.json();
-    const vehiculo = vehiculos[0]; // Tomamos el primer vehículo como referencia
-
-    if (!vehiculo) {
-      throw new Error('No se encontró ningún vehículo para este modelo');
-    }
-
-    return {
-      id: modeloId,
-      nombre: modeloData.nombre,
-      descripcion: vehiculo.descripcion || '',
-      imagen_url: vehiculo.imagen_url || '',
-      precio_por_dia: vehiculo.categoria.precio,
-      capacidad: vehiculo.capacidad,
-      cantidad_disponible: vehiculos.length,
-      vehiculos: vehiculos.map((v: any) => ({
-        id: v.id,
-        patente: v.patente,
-        marca: v.marca,
-        año: v.año,
-        capacidad: v.capacidad
-      })),
-      categoria_id: vehiculo.categoria.id
-    };
-  } catch (error) {
-    console.error('Error al obtener los detalles del modelo:', error);
-    throw error;
-  }
-};
-
-// Funciones de administración de categorías
-export const createCategory = async (categoryData: CategoryFormData): Promise<any> => {
-  const token = getAuthToken();
-  if (!token) throw new Error('No autorizado');
-
-  const formData = new FormData();
-  formData.append('nombre', categoryData.nombre);
-  formData.append('descripcion', categoryData.descripcion);
-  formData.append('precio', categoryData.precio.toString());
-  if (categoryData.imagen) {
-    formData.append('imagen', categoryData.imagen);
-  }
-  categoryData.caracteristicas.forEach(caracteristica => {
-    formData.append('caracteristicas', caracteristica);
-  });
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/categorias/`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error al crear la categoría');
+      throw new Error(`Error al obtener modelos disponibles: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('Error en createCategory:', error);
+    console.error('Error en getAvailableModels:', error);
     throw error;
   }
 };
-
-export const updateCategory = async (id: number, categoryData: CategoryFormData): Promise<any> => {
-  const token = getAuthToken();
-  if (!token) throw new Error('No autorizado');
-
-  const formData = new FormData();
-  formData.append('nombre', categoryData.nombre);
-  formData.append('descripcion', categoryData.descripcion);
-  formData.append('precio', categoryData.precio.toString());
-  if (categoryData.imagen) {
-    formData.append('imagen', categoryData.imagen);
-  }
-  categoryData.caracteristicas.forEach(caracteristica => {
-    formData.append('caracteristicas', caracteristica);
-  });
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/categorias/${id}/`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error al actualizar la categoría');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error en updateCategory:', error);
-    throw error;
-  }
-};
-
-export const deleteCategory = async (id: number): Promise<void> => {
-  const token = getAuthToken();
-  if (!token) throw new Error('No autorizado');
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/categorias/${id}/`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error al eliminar la categoría');
-    }
-  } catch (error) {
-    console.error('Error en deleteCategory:', error);
-    throw error;
-  }
-}; 

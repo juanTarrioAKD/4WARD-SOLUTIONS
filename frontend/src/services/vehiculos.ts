@@ -192,4 +192,30 @@ export const getVehiculosDisponibles = async (
     console.error('Error al obtener vehículos disponibles:', error);
     throw error;
   }
+};
+
+export const getAllVehiculos = async (): Promise<Vehiculo[]> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/vehiculos/`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener vehículos');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error al obtener todos los vehículos:', error);
+    throw error;
+  }
 }; 

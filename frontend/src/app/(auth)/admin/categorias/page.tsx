@@ -38,6 +38,8 @@ export default function GestionPublicaciones() {
         getCategories(),
         getPublications()
       ]);
+      console.log('Loaded categories:', categoriesData);
+      console.log('Loaded publications:', publicationsData);
       setCategories(categoriesData);
       setPublications(publicationsData);
     } catch (error) {
@@ -56,10 +58,23 @@ export default function GestionPublicaciones() {
 
     try {
       setIsSubmitting(true);
-      await createPublication({ categoria: selectedCategoryId });
-      await fetchData();
+      const newPublication = await createPublication({ categoria: selectedCategoryId });
+      console.log('New publication created:', newPublication);
+      
+      if (!newPublication.categoria) {
+        throw new Error('La publicación no contiene los datos de la categoría');
+      }
+
+      setPublications(prevPublications => [...prevPublications, newPublication]);
+      
+      setCategories(prevCategories => 
+        prevCategories.filter(cat => cat.id !== selectedCategoryId)
+      );
+      
       setSelectedCategoryId('');
+      setError(null);
     } catch (error: any) {
+      console.error('Error creating publication:', error);
       setError(error.message || 'Error al crear la publicación');
     } finally {
       setIsSubmitting(false);
@@ -174,7 +189,7 @@ export default function GestionPublicaciones() {
                     key={category.id} 
                     value={category.id}
                   >
-                    {category.name}
+                    {category.nombre}
                   </MenuItem>
                 ))}
               </Select>
@@ -201,36 +216,13 @@ export default function GestionPublicaciones() {
               key={publication.id}
               className="bg-[#2d1830] rounded-lg overflow-hidden shadow-xl"
             >
-              <div className="relative h-48">
-                <Image
-                  src={publication.categoria?.image || '/default-category.jpg'}
-                  alt={publication.categoria?.name || 'Categoría'}
-                  fill
-                  className="object-cover"
-                />
-              </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-white mb-2">
-                  {publication.categoria?.name || 'Categoría sin nombre'}
+                  {publication.categoria?.nombre || 'Categoría sin nombre'}
                 </h3>
-                <p className="text-[#a16bb7] mb-4">
-                  {publication.categoria?.description || 'Sin descripción'}
-                </p>
-                {publication.categoria?.features && publication.categoria.features.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {publication.categoria.features.map((feature, index) => (
-                      <span
-                        key={index}
-                        className="bg-[#3d2342] px-3 py-1 rounded-full text-white text-sm"
-                      >
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                )}
                 <div className="flex justify-between items-center">
                   <span className="text-white font-bold">
-                    ${publication.categoria?.price || 0}/día
+                    ${publication.categoria?.precio || 0}/día
                   </span>
                   <button
                     onClick={() => setShowDeleteConfirm(publication.id)}
