@@ -1,4 +1,5 @@
-import { getCurrentUser } from './auth';
+import { getCurrentUser, getAuthToken } from './auth';
+import { API_BASE_URL } from '@/config/config';
 
 interface UpdateProfileData {
   firstName: string;
@@ -8,21 +9,33 @@ interface UpdateProfileData {
 
 export const updateProfile = async (data: UpdateProfileData) => {
   try {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
+    const token = getAuthToken();
+    if (!token) {
       throw new Error('No hay usuario autenticado');
     }
 
-    // TODO: Implementar la llamada a la API para actualizar el perfil
-    // Por ahora, solo actualizamos el localStorage
-    const updatedUser = {
-      ...currentUser,
-      nombre: data.firstName,
-      apellido: data.lastName,
-      telefono: data.phoneNumber
-    };
+    const response = await fetch(`${API_BASE_URL}/api/usuarios/modificar/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        nombre: data.firstName,
+        apellido: data.lastName,
+        telefono: data.phoneNumber
+      })
+    });
 
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al actualizar el perfil');
+    }
+
+    const updatedUser = await response.json();
+    // Actualizar el usuario en localStorage
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    
     return { success: true };
   } catch (error) {
     console.error('Error al actualizar el perfil:', error);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import DatePicker from '@/components/DatePicker';
 import ModelList from '@/components/ModelList';
@@ -8,6 +8,14 @@ import { getAvailableModels, type AvailableModel } from '@/services/categories';
 import { createAlquiler } from '@/services/alquiler';
 import { createPaymentPreference } from '@/services/payment';
 import { getAuthToken } from '@/services/auth';
+import { getCategories } from '@/services/categories';
+import BackButton from '@/components/common/BackButton';
+
+interface CategoryDetails {
+  name: string;
+  price: number;
+  description: string;
+}
 
 export default function BuscarCategorias() {
   const router = useRouter();
@@ -20,10 +28,34 @@ export default function BuscarCategorias() {
   const [isLoading, setIsLoading] = useState(false);
   const [modelos, setModelos] = useState<AvailableModel[]>([]);
   const [busquedaRealizada, setBusquedaRealizada] = useState(false);
+  const [categoryDetails, setCategoryDetails] = useState<CategoryDetails | null>(null);
 
   // Establecer la fecha mínima como el día actual a las 00:00
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  useEffect(() => {
+    const fetchCategoryDetails = async () => {
+      if (!categoryId) return;
+
+      try {
+        const categories = await getCategories();
+        const category = categories.find(cat => cat.id === parseInt(categoryId));
+        
+        if (category) {
+          setCategoryDetails({
+            name: category.name,
+            price: category.price,
+            description: category.description || 'Vehículos de alta calidad'
+          });
+        }
+      } catch (error) {
+        console.error('Error al obtener detalles de la categoría:', error);
+      }
+    };
+
+    fetchCategoryDetails();
+  }, [categoryId]);
 
   // Función para validar el rango de fechas
   const validateDateRange = (start: Date | null, end: Date | null): string | null => {
@@ -238,32 +270,24 @@ export default function BuscarCategorias() {
                 {isLoading ? 'Buscando...' : 'Buscar'}
               </button>
             </div>
-
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="text-white hover:text-[#e94b5a] transition-colors text-sm"
-              >
-                Volver
-              </button>
-            </div>
           </form>
 
-          <div className="mt-8 pt-8 border-t border-[#a16bb7]/30">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-white mb-2">
-                Categoría Deportivo
-              </h2>
-              <div className="inline-block px-6 py-3 bg-[#3d2342] rounded-lg">
-                <p className="text-[#a16bb7] text-sm mb-1">Precio por día</p>
-                <p className="text-white text-3xl font-bold">$15.000</p>
+          {categoryDetails && (
+            <div className="mt-8 pt-8 border-t border-[#a16bb7]/30">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold text-white mb-2">
+                  {categoryDetails.name}
+                </h2>
+                <div className="inline-block px-6 py-3 bg-[#3d2342] rounded-lg">
+                  <p className="text-[#a16bb7] text-sm mb-1">Precio por día</p>
+                  <p className="text-white text-3xl font-bold">${categoryDetails.price.toLocaleString()}</p>
+                </div>
+                <p className="text-[#a16bb7] mt-4 text-sm">
+                  {categoryDetails.description}
+                </p>
               </div>
-              <p className="text-[#a16bb7] mt-4 text-sm">
-                Vehículos de alta gama con prestaciones deportivas
-              </p>
             </div>
-          </div>
+          )}
         </div>
 
         {busquedaRealizada && !isLoading && (
@@ -275,6 +299,7 @@ export default function BuscarCategorias() {
           </div>
         )}
       </div>
+      <BackButton />
     </div>
   );
 } 

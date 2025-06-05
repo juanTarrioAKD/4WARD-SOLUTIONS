@@ -40,7 +40,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['register', 'login', 'logout']:
             return [AllowAny()]
-        elif self.action in ['modificar', 'baja', 'perfil']:
+        elif self.action in ['modificar', 'baja', 'perfil', 'mis_alquileres']:
             return [IsAuthenticated()]
         return [IsAdmin()]
 
@@ -232,8 +232,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             
             alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
             if not alquileres:
-                return Response({'error': 'No hay alquileres asociados al usuario'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'No hay alquileres asociados al usuario'},) 
+                              #status=status.HTTP_404_NOT_FOUND)
             serializer = AlquilerSerializer(alquileres, many=True)
             return Response({
                 'alquileres': serializer.data,

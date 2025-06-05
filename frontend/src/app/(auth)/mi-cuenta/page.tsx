@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
 import { User } from '@/services/auth';
 import EditProfileForm from '@/components/auth/EditProfileForm';
+import ChangePasswordForm from '@/components/auth/ChangePasswordForm';
 
 export default function MiCuenta() {
   const router = useRouter();
   const [userData, setUserData] = useState<User | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   // Verificar que el usuario está autenticado al cargar la página
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function MiCuenta() {
           </button>
           <button 
             className="w-full bg-transparent text-white py-2 rounded-md font-semibold border border-[#e94b5a] hover:bg-[#e94b5a]/10 transition-colors"
-            onClick={() => console.log('Cambiar contraseña')}
+            onClick={() => setShowPasswordForm(true)}
           >
             Cambiar Contraseña
           </button>
@@ -89,6 +91,13 @@ export default function MiCuenta() {
             lastName: userData.apellido,
             phoneNumber: userData.telefono
           }}
+        />
+      )}
+
+      {showPasswordForm && (
+        <ChangePasswordForm
+          onClose={() => setShowPasswordForm(false)}
+          onChangeSuccess={() => setShowPasswordForm(false)}
         />
       )}
     </div>
