@@ -11,8 +11,10 @@ interface LoginFormProps {
 export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [adminCode, setAdminCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [requireAdminCode, setRequireAdminCode] = useState(false);
   const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +38,16 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
     }
 
     try {
-      const response = await login(email, password);
+      const response = await login(email, password, requireAdminCode ? adminCode : undefined);
+
+      // Verificar si necesitamos código de administrador
+      if ('require_admin_code' in response) {
+        setRequireAdminCode(true);
+        setError(response.error);
+        return;
+      }
+
+      // Si el login fue exitoso
       authLogin(response);
       onLoginSuccess();
       onClose();
@@ -57,7 +68,9 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
       {/* Formulario */}
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#2d1830] p-8 rounded-xl shadow-lg z-50 w-96">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-white text-xl font-semibold">Iniciar Sesión</h2>
+          <h2 className="text-white text-xl font-semibold">
+            {requireAdminCode ? 'Ingreso Administrador' : 'Iniciar Sesión'}
+          </h2>
           <button 
             onClick={onClose}
             className="text-white hover:text-[#e94b5a] transition-colors"
@@ -84,7 +97,7 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
+              disabled={isLoading || requireAdminCode}
               required
             />
           </div>
@@ -96,10 +109,26 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
+              disabled={isLoading || requireAdminCode}
               required
             />
           </div>
+
+          {requireAdminCode && (
+            <div>
+              <label htmlFor="adminCode" className="block text-white mb-2">Código de Administrador:</label>
+              <input
+                type="text"
+                id="adminCode"
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                disabled={isLoading}
+                required
+                autoFocus
+              />
+            </div>
+          )}
           
           <button
             type="submit"
@@ -108,15 +137,18 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
             }`}
             disabled={isLoading}
           >
-            {isLoading ? 'Iniciando sesión...' : 'Ingresar'}
+            {isLoading ? 'Iniciando sesión...' : requireAdminCode ? 'Verificar Código' : 'Ingresar'}
           </button>
-          <button
-            type="button"
-            className="text-white text-sm hover:text-[#e94b5a] transition-colors"
-            disabled={isLoading}
-          >
-            Olvidé mi contraseña
-          </button>
+
+          {!requireAdminCode && (
+            <button
+              type="button"
+              className="text-white text-sm hover:text-[#e94b5a] transition-colors"
+              disabled={isLoading}
+            >
+              Olvidé mi contraseña
+            </button>
+          )}
         </form>
       </div>
     </>

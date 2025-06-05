@@ -18,24 +18,44 @@ export interface LoginResponse {
   user: User;
 }
 
-export const login = async (email: string, password: string): Promise<LoginResponse> => {
+interface AdminLoginResponse {
+  error: string;
+  require_admin_code: boolean;
+}
+
+export const login = async (
+  email: string, 
+  password: string, 
+  adminCode?: string
+): Promise<LoginResponse | AdminLoginResponse> => {
   try {
+    const loginData: any = { email, password };
+    if (adminCode) {
+      loginData.codigo_admin = adminCode;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/usuarios/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(loginData),
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Credenciales inválidas');
+      // Si requiere código de administrador, devolvemos esa respuesta específica
+      if (data.require_admin_code) {
+        return {
+          error: data.error,
+          require_admin_code: true
+        };
+      }
+      throw new Error(data.error || 'Credenciales inválidas');
     }
 
-    const data = await response.json();
-    
-    // Guardar el token y la información del usuario usando la clave correcta
+    // Si el login fue exitoso, guardamos los datos
     localStorage.setItem(AUTH_TOKEN_KEY, data.access);
     localStorage.setItem('user', JSON.stringify(data.user));
     
