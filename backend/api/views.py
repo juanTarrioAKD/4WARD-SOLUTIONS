@@ -494,7 +494,6 @@ class PublicacionViewSet(viewsets.ModelViewSet):
         return PublicacionSerializer
 
     def create(self, request, *args, **kwargs):
-        print("Datos recibidos:", request.data)  # Debug
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             # Verificar si ya existe una publicación para esta categoría
@@ -507,9 +506,10 @@ class PublicacionViewSet(viewsets.ModelViewSet):
             publicacion = serializer.save()
             # Recargar la publicación con todos los datos de la categoría
             publicacion = Publicacion.objects.select_related('categoria').get(id=publicacion.id)
-            serialized_data = PublicacionSerializer(publicacion).data
-            print("Datos a enviar:", serialized_data)  # Debug
-            return Response(serialized_data, status=status.HTTP_201_CREATED)
+            return Response({
+                'message': 'Alta de publicación exitosa',
+                'data': PublicacionSerializer(publicacion).data
+            }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
@@ -841,26 +841,39 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             # Verificar que el usuario sea el cliente dueño del alquiler
             if request.user != alquiler.cliente:
                 return Response(
-                    {'error': 'Los datos ingresados son incorrectos'},
+                    {'error': 'No tienes permiso para cancelar esta reserva'},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
             serializer = self.get_serializer(alquiler)
             alquiler = serializer.cancel(alquiler)
             
+            # Obtener los datos serializados
+            serialized_data = serializer.data
+            
+            # Calcular el monto de devolución basado en la política
+            try:
+                monto_total = float(serialized_data.get('monto_total', 0))
+                porcentaje_devolucion = float(alquiler.vehiculo.politica.porcentaje)
+                monto_devolucion = (monto_total * porcentaje_devolucion) / 100
+            except (ValueError, AttributeError) as e:
+                return Response(
+                    {'error': f'Error al calcular el monto de devolución: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
             return Response({
                 'message': 'Alquiler cancelado exitosamente',
-                'alquiler': serializer.data,
-                'monto_devolucion': float(alquiler.monto_devolucion),
-                'porcentaje_devolucion': float(alquiler.vehiculo.politica.porcentaje)
+                'alquiler': serialized_data,
+                'monto_devolucion': monto_devolucion,
+                'porcentaje_devolucion': porcentaje_devolucion
             }, status=status.HTTP_200_OK)
             
-        except serializers.ValidationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
-                {'error': 'Los datos ingresados son incorrectos'},
-                status=status.HTTP_400_BAD_REQUEST)
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()

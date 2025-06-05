@@ -81,7 +81,8 @@ export const cancelReservation = async (reservationId: number): Promise<{ messag
   }
 
   try {
-    console.log('Cancelling reservation:', reservationId); // Debug log
+    console.log('Token presente:', !!token);
+    console.log('Intentando cancelar reserva:', reservationId);
     const response = await fetch(`${API_BASE_URL}/api/alquileres/${reservationId}/cancelar/`, {
       method: 'POST',
       headers: {
@@ -90,27 +91,20 @@ export const cancelReservation = async (reservationId: number): Promise<{ messag
       }
     });
 
-    console.log('Cancel response status:', response.status); // Debug log
+    const data = await response.json();
+    console.log('Cancel response:', { status: response.status, data });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Cancel error data:', errorData); // Debug log
-      throw new Error(errorData.error || 'Error al cancelar la reserva');
+      throw new Error(data.error || 'Error al cancelar la reserva');
     }
 
-    const data = await response.json();
-    console.log('Cancel response data:', data); // Debug log
-    
     return {
-      message: data.message,
-      monto_devolucion: data.monto_devolucion,
-      porcentaje_devolucion: data.porcentaje_devolucion
+      message: data.message || 'Reserva cancelada exitosamente',
+      monto_devolucion: Number(data.monto_devolucion) || 0,
+      porcentaje_devolucion: Number(data.porcentaje_devolucion) || 0
     };
   } catch (error) {
     console.error('Error al cancelar la reserva:', error);
-    if (error instanceof Error) {
-      throw new Error(error.message);
-    }
-    throw new Error('Error al cancelar la reserva');
+    throw error instanceof Error ? error : new Error('Error al cancelar la reserva');
   }
 }; 

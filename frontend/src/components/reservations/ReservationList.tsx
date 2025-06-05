@@ -60,13 +60,35 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
 
   const handleCancelReservation = async (reservationId: number) => {
     try {
+      // Verificar si la reserva ya está siendo cancelada
+      if (cancellingId === reservationId) {
+        return;
+      }
+
+      // Verificar si la reserva ya está cancelada
+      const reservation = reservations.find(res => res.id === reservationId);
+      if (!reservation || (typeof reservation.estado === 'object' && reservation.estado.id === 2)) {
+        setError('Esta reserva ya ha sido cancelada');
+        return;
+      }
+
       setCancellingId(reservationId);
       setError(null);
       const result = await cancelReservation(reservationId);
       
-      // Actualizar la lista de reservas
+      // Actualizar el estado de la reserva en lugar de eliminarla
       setReservations(prevReservations => 
-        prevReservations.filter(res => res.id !== reservationId)
+        prevReservations.map(res => 
+          res.id === reservationId 
+            ? { 
+                ...res, 
+                estado: { 
+                  id: 2, // ID para estado "Cancelada"
+                  nombre: 'Cancelada'
+                }
+              }
+            : res
+        )
       );
       
       setCancelSuccess({
@@ -176,9 +198,9 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
               <div>
                 <p className="text-[#a16bb7] text-sm">Estado</p>
                 <p className="text-white font-medium">
-                  {estadoId === 1 ? 'Confirmado' : 
-                   estadoId === 2 ? 'Cancelado' : 
-                   estadoId === 3 ? 'Finalizado' : 
+                  {estadoId === 1 ? 'Confirmada' : 
+                   estadoId === 2 ? 'Cancelada' : 
+                   estadoId === 3 ? 'Finalizada' : 
                    'Estado no disponible'}
                 </p>
               </div>

@@ -3,6 +3,8 @@ import re
 from django.utils import timezone
 from django.db.models import Q
 from django.db.models import Q
+from django.db import transaction
+from decimal import Decimal
 
 from rest_framework import serializers
 from .models import (
@@ -175,36 +177,41 @@ class AlquilerSerializer(serializers.ModelSerializer):
     
     def cancel(self, instance):
         try:
-            # Verificar si el alquiler ya está cancelado o finalizado
-            if instance.estado.id in [2, 3]:  # 2=Cancelado, 3=Finalizado
-                return Response(
-                {'error': 'Solamente se puede cancelar una reserva activa'},
-                status=status.HTTP_400_BAD_REQUEST)
+            with transaction.atomic():
+                # Verificar si el alquiler ya está cancelado o finalizado
+                if instance.estado.id in [2, 3]:  # 2=Cancelado, 3=Finalizado
+                    raise serializers.ValidationError('No se puede cancelar una reserva que ya está cancelada o finalizada')
 
-            # Obtener el estado "Cancelado"
-            estado_cancelado = EstadoAlquiler.objects.get(id=3)
-            
-            # Actualizar el estado del vehículo a "Disponible"
-            vehiculo = instance.vehiculo
-            vehiculo.estado = EstadoVehiculo.objects.get(id=1)
-            vehiculo.save()
-            
-            # Calcular el monto a devolver según la política de cancelación
-            porcentaje_devolucion = vehiculo.politica.porcentaje
-            monto_devolucion = instance.monto_total * (porcentaje_devolucion / 100)
-            
-            # Actualizar el estado del alquiler a "Cancelado"
-            instance.estado = estado_cancelado
-            instance.save()
-            
-            # Agregar el monto de devolución al resultado
-            instance.monto_devolucion = monto_devolucion
-            
-            return instance
-        except Exception:
-            return Response(
-                {'error': 'Solamente se puede cancelar una reserva activa'},
-                status=status.HTTP_400_BAD_REQUEST)
+                # Obtener el estado "Cancelado" (ID 2) para el alquiler
+                estado_cancelado = EstadoAlquiler.objects.get(id=2)
+                
+                # Obtener el estado "Disponible" (ID 1) para el vehículo
+                estado_disponible = EstadoVehiculo.objects.get(id=1)
+                
+                # Calcular el monto a devolver según la política de cancelación
+                vehiculo = instance.vehiculo
+                porcentaje_devolucion = Decimal(str(vehiculo.politica.porcentaje))
+                monto_devolucion = instance.monto_total * (porcentaje_devolucion / Decimal('100'))
+                
+                # Actualizar el estado del alquiler primero
+                instance.estado = estado_cancelado
+                instance.save()
+                
+                # Luego actualizar el estado del vehículo
+                vehiculo.estado = estado_disponible
+                vehiculo.save()
+                
+                return {
+                    'message': 'Reserva cancelada exitosamente',
+                    'monto_devolucion': float(monto_devolucion),
+                    'porcentaje_devolucion': float(porcentaje_devolucion)
+                }
+        except EstadoAlquiler.DoesNotExist:
+            raise serializers.ValidationError('Error al obtener el estado de cancelación')
+        except EstadoVehiculo.DoesNotExist:
+            raise serializers.ValidationError('Error al obtener el estado del vehículo')
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
 
 class AlquilerCreateSerializer(serializers.ModelSerializer):
     class Meta:

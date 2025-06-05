@@ -108,6 +108,35 @@ INSERT INTO puesto (id, nombre) VALUES
 (11, 'Marketing'),
 (12, 'Gerente de Flota');
 
+-- Insertar políticas de cancelación
+INSERT INTO politica_de_cancelacion (id, porcentaje, descripcion, nombre) VALUES
+(1, 100.0, 'Reembolso completo si se cancela con anticipación', '100% de devolución'),
+(2, 20.0, 'Reembolso parcial, se retiene el 80%', '20% de devolución'),
+(3, 0.0, 'No hay reembolso en esta política', 'Sin devolución');
+
+-- Insertar sucursales
+INSERT INTO sucursal (id, nombre, telefono, direccion, ID_Localidad) VALUES
+( 1, 'Sucursal Azul', '0001-4123401', 'Calle Falsa 101', 1),
+( 2, 'Sucursal Bahía Blanca', '0002-4123402', 'Calle Falsa 102', 2),
+( 3, 'Sucursal Balcarce', '0003-4123403', 'Calle Falsa 103', 3),
+( 4, 'Sucursal Campana', '0004-4123404', 'Calle Falsa 104', 4),
+( 5, 'Sucursal Chivilcoy', '0005-4123405', 'Calle Falsa 105', 5),
+( 6, 'Sucursal Junín', '0006-4123406', 'Calle Falsa 106', 6),
+( 7, 'Sucursal La Plata', '0007-4123407', 'Calle Falsa 107', 7),
+( 8, 'Sucursal Luján', '0008-4123408', 'Calle Falsa 108', 8),
+( 9, 'Sucursal Mar del Plata', '0009-4123409', 'Calle Falsa 109', 9),
+(10, 'Sucursal Mercedes', '0010-4123410', 'Calle Falsa 110', 10),
+(11, 'Sucursal Necochea', '0011-4123411', 'Calle Falsa 111', 11),
+(12, 'Sucursal Olavarría', '0012-4123412', 'Calle Falsa 112', 12),
+(13, 'Sucursal Pergamino', '0013-4123413', 'Calle Falsa 113', 13),
+(14, 'Sucursal Pinamar', '0014-4123414', 'Calle Falsa 114', 14),
+(15, 'Sucursal San Nicolás', '0015-4123415', 'Calle Falsa 115', 15),
+(16, 'Sucursal San Pedro', '0016-4123416', 'Calle Falsa 116', 16),
+(17, 'Sucursal Tandil', '0017-4123417', 'Calle Falsa 117', 17),
+(18, 'Sucursal Tres Arroyos', '0018-4123418', 'Calle Falsa 118', 18),
+(19, 'Sucursal Villa Gesell', '0019-4123419', 'Calle Falsa 119', 19),
+(20, 'Sucursal Zárate', '0020-4123420', 'Calle Falsa 120', 20);
+
 -- Insertar usuarios administradores
 INSERT INTO usuario (id, password, last_login, is_superuser, username, is_staff, is_active, date_joined, email, apellido, nombre, telefono, fecha_nacimiento, localidad_id, puesto, is_locked, last_login_attempt, login_attempts, admin_code_attempts, last_admin_code_attempt, rol_id) VALUES
 (1,'pbkdf2_sha256$1000000$fUojEFfMIWLECy0ZI4BkZQ$/iLZwyGjTM63inU+fJYoAjnMTiPKo7xhH3UlWOiW3Qw=',NULL,0,'admin1@admin.com',0,1,'2025-05-27 23:37:09.764813','admin1@admin.com','Mario','admin1','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,3),
