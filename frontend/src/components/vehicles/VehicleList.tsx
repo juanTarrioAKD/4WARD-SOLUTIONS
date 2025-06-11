@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getVehicles, Vehicle } from '@/services/vehicles';
+import { getAllVehiculos, Vehiculo } from '@/services/vehiculos';
 
 export default function VehicleList() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<Vehiculo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +13,7 @@ export default function VehicleList() {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await getVehicles();
+        const data = await getAllVehiculos();
         setVehicles(data);
       } catch (error) {
         setError('Error al cargar los vehículos');
@@ -60,9 +60,9 @@ export default function VehicleList() {
           <div className="space-y-4">
             <div>
               <h3 className="text-xl font-semibold text-white">
-                {vehicle.marca.nombre} {vehicle.modelo}
+                {vehicle.marca?.nombre} {vehicle.modelo?.nombre}
               </h3>
-              <p className="text-[#a16bb7]">Año: {vehicle.año}</p>
+              <p className="text-[#a16bb7]">Año: {vehicle.año_fabricacion}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -72,21 +72,20 @@ export default function VehicleList() {
               </div>
               <div>
                 <p className="text-[#a16bb7] text-sm">Categoría</p>
-                <p className="text-white">{vehicle.categoria.nombre}</p>
+                <p className="text-white">{vehicle.categoria?.nombre}</p>
               </div>
               <div>
                 <p className="text-[#a16bb7] text-sm">Estado</p>
-                <p className="text-white">{vehicle.estado.nombre}</p>
+                <p className="text-white">{vehicle.estado?.nombre}</p>
               </div>
               <div>
                 <p className="text-[#a16bb7] text-sm">Sucursal</p>
-                <p className="text-white">{vehicle.sucursal.nombre}</p>
+                <p className="text-white">{vehicle.sucursal?.nombre}</p>
               </div>
-            </div>
-
-            <div>
-              <p className="text-[#a16bb7] text-sm">Política</p>
-              <p className="text-white">{vehicle.politica.nombre}</p>
+              <div>
+                <p className="text-[#a16bb7] text-sm">Capacidad</p>
+                <p className="text-white">{vehicle.capacidad}</p>
+              </div>
             </div>
           </div>
         </div>

@@ -100,7 +100,7 @@ class Alquiler(models.Model):
             raise ValueError("No se puede cancelar una reserva que ya está cancelada o finalizada")
             
         # Obtener el estado "Cancelado"
-        estado_cancelado = EstadoAlquiler.objects.get(id=3)
+        estado_cancelado = EstadoAlquiler.objects.get(id=2)
         
         # Actualizar el estado del alquiler
         self.estado = estado_cancelado
@@ -198,7 +198,7 @@ class Vehiculo(models.Model):
         return not reservas_solapadas
 
 class Foto(models.Model):
-    vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, db_column='ID_Vehi')
+    vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, db_column='IDVehi')
     imagen = models.ImageField(upload_to='vehiculos/')
 
     class Meta:
@@ -207,29 +207,30 @@ class Foto(models.Model):
 class Publicacion(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    imagen = models.ImageField(upload_to='publicaciones/', null=True, blank=True)
 
     class Meta:
         db_table = 'publicacion'
 
 class Calificacion(models.Model):
     puntaje = models.IntegerField()
-    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='ID_Publi')
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='ID_Usuario')
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='IDPubli')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='IDUsuario')
 
     class Meta:
         db_table = 'calificacion'
 
 class Pregunta(models.Model):
-    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='ID_Publi')
+    publicacion = models.ForeignKey(Publicacion, on_delete=models.CASCADE, db_column='IDPubli')
     comentario = models.TextField()
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='ID_Usuario')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, db_column='IDUsuario')
 
     class Meta:
         db_table = 'pregunta'
 
 class Respuesta(models.Model):
     comentario = models.TextField()
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, blank=True, db_column='ID_Usuario')
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, null=True, blank=True, db_column='IDUsuario')
 
     class Meta:
         db_table = 'respuesta' 

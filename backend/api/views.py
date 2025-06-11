@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -39,7 +40,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['register', 'login', 'logout']:
             return [AllowAny()]
-        elif self.action in ['modificar', 'baja', 'perfil']:
+        elif self.action in ['modificar', 'baja', 'perfil', 'mis_alquileres']:
             return [IsAuthenticated()]
         return [IsAdmin()]
 
@@ -86,7 +87,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
         usuario = self.get_object()
-        if request.user.rol not in ['admin', 'empleado']:
+        if request.user.rol.id not in [2, 3]:  # 2: empleado, 3: admin
             return Response({'error': 'No tienes permiso para dar de baja usuarios'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -95,7 +96,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['put'])
     def cambiar_rol(self, request, pk=None):
-        if request.user.rol != 'admin':
+        if request.user.rol.id != 3:  # 3: admin
             return Response({'error': 'Solo los administradores pueden cambiar roles'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -104,7 +105,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         nuevo_puesto = request.data.get('puesto')
         nueva_localidad = request.data.get('localidad')
 
-        if nuevo_rol not in ['cliente', 'empleado', 'admin']:
+        if nuevo_rol not in [1, 2, 3]:  # 1: cliente, 2: empleado, 3: admin
             return Response({'error': 'Rol inválido'}, status=status.HTTP_400_BAD_REQUEST)
 
         usuario.rol = nuevo_rol
@@ -140,17 +141,21 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     'error': 'Cuenta bloqueada. Por favor, use la clave de recuperación "123456789" para desbloquear su cuenta.'
                 }, status=status.HTTP_403_FORBIDDEN)
 
-            user = authenticate(request, email=email, password=password)
+            authenticated_user = authenticate(request, email=email, password=password)
             
-            if user is None:
-                user = Usuario.objects.get(email=email)
+            if authenticated_user is None:
+                # Incrementar contador de intentos fallidos
                 user.increment_login_attempts()
+                if user.is_locked:
+                    return Response({
+                        'error': 'Demasiados intentos fallidos. La cuenta ha sido bloqueada.'
+                    }, status=status.HTTP_403_FORBIDDEN)
                 return Response({
                     'error': 'Credenciales inválidas'
                 }, status=status.HTTP_401_UNAUTHORIZED)
 
             # Verificar si es administrador
-            if user.rol and user.rol.id == 3:
+            if authenticated_user.rol and authenticated_user.rol.id == 3:
                 # Si es admin y no se proporcionó código, pedir código
                 if not codigo_admin:
                     return Response({
@@ -160,8 +165,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 
                 # Si es admin y se proporcionó código, verificar
                 if codigo_admin != "12345":
-                    user.increment_admin_code_attempts()
-                    if user.admin_code_attempts >= 3:
+                    authenticated_user.increment_admin_code_attempts()
+                    if authenticated_user.admin_code_attempts >= 3:
                         return Response({
                             'error': 'La clave ingresada es incorrecta. Se ha bloqueado la cuenta y se ha enviado un email al correo asociado'
                         }, status=status.HTTP_403_FORBIDDEN)
@@ -170,31 +175,32 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                     }, status=status.HTTP_401_UNAUTHORIZED)
 
             # Si llegamos aquí, el login es válido
-            refresh = RefreshToken.for_user(user)
-            user.reset_login_attempts()
-            
-            # Obtener el nombre del rol
-            rol_nombre = user.rol.nombre if user.rol else 'cliente'
+            refresh = RefreshToken.for_user(authenticated_user)
+            authenticated_user.reset_login_attempts()
             
             return Response({
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
                 'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'nombre': user.nombre,
-                    'apellido': user.apellido,
-                    'telefono': user.telefono,
-                    'fecha_nacimiento': user.fecha_nacimiento,
-                    'rol': rol_nombre,
-                    'puesto': user.puesto,
-                    'localidad': user.localidad.id if user.localidad else None
+                    'id': authenticated_user.id,
+                    'email': authenticated_user.email,
+                    'nombre': authenticated_user.nombre,
+                    'apellido': authenticated_user.apellido,
+                    'telefono': authenticated_user.telefono,
+                    'fecha_nacimiento': authenticated_user.fecha_nacimiento,
+                    'rol': authenticated_user.rol.id if authenticated_user.rol else 1,  # 1 es cliente por defecto
+                    'puesto': authenticated_user.puesto,
+                    'localidad': authenticated_user.localidad.id if authenticated_user.localidad else None
                 }
             })
         except Usuario.DoesNotExist:
             return Response({
                 'error': 'Credenciales inválidas'
             }, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({
+                'error': 'Error al procesar la solicitud'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
@@ -236,8 +242,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             
             alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
             if not alquileres:
-                return Response({'error': 'No hay alquileres asociados al usuario'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'No hay alquileres asociados al usuario'},) 
+                              #status=status.HTTP_404_NOT_FOUND)
             serializer = AlquilerSerializer(alquileres, many=True)
             return Response({
                 'alquileres': serializer.data,
@@ -253,7 +259,6 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 class VehiculoViewSet(viewsets.ModelViewSet):
     queryset = Vehiculo.objects.all()
     serializer_class = VehiculoSerializer
-    permission_classes = [AllowAny]  # Permitir acceso público para listar vehículos
 
     def get_permissions(self):
         if self.action in ['list', 'modelos_disponibles']:
@@ -276,13 +281,47 @@ class VehiculoViewSet(viewsets.ModelViewSet):
         return response
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
-            if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
-                return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        try:
+            # Obtener la categoría
+            categoria_id = data.get('categoria')
+            if not categoria_id:
+                return Response({'error': 'La categoría es requerida'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Obtener la política y capacidad según la categoría
+            categoria = Categoria.objects.get(id=categoria_id)
+            
+            # Asignar la política según la categoría
+            if categoria.id == 1:  # Apto discapacitados
+                data['politica'] = 1  # 100% devolución
+                data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+            elif categoria.id == 2:  # Chico
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 4  # Capacidad para autos chicos
+            elif categoria.id == 3:  # Deportivo
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 2  # Capacidad típica de deportivos
+            elif categoria.id == 4:  # Mediano
+                data['politica'] = 2  # 20% devolución
+                data['capacidad'] = 5  # Capacidad estándar
+            elif categoria.id == 5:  # SUV
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 7  # Capacidad típica de SUV
+            else:  # Van (id = 6)
+                data['politica'] = 3  # Sin devolución
+                data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(data=data)
+            if serializer.is_valid():
+                if Vehiculo.objects.filter(patente=serializer.validated_data['patente']).exists():
+                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -293,15 +332,45 @@ class VehiculoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
         vehiculo = self.get_object()
-        serializer = VehiculoCreateSerializer(vehiculo, data=request.data, partial=True)
-        if serializer.is_valid():
-            # Verificar si la patente ya existe (solo si se está modificando la patente)
-            if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
-                if Vehiculo.objects.filter(patente=request.data['patente']).exists():
-                    return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
-            vehiculo = serializer.save()
-            return Response(VehiculoSerializer(vehiculo).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = request.data.copy()
+        
+        try:
+            # Si se está cambiando la categoría, actualizar la política y capacidad
+            if 'categoria' in data:
+                categoria = Categoria.objects.get(id=data['categoria'])
+                # Asignar la política y capacidad según la categoría
+                if categoria.id == 1:  # Apto discapacitados
+                    data['politica'] = 1  # 100% devolución
+                    data['capacidad'] = 5  # Capacidad estándar para vehículos adaptados
+                elif categoria.id == 2:  # Chico
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 4  # Capacidad para autos chicos
+                elif categoria.id == 3:  # Deportivo
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 2  # Capacidad típica de deportivos
+                elif categoria.id == 4:  # Mediano
+                    data['politica'] = 2  # 20% devolución
+                    data['capacidad'] = 5  # Capacidad estándar
+                elif categoria.id == 5:  # SUV
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 7  # Capacidad típica de SUV
+                else:  # Van (id = 6)
+                    data['politica'] = 3  # Sin devolución
+                    data['capacidad'] = 9  # Capacidad máxima para vans
+
+            serializer = VehiculoCreateSerializer(vehiculo, data=data, partial=True)
+            if serializer.is_valid():
+                # Verificar si la patente ya existe (solo si se está modificando la patente)
+                if 'patente' in request.data and request.data['patente'] != vehiculo.patente:
+                    if Vehiculo.objects.filter(patente=request.data['patente']).exists():
+                        return Response({'error': 'La patente ya está registrada'}, status=status.HTTP_400_BAD_REQUEST)
+                vehiculo = serializer.save()
+                return Response(VehiculoSerializer(vehiculo).data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Categoria.DoesNotExist:
+            return Response({'error': 'La categoría especificada no existe'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def buscar_por_patente(self, request):
@@ -424,10 +493,10 @@ class PublicacionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'list':
             return [AllowAny()]
-        return [IsAuthenticated()]
+        return [IsAdmin()]
 
     def get_queryset(self):
-        return Publicacion.objects.all()
+        return Publicacion.objects.all().select_related('categoria')
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -444,27 +513,21 @@ class PublicacionViewSet(viewsets.ModelViewSet):
                     'error': 'Ya existe una publicación activa para esta categoría'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            serializer.save()
+            publicacion = serializer.save()
+            # Recargar la publicación con todos los datos de la categoría
+            publicacion = Publicacion.objects.select_related('categoria').get(id=publicacion.id)
             return Response({
-                'message': 'Alta de publicacion exitosa',
-                'data': serializer.data
+                'message': 'Alta de publicación exitosa',
+                'data': PublicacionSerializer(publicacion).data
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=True, methods=['put', 'patch'])
-    def modificar(self, request, pk=None):
-        publicacion = self.get_object()
-        serializer = PublicacionSerializer(publicacion, data=request.data, partial=True)
-        if serializer.is_valid():
-            publicacion = serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['delete'])
-    def baja(self, request, pk=None):
+    def destroy(self, request, *args, **kwargs):
         publicacion = self.get_object()
         publicacion.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'message': 'Publicación dada de baja exitosamente'
+        }, status=status.HTTP_200_OK)
 
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
@@ -510,7 +573,11 @@ class EstadoVehiculoViewSet(viewsets.ModelViewSet):
 class CategoriaViewSet(viewsets.ModelViewSet):
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAdmin()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -577,7 +644,7 @@ class CalificacionViewSet(viewsets.ModelViewSet):
 class ModeloViewSet(viewsets.ModelViewSet):
     queryset = Modelo.objects.all()
     serializer_class = ModeloSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]  # Permitir acceso público
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):
@@ -632,9 +699,9 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         pregunta.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['put'])
+    @action(detail=True, methods=['post'])
     def responder(self, request, pk=None):
-        if request.user.rol not in ['admin', 'empleado']:
+        if request.user.rol.id not in [2, 3]:  # 2: empleado, 3: admin
             return Response({'error': 'Solo empleados y administradores pueden responder preguntas'}, 
                           status=status.HTTP_403_FORBIDDEN)
         
@@ -673,6 +740,17 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         try:
             fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
             fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
+
+            # Validar que la fecha de inicio sea futura
+            ahora = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            fecha_inicio_sin_hora = fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+            
+            if fecha_inicio_sin_hora < ahora:
+                return Response(
+                    {"error": "La fecha de inicio debe ser futura"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             dias = (fecha_fin - fecha_inicio).days
         except ValueError as e:
             return Response(
@@ -719,10 +797,12 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(data=alquiler_data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        alquiler = serializer.save()
 
+        # Usar el AlquilerSerializer para la respuesta
+        response_serializer = AlquilerSerializer(alquiler)
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     @action(detail=False, methods=['get'], url_path='mis-alquileres')
     def mis_alquileres(self, request):
@@ -771,26 +851,39 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             # Verificar que el usuario sea el cliente dueño del alquiler
             if request.user != alquiler.cliente:
                 return Response(
-                    {'error': 'Los datos ingresados son incorrectos'},
+                    {'error': 'No tienes permiso para cancelar esta reserva'},
                     status=status.HTTP_403_FORBIDDEN
                 )
             
             serializer = self.get_serializer(alquiler)
             alquiler = serializer.cancel(alquiler)
             
+            # Obtener los datos serializados
+            serialized_data = serializer.data
+            
+            # Calcular el monto de devolución basado en la política
+            try:
+                monto_total = float(serialized_data.get('monto_total', 0))
+                porcentaje_devolucion = float(serialized_data.get('vehiculo', {}).get('politica', {}).get('porcentaje', 0))
+                monto_devolucion = (monto_total * porcentaje_devolucion) / 100
+            except (ValueError, AttributeError) as e:
+                return Response(
+                    {'error': f'Error al calcular el monto de devolución: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
             return Response({
                 'message': 'Alquiler cancelado exitosamente',
-                'alquiler': serializer.data,
-                'monto_devolucion': float(alquiler.monto_devolucion),
-                'porcentaje_devolucion': float(alquiler.vehiculo.politica.porcentaje)
+                'alquiler': serialized_data,
+                'monto_devolucion': monto_devolucion,
+                'porcentaje_devolucion': porcentaje_devolucion
             }, status=status.HTTP_200_OK)
             
-        except serializers.ValidationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
-                {'error': 'Los datos ingresados son incorrectos'},
-                status=status.HTTP_400_BAD_REQUEST)
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
@@ -819,4 +912,33 @@ class EstadisticasViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def mas_alquilado(self, request):
         # Implementar lógica para obtener el vehículo más alquilado
-        pass 
+        pass
+
+def searchAvailableCategories(request):
+    """
+    Busca las categorías que tienen vehículos disponibles.
+    """
+    try:
+        # Obtener todas las categorías que tienen al menos un vehículo disponible
+        categorias_disponibles = Categoria.objects.filter(
+            vehiculo__estado__id=1  # estado disponible
+        ).distinct()
+
+        if not categorias_disponibles.exists():
+            return Response(
+                {"error": "No hay categorías con vehículos disponibles"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Serializar las categorías
+        serializer = CategoriaSerializer(categorias_disponibles, many=True)
+        
+        return Response({
+            "categorias": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"error": f"Error al buscar categorías disponibles: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        ) 

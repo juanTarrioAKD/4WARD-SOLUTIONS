@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { loginUser } from '@/services/auth';
+import { login } from '@/services/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LoginFormProps {
   onClose: () => void;
@@ -10,12 +11,15 @@ interface LoginFormProps {
 export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [adminCode, setAdminCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [requireAdminCode, setRequireAdminCode] = useState(false);
+  const { login: authLogin } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(null);
     setIsLoading(true);
 
     // Validación de campos vacíos
@@ -34,18 +38,21 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
     }
 
     try {
-      const user = await loginUser(email, password);
-      if (user) {
-        onLoginSuccess();
-        onClose();
-      } else {
-        setError('Credenciales inválidas');
+      const response = await login(email, password, requireAdminCode ? adminCode : undefined);
+
+      // Verificar si necesitamos código de administrador
+      if ('require_admin_code' in response) {
+        setRequireAdminCode(true);
+        setError(response.error);
+        return;
       }
-    } catch (error: any) {
-      // Mostrar el mensaje de error específico del backend
-      setError(error.message || 'Hubo un error al intentar iniciar sesión');
-      // Limpiar el campo de contraseña por seguridad
-      setPassword('');
+
+      // Si el login fue exitoso
+      authLogin(response);
+      onLoginSuccess();
+      onClose();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +68,9 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
       {/* Formulario */}
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#2d1830] p-8 rounded-xl shadow-lg z-50 w-96">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-white text-xl font-semibold">Iniciar Sesión</h2>
+          <h2 className="text-white text-xl font-semibold">
+            {requireAdminCode ? 'Ingreso Administrador' : 'Iniciar Sesión'}
+          </h2>
           <button 
             onClick={onClose}
             className="text-white hover:text-[#e94b5a] transition-colors"
@@ -72,7 +81,8 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
             </svg>
           </button>
         </div>
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Contenedor del mensaje de error - Se muestra solo cuando hay un error */}
           {error && (
             <div className="bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] px-4 py-3 rounded-md text-sm">
@@ -87,7 +97,8 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
+              disabled={isLoading || requireAdminCode}
+              required
             />
           </div>
           <div>
@@ -98,27 +109,36 @@ export default function LoginForm({ onClose, onLoginSuccess }: LoginFormProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
-              disabled={isLoading}
+              disabled={isLoading || requireAdminCode}
+              required
             />
           </div>
-          <div className="flex flex-col gap-4">
-            <button
-              type="submit"
-              className={`w-full bg-[#e94b5a] text-white py-2 rounded-md font-semibold hover:bg-[#b13e4a] transition-colors ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Iniciando sesión...' : 'Ingresar'}
-            </button>
-            <button
-              type="button"
-              className="text-white text-sm hover:text-[#e94b5a] transition-colors"
-              disabled={isLoading}
-            >
-              Olvidé mi contraseña
-            </button>
-          </div>
+
+          {requireAdminCode && (
+            <div>
+              <label htmlFor="adminCode" className="block text-white mb-2">Código de Administrador:</label>
+              <input
+                type="text"
+                id="adminCode"
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                disabled={isLoading}
+                required
+                autoFocus
+              />
+            </div>
+          )}
+          
+          <button
+            type="submit"
+            className={`w-full bg-[#e94b5a] text-white py-2 rounded-md font-semibold hover:bg-[#b13e4a] transition-colors ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Iniciando sesión...' : requireAdminCode ? 'Verificar Código' : 'Ingresar'}
+          </button>
         </form>
       </div>
     </>

@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* React DatePicker Styles */
+@import 'react-datepicker/dist/react-datepicker.css';
+
+/* Custom DatePicker Styles */
+.react-datepicker {
+  @apply bg-[#2d1830] border-[#a16bb7] rounded-lg shadow-xl;
+}
+
+.react-datepicker__header {
+  @apply bg-[#3d2342] border-[#a16bb7] rounded-t-lg;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  @apply text-white;
+}
+
+.react-datepicker__day {
+  @apply text-white hover:bg-[#e94b5a] rounded-full;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-[#e94b5a] text-white rounded-full;
+}
+
+.react-datepicker__day--disabled {
+  @apply text-gray-500 hover:bg-transparent cursor-not-allowed;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-[#a16bb7];
+}
+
+.react-datepicker__triangle {
+  display: none;
+} 
