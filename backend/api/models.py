@@ -100,7 +100,7 @@ class Alquiler(models.Model):
             raise ValueError("No se puede cancelar una reserva que ya está cancelada o finalizada")
             
         # Obtener el estado "Cancelado"
-        estado_cancelado = EstadoAlquiler.objects.get(id=3)
+        estado_cancelado = EstadoAlquiler.objects.get(id=2)
         
         # Actualizar el estado del alquiler
         self.estado = estado_cancelado

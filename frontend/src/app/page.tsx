@@ -329,20 +329,6 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <div className="flex justify-center">
-                  <button 
-                    className="inline-flex bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
-                    onClick={() => {
-                      if (userState.isAuthenticated) {
-                        router.push('/buscar-categorias');
-                      } else {
-                        setShowLoginForm(true);
-                      }
-                    }}
-                  >
-                    Reservar Ahora
-                  </button>
-                </div>
                 <div className="mt-12">
                   <CategoryList setShowLoginForm={setShowLoginForm} />
                 </div>

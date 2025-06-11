@@ -163,7 +163,12 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
       )}
       
       {reservations.map((reservation) => {
-        const estadoId = typeof reservation.estado === 'string' ? getEstadoId(reservation.estado) : null;
+        //const estadoId = typeof reservation.estado === 'string' ? getEstadoId(reservation.estado) : null;
+        const estadoId = typeof reservation.estado === 'object' 
+          ? reservation.estado.id 
+          : typeof reservation.estado === 'string' 
+            ? getEstadoId(reservation.estado) 
+            : null;
         return (
           <div 
             key={reservation.id}

@@ -140,9 +140,11 @@ INSERT INTO sucursal (id, nombre, telefono, direccion, ID_Localidad) VALUES
 -- Insertar usuarios administradores
 INSERT INTO usuario (id, password, last_login, is_superuser, username, is_staff, is_active, date_joined, email, apellido, nombre, telefono, fecha_nacimiento, localidad_id, puesto, is_locked, last_login_attempt, login_attempts, admin_code_attempts, last_admin_code_attempt, rol_id) VALUES
 (1,'pbkdf2_sha256$1000000$fUojEFfMIWLECy0ZI4BkZQ$/iLZwyGjTM63inU+fJYoAjnMTiPKo7xhH3UlWOiW3Qw=',NULL,0,'admin1@admin.com',0,1,'2025-05-27 23:37:09.764813','admin1@admin.com','Mario','admin1','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,3),
-(2,'pbkdf2_sha256$1000000$UxmxRUK6skmABWvs8PFeiP$5mm+QofQ9g0O8JorrxunclY/zeJc4ApdoDqCuoCNkyk=',NULL,0,'admin2@admin.com',0,1,'2025-05-27 23:38:56.046102','admin2@admin.com','Maria','admin2','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,3);
+(2,'pbkdf2_sha256$1000000$UxmxRUK6skmABWvs8PFeiP$5mm+QofQ9g0O8JorrxunclY/zeJc4ApdoDqCuoCNkyk=',NULL,0,'admin2@admin.com',0,1,'2025-05-27 23:38:56.046102','admin2@admin.com','Maria','admin2','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,3),
+(3,'pbkdf2_sha256$1000000$vrk3Nq759WLs0862x5w8sJ$0trW08KVfAGieBlyP6x4NA5DHpxwekJgpUbJqpIhHyY=',NULL,0,'cliente1@cliente.com',0,1,'2025-05-27 23:38:56.046102','cliente1@cliente.com','Dante','Puddu','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,1),
+(4,'pbkdf2_sha256$1000000$xpckn9Wlata5cF4QHOJKDU$tGvP1qoJa16L06qQOWir9oJzXN5YoiPve6tc/4IUlFg=',NULL,0,'empleado1@empleado.com',0,1,'2025-05-27 23:38:56.046102','empleado1@empleado.com','Empleado','Emple','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,2);
 
--- Insertar vehículos
+/*-- Insertar vehículos
 INSERT INTO vehiculo (patente, capacidad, año_fabricacion, ID_Cate, ID_EstVehi, ID_Marca, ID_Politica, ID_Sucursal, ID_Modelo) VALUES
 ('AB444BI', 5, 2019, 4, 1, 2, 2, 11, 21),
 ('AC753CF', 5, 2019, 6, 1, 4, 2, 19, 13),
@@ -293,4 +295,4 @@ INSERT INTO vehiculo (patente, capacidad, año_fabricacion, ID_Cate, ID_EstVehi,
 ('AE742OI', 5, 2015, 3, 1, 3, 2, 4, 10),
 ('AE881AL', 5, 2023, 2, 1, 8, 2, 11, 4),
 ('AG926EV', 5, 2021, 5, 1, 5, 2, 19, 2),
-('AC226VV', 5, 2018, 4, 1, 2, 3, 11, 21); 
+('AC226VV', 5, 2018, 4, 1, 2, 3, 11, 21); */

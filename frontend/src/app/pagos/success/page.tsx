@@ -107,13 +107,12 @@ export default function PaymentSuccessPage() {
             <Box
               sx={{
                 display: 'flex', 
-                gap: 2, 
-                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'center',
                 width: '100%',
                 mt: 2
               }}
             >
-              <Link href="/mis-alquileres" passHref style={{ width: '100%' }}>
+              <Link href="/mis-reservas" passHref style={{ width: '100%', maxWidth: '300px' }}>
                 <Button 
                   variant="contained" 
                   fullWidth
@@ -126,24 +125,6 @@ export default function PaymentSuccessPage() {
                   }}
                 >
                   Ver Mis Alquileres
-                </Button>
-              </Link>
-              
-              <Link href="/reservar" passHref style={{ width: '100%' }}>
-                <Button 
-                  variant="outlined"
-                  fullWidth
-                  sx={{
-                    borderColor: '#a16bb7',
-                    color: '#a16bb7',
-                    '&:hover': {
-                      borderColor: '#3d2342',
-                      backgroundColor: 'rgba(161, 107, 183, 0.04)'
-                    },
-                    py: 1.5
-                  }}
-                >
-                  Nueva Reserva
                 </Button>
               </Link>
             </Box>
