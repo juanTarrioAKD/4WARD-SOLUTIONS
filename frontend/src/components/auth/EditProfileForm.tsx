@@ -34,7 +34,8 @@ export default function EditProfileForm({ onClose, onUpdateSuccess, initialData 
 
   // Validación del número de teléfono
   const isValidPhoneNumber = (phone: string): boolean => {
-    const phoneRegex = /^(\+?54\s?9\s?)?[0-9]{10}$/;
+    //const phoneRegex = /^(\+?54\s?9\s?)?[0-9]{10}$/;
+    const phoneRegex = /^(\s?9\s?)?[0-9]{10}$/;
     return phoneRegex.test(phone.replace(/[-\s]/g, ''));
   };
 
@@ -52,7 +53,7 @@ export default function EditProfileForm({ onClose, onUpdateSuccess, initialData 
 
     // Validación del número de teléfono
     if (!isValidPhoneNumber(formData.phoneNumber)) {
-      setError('El número de teléfono no es válido. Debe ser un número argentino de 10 dígitos');
+      setError('El número de teléfono no es válido. Debe ser un número de 10 dígitos');
       setIsLoading(false);
       return;
     }
