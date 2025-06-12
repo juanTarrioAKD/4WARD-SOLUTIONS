@@ -50,8 +50,22 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = UsuarioSerializer(usuario, data=request.data, partial=True)
         if serializer.is_valid():
             # Si se está cambiando la contraseña
-            if 'contraseña' in request.data:
-                contraseña = request.data['contraseña']
+            if 'nueva_contraseña' in request.data:
+                # Verificar que se proporcionó la contraseña actual
+                if 'contraseña' not in request.data:
+                    return Response(
+                        {'error': 'Debe proporcionar la contraseña actual'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Verificar que la contraseña actual sea correcta
+                if not usuario.check_password(request.data['contraseña']):
+                    return Response(
+                        {'error': 'La contraseña actual es incorrecta'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                contraseña = request.data['nueva_contraseña']
                 # Validar longitud mínima
                 if len(contraseña) < 8:
                     return Response(
@@ -864,7 +878,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             # Calcular el monto de devolución basado en la política
             try:
                 monto_total = float(serialized_data.get('monto_total', 0))
-                porcentaje_devolucion = float(serialized_data.get('vehiculo', {}).get('politica', {}).get('porcentaje', 0))
+                porcentaje_devolucion = float(serialized_data.get('vehiculo', {}).get('politica', {}).get('porcentaje', {}))
                 monto_devolucion = (monto_total * porcentaje_devolucion) / 100
             except (ValueError, AttributeError) as e:
                 return Response(
