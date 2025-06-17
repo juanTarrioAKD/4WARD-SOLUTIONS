@@ -96,6 +96,35 @@ export default function Home() {
             </button>
           </>
         );
+      case 2: // ID del rol empleado
+        return (
+          <>
+            <button 
+              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+              onClick={() => router.push('/empleado/registrar-alquiler')}
+            >
+              Registrar Alquiler
+            </button>
+            <button 
+              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+              onClick={() => router.push('/empleado/vehiculos')}
+            >
+              Gestión de Vehículos
+            </button>
+            <button 
+              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+              onClick={() => router.push('/empleado/usuarios')}
+            >
+              Gestión de Usuarios
+            </button>
+            <button 
+              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
+              onClick={() => router.push('/empleado/reservas')}
+            >
+              Gestión de Reservas
+            </button>
+          </>
+        );
       default:
         return null;
     }
@@ -326,6 +355,28 @@ export default function Home() {
                 >
                   Ver estadísticas
                 </button>
+              </div>
+            ) : userState.role === 2 ? (
+              <div className="flex flex-col gap-4">
+                <button 
+                  className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
+                  onClick={() => router.push('/empleado/reservas')}
+                >
+                  Gestión de Reservas
+                </button>
+                <button 
+                  className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
+                  onClick={() => router.push('/empleado/vehiculos')}
+                >
+                  Gestión de Vehículos
+                </button>
+                <button 
+                  className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors primary-btn"
+                  onClick={() => router.push('/empleado/usuarios')}
+                >
+                  Gestión de Usuarios
+                </button>
+                
               </div>
             ) : (
               <>
