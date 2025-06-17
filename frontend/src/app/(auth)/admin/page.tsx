@@ -56,6 +56,15 @@ export default function AdminDashboard() {
           <h2 className="text-xl font-semibold text-white mb-2">Gestión de Categorías</h2>
           <p className="text-[#a16bb7]">Administrar categorías de vehículos</p>
         </div>
+
+        {/* Tarjeta de Estadísticas */}
+        <div 
+          className="bg-[#2d1830] p-6 rounded-lg shadow-lg cursor-pointer hover:bg-[#3d2342] transition-colors"
+          onClick={() => router.push('/admin/estadisticas')}
+        >
+          <h2 className="text-xl font-semibold text-white mb-2">Ver Estadísticas</h2>
+          <p className="text-[#a16bb7]">Visualizar estadísticas de alquileres y registros</p>
+        </div>
       </div>
     </div>
   );
