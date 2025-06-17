@@ -23,7 +23,7 @@ export default function GestionVehiculos() {
   useEffect(() => {
     const user = getCurrentUser();
     const userRoleId = Number(user?.rol);
-    if (!user || userRoleId !== 3) {
+    if (!user || (userRoleId !== 3 && userRoleId !== 2)) {
       router.push('/');
     }
   }, [router]);

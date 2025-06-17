@@ -43,6 +43,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
       popperClassName="!z-50"
       popperPlacement="bottom-start"
       showPopperArrow={false}
+      onChangeRaw={e => { if (e) e.preventDefault(); }}
     />
   );
 };
