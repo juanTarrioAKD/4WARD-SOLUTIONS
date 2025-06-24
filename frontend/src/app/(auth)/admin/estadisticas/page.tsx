@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 interface DateRange {
   startDate: string;
@@ -30,6 +30,11 @@ interface VehicleStats {
   id: string;
 }
 
+interface RegistroData {
+  fecha: string;
+  registros: number;
+}
+
 export default function Estadisticas() {
   const router = useRouter();
   const [registrosRange, setRegistrosRange] = useState<DateRange>({
@@ -38,6 +43,18 @@ export default function Estadisticas() {
   });
   const [isSearching, setIsSearching] = useState(false);
   const [registrosCount, setRegistrosCount] = useState<number | null>(128);
+  
+  // Datos de ejemplo para el gráfico de registros por fecha
+  const [registrosData, setRegistrosData] = useState<RegistroData[]>([
+    { fecha: '2024-01-01', registros: 15 },
+    { fecha: '2024-01-02', registros: 22 },
+    { fecha: '2024-01-03', registros: 18 },
+    { fecha: '2024-01-04', registros: 35 },
+    { fecha: '2024-01-05', registros: 28 },
+    { fecha: '2024-01-06', registros: 42 },
+    { fecha: '2024-01-07', registros: 31 },
+  ]);
+
   const [topVehicles, setTopVehicles] = useState<VehicleStats[]>([
     { nombre: 'Toyota Corolla', cantidad: 45, id: '1' },
     { nombre: 'Honda Civic', cantidad: 38, id: '2' },
@@ -249,6 +266,52 @@ export default function Estadisticas() {
                   >
                     Ver más
                   </button>
+                </div>
+              </div>
+              
+              {/* Gráfico de área para registros por fecha */}
+              <div className="bg-[#3d2342] p-4 rounded-lg">
+                <h3 className="text-lg font-medium mb-4 text-[#a16bb7]">Evolución de Registros</h3>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={registrosData}
+                      margin={{
+                        top: 10,
+                        right: 30,
+                        left: 0,
+                        bottom: 0,
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#4a3654" />
+                      <XAxis 
+                        dataKey="fecha" 
+                        tick={{ fill: '#a16bb7', dy: 10 }}
+                        axisLine={{ stroke: '#4a3654' }}
+                        padding={{ left: 10, right: 10 }}
+                      />
+                      <YAxis 
+                        tick={{ fill: '#a16bb7' }}
+                        axisLine={{ stroke: '#4a3654' }}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#2d1830',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: '#fff'
+                        }}
+                        cursor={{ fill: 'rgba(161, 107, 183, 0.1)' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="registros" 
+                        stroke="#a16bb7" 
+                        fill="#a16bb7" 
+                        fillOpacity={0.3}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
