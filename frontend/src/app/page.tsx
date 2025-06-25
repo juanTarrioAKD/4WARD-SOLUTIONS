@@ -11,6 +11,8 @@ import DatePicker from '@/components/DatePicker';
 import { getCategories, getAvailableModels, type Category } from '@/services/categories';
 import { getAlquilerById } from '@/services/alquiler';
 import { getAuthToken } from '@/services/auth';
+import 'leaflet/dist/leaflet.css';
+
 
 const CategoryList = dynamic(() => import('@/components/CategoryList'), { ssr: false });
 
