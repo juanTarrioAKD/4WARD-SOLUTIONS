@@ -7,7 +7,7 @@ interface Category {
 
 export const getCategories = async (): Promise<Category[]> => {
   try {
-    const response = await fetch('http://localhost:8000/api/get-categories/', {
+    const response = await fetch('http://localhost:8000/api/categorias/', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

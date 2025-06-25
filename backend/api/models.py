@@ -26,10 +26,6 @@ class Usuario(AbstractUser):
     last_login_attempt = models.DateTimeField(null=True, blank=True)
     last_admin_code_attempt = models.DateTimeField(null=True, blank=True)
 
-    # Eliminamos los campos redundantes
-    first_name = None
-    last_name = None
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nombre', 'apellido', 'telefono', 'fecha_nacimiento']
 
