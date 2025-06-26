@@ -11,7 +11,7 @@ from .models import (
     Alquiler, EstadoAlquiler
 )
 from .serializers import (
-    UsuarioSerializer, UsuarioCreateSerializer,
+    UsuarioSerializer, UsuarioCreateSerializer, UsuarioEmpleadoCreateSerializer,
     VehiculoSerializer, VehiculoCreateSerializer,
     PublicacionSerializer, PublicacionCreateSerializer,
     SucursalSerializer, PoliticaDeCancelacionSerializer,
@@ -25,6 +25,7 @@ from .serializers import (
 from .permissions import *
 from django.utils import timezone
 from datetime import datetime
+from django.db.models import Count, Sum
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -34,6 +35,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
             return UsuarioCreateSerializer
+        elif self.action == 'registrar_cliente':
+            return UsuarioEmpleadoCreateSerializer
         return UsuarioSerializer
 
     def get_permissions(self):
@@ -41,6 +44,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         elif self.action in ['modificar', 'baja', 'perfil']:
             return [IsAuthenticated()]
+        elif self.action == 'registrar_cliente':
+            return [IsEmpleadoOrAdmin()]
         return [IsAdmin()]
 
     @action(detail=False, methods=['put'])
@@ -124,6 +129,36 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
             usuario = serializer.save()
             return Response(UsuarioSerializer(usuario).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='registrar-cliente')
+    def registrar_cliente(self, request):
+        """
+        Endpoint para que empleados y administradores registren clientes con contraseña automática.
+        Solo pueden acceder usuarios con rol 2 (empleado) o 3 (admin).
+        """
+        serializer = UsuarioEmpleadoCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Verificar que el email no esté registrado
+            if Usuario.objects.filter(email=serializer.validated_data['email']).exists():
+                return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Crear el usuario con contraseña automática
+            usuario = serializer.save()
+            
+            # Obtener la contraseña generada del serializer
+            password_generada = serializer.fields['password_generada'].default
+            
+            # Retornar la información del usuario creado junto con la contraseña generada
+            response_data = UsuarioSerializer(usuario).data
+            response_data['password_generada'] = password_generada
+            
+            return Response({
+                'mensaje': 'Usuario registrado exitosamente',
+                'usuario': response_data,
+                'password_generada': password_generada
+            }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
@@ -806,17 +841,79 @@ class EstadoAlquilerViewSet(viewsets.ModelViewSet):
 class EstadisticasViewSet(viewsets.ViewSet):
     permission_classes = [IsAdmin]
 
-    @action(detail=False, methods=['get'])
-    def mejor_calificado(self, request):
-        # Implementar lógica para obtener el vehículo mejor calificado
-        pass
+    @action(detail=False, methods=['post'])
+    def recaudado_por_mes(self, request):
+        # Devuelve el total recaudado entre dos fechas para alquileres finalizados (estado_id=3)
+        from django.db.models import Sum
+        from .models import Alquiler
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        if not fecha_inicio or not fecha_fin:
+            return Response({'error': 'Debe proporcionar fecha_inicio y fecha_fin en el body (JSON)'}, status=400)
+        total = Alquiler.objects.filter(
+            estado_id=3,
+            fecha_inicio__gte=fecha_inicio,
+            fecha_fin__lte=fecha_fin
+        ).aggregate(total_recaudado=Sum('monto_total'))['total_recaudado'] or 0
+        return Response({'total_recaudado': float(total)})
 
     @action(detail=False, methods=['get'])
-    def registros_periodo(self, request):
-        # Implementar lógica para obtener registros en un período
-        pass
+    def clientes_con_mas_alquileres(self, request):
+        # Devuelve los 5 clientes con más cantidad de alquileres junto a la cantidad
+        from django.db.models import Count
+        from .models import Usuario
+        from .serializers import UsuarioSerializer
+        clientes = Usuario.objects.annotate(num_alquileres=Count('alquiler')).order_by('-num_alquileres')[:5]
+        data = [
+            {
+                'cliente': UsuarioSerializer(cliente).data,
+                'cantidad_alquileres': cliente.num_alquileres
+            }
+            for cliente in clientes
+        ]
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def mas_alquilado(self, request):
-        # Implementar lógica para obtener el vehículo más alquilado
-        pass 
+        # Devuelve los 10 vehículos más alquilados junto a la cantidad de veces que se alquiló
+        from django.db.models import Count
+        from .models import Vehiculo
+        from .serializers import VehiculoSerializer
+        vehiculos = Vehiculo.objects.annotate(num_alquileres=Count('alquileres')).order_by('-num_alquileres')[:10]
+        data = [
+            {
+                'vehiculo': VehiculoSerializer(vehiculo).data,
+                'cantidad_alquileres': vehiculo.num_alquileres
+            }
+            for vehiculo in vehiculos
+        ]
+        return Response(data)
+
+def searchAvailableCategories(request):
+    """
+    Busca las categorías que tienen vehículos disponibles.
+    """
+    try:
+        # Obtener todas las categorías que tienen al menos un vehículo disponible
+        categorias_disponibles = Categoria.objects.filter(
+            vehiculo__estado__id=1  # estado disponible
+        ).distinct()
+
+        if not categorias_disponibles.exists():
+            return Response(
+                {"error": "No hay categorías con vehículos disponibles"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Serializar las categorías
+        serializer = CategoriaSerializer(categorias_disponibles, many=True)
+        
+        return Response({
+            "categorias": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response(
+            {"error": f"Error al buscar categorías disponibles: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        ) 

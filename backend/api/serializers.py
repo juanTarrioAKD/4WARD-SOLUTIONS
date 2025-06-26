@@ -1,4 +1,10 @@
 import re
+<<<<<<< Updated upstream
+=======
+import re
+import secrets
+import string
+>>>>>>> Stashed changes
 from django.utils import timezone
 from django.db.models import Q
 
@@ -17,6 +23,31 @@ def validar_contrasena_segura(password):
             raise serializers.ValidationError("La contraseña no cumple con los requisitos de seguridad.")
         if not re.search(r"\d", password):
             raise serializers.ValidationError("La contraseña no cumple con los requisitos de seguridad.")
+
+def generar_contrasena_aleatoria():
+    """Genera una contraseña aleatoria que cumple con los requisitos de seguridad"""
+    # Caracteres disponibles
+    letras_mayusculas = string.ascii_uppercase
+    letras_minusculas = string.ascii_lowercase
+    numeros = string.digits
+    caracteres_especiales = "!@#$%^&*"
+    
+    # Asegurar al menos un carácter de cada tipo
+    contrasena = [
+        secrets.choice(letras_mayusculas),  # Al menos una mayúscula
+        secrets.choice(letras_minusculas),  # Al menos una minúscula
+        secrets.choice(numeros),            # Al menos un número
+        secrets.choice(caracteres_especiales)  # Al menos un carácter especial
+    ]
+    
+    # Completar hasta 12 caracteres con caracteres aleatorios
+    todos_caracteres = letras_mayusculas + letras_minusculas + numeros + caracteres_especiales
+    for _ in range(8):  # 4 ya tenemos + 8 = 12 caracteres
+        contrasena.append(secrets.choice(todos_caracteres))
+    
+    # Mezclar la contraseña
+    secrets.SystemRandom().shuffle(contrasena)
+    return ''.join(contrasena)
 
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,6 +78,36 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
     def validate_password(self, value):
         validar_contrasena_segura(value)
         return value
+
+class UsuarioEmpleadoCreateSerializer(serializers.ModelSerializer):
+    """Serializer para que empleados registren usuarios con contraseña automática"""
+    password_generada = serializers.CharField(read_only=True)
+    username = serializers.CharField(required=False, write_only=True)
+    rol = serializers.PrimaryKeyRelatedField(queryset=Rol.objects.all(), required=False)
+
+    class Meta:
+        model = Usuario
+        fields = ('email', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username', 'password_generada')
+
+    def create(self, validated_data):
+        validated_data.pop('username', None)  # Removemos el username si existe
+        
+        # Si no se envía rol, asignar el rol con ID 1 (cliente)
+        if 'rol' not in validated_data or validated_data['rol'] is None:
+            validated_data['rol'] = Rol.objects.get(pk=1)
+        
+        # Generar contraseña aleatoria
+        password_generada = generar_contrasena_aleatoria()
+        
+        usuario = Usuario(**validated_data)
+        usuario.username = validated_data['email']  # Usamos el email como username
+        usuario.set_password(password_generada)
+        usuario.save()
+        
+        # Agregar la contraseña generada al serializer para mostrarla
+        self.fields['password_generada'].default = password_generada
+        
+        return usuario
 
 class MarcaSerializer(serializers.ModelSerializer):
     class Meta:

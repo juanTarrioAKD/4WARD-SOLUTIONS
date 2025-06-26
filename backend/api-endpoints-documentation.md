@@ -592,3 +592,81 @@ Modify a rental using PUT/PATCH to /api/alquileres/{id}/modificar/
 Delete a rental using DELETE to /api/alquileres/{id}/baja/
 List all rentals using GET to /api/alquileres/
 Get a specific rental using GET to /api/alquileres/{id}/
+
+## Usuarios
+
+### Registrar Cliente (Empleados/Admin)
+**POST** `/api/usuarios/registrar-cliente/`
+
+Permite a empleados (rol 2) y administradores (rol 3) registrar nuevos clientes con contraseña generada automáticamente.
+
+**Headers requeridos:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+    "email": "cliente@ejemplo.com",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "telefono": "123456789",
+    "fecha_nacimiento": "1990-01-01",
+    "rol": 1,
+    "puesto": null,
+    "localidad": 1
+}
+```
+
+**Campos requeridos:**
+- `email`: Email único del cliente
+- `nombre`: Nombre del cliente
+- `apellido`: Apellido del cliente
+- `telefono`: Número de teléfono
+- `fecha_nacimiento`: Fecha de nacimiento (YYYY-MM-DD)
+
+**Campos opcionales:**
+- `rol`: ID del rol (por defecto 1 = cliente)
+- `puesto`: Puesto del empleado (solo para empleados)
+- `localidad`: ID de la localidad
+
+**Respuesta exitosa (201 Created):**
+```json
+{
+    "mensaje": "Usuario registrado exitosamente",
+    "usuario": {
+        "id": 123,
+        "email": "cliente@ejemplo.com",
+        "nombre": "Juan",
+        "apellido": "Pérez",
+        "telefono": "123456789",
+        "fecha_nacimiento": "1990-01-01",
+        "rol": 1,
+        "puesto": null,
+        "localidad": 1
+    },
+    "password_generada": "Kj9#mN2$pL5"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "error": "El email ya está registrado"
+}
+```
+
+**Respuesta de error (403 Forbidden):**
+```json
+{
+    "detail": "No tienes permiso para realizar esta acción"
+}
+```
+
+**Notas importantes:**
+- Solo empleados (rol 2) y administradores (rol 3) pueden usar este endpoint
+- La contraseña se genera automáticamente y cumple con los requisitos de seguridad
+- La contraseña generada se devuelve en la respuesta para que el empleado se la proporcione al cliente
+- El usuario creado tendrá rol de cliente (1) por defecto
