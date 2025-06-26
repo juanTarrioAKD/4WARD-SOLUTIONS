@@ -1,10 +1,6 @@
 import re
-<<<<<<< Updated upstream
-=======
-import re
 import secrets
 import string
->>>>>>> Stashed changes
 from django.utils import timezone
 from django.db.models import Q
 
