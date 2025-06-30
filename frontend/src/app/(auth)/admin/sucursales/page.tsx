@@ -34,6 +34,23 @@ export default function GestionSucursales() {
   const [sucursalesFiltradas, setSucursalesFiltradas] = useState<Sucursal[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [sucursalEliminando, setSucursalEliminando] = useState<Sucursal | null>(null);
+  const [sucursalEditando, setSucursalEditando] = useState<Sucursal | null>(null);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    direccion: '',
+    telefono: '',
+    email: ''
+  });
+  const [newSucursalData, setNewSucursalData] = useState({
+    nombre: '',
+    direccion: '',
+    telefono: '',
+    email: ''
+  });
 
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
@@ -106,25 +123,116 @@ export default function GestionSucursales() {
   };
 
   const handleAgregarSucursal = () => {
-    // TODO: Implementar modal o página para agregar sucursal
-    console.log('Agregar nueva sucursal');
+    setNewSucursalData({
+      nombre: '',
+      direccion: '',
+      telefono: '',
+      email: ''
+    });
+    setShowAddModal(true);
   };
 
-  const handleEditarSucursal = (id: number) => {
-    // TODO: Implementar edición de sucursal
-    console.log('Editar sucursal:', id);
+  const handleEditarSucursal = (sucursal: Sucursal) => {
+    setSucursalEditando(sucursal);
+    setFormData({
+      nombre: sucursal.nombre,
+      direccion: sucursal.direccion,
+      telefono: sucursal.telefono,
+      email: sucursal.email
+    });
+    setShowEditModal(true);
   };
 
-  const handleEliminarSucursal = async (id: number) => {
-    if (confirm('¿Está seguro de que desea eliminar esta sucursal?')) {
-      try {
-        // TODO: Implementar eliminación de sucursal
-        // await fetch(`/api/sucursales/${id}`, { method: 'DELETE' });
-        setSucursales(sucursales.filter(s => s.id !== id));
-      } catch (error) {
-        console.error('Error al eliminar sucursal:', error);
-      }
+  const handleGuardarEdicion = async () => {
+    if (!sucursalEditando) return;
+
+    try {
+      // TODO: Implementar llamada a API para actualizar sucursal
+      // await fetch(`/api/sucursales/${sucursalEditando.id}`, {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(formData)
+      // });
+
+      // Actualizar estado local
+      const sucursalesActualizadas = sucursales.map(sucursal =>
+        sucursal.id === sucursalEditando.id
+          ? { ...sucursal, ...formData }
+          : sucursal
+      );
+      
+      setSucursales(sucursalesActualizadas);
+      setShowEditModal(false);
+      setSucursalEditando(null);
+      setFormData({ nombre: '', direccion: '', telefono: '', email: '' });
+    } catch (error) {
+      console.error('Error al actualizar sucursal:', error);
     }
+  };
+
+  const handleCancelarEdicion = () => {
+    setShowEditModal(false);
+    setSucursalEditando(null);
+    setFormData({ nombre: '', direccion: '', telefono: '', email: '' });
+  };
+
+  const handleGuardarNuevaSucursal = async () => {
+    try {
+      // TODO: Implementar llamada a API para crear sucursal
+      // const response = await fetch('/api/sucursales', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(newSucursalData)
+      // });
+      // const nuevaSucursal = await response.json();
+
+      // Crear nueva sucursal con ID temporal
+      const nuevaSucursal: Sucursal = {
+        id: Math.max(...sucursales.map(s => s.id)) + 1,
+        nombre: newSucursalData.nombre,
+        direccion: newSucursalData.direccion,
+        telefono: newSucursalData.telefono,
+        email: newSucursalData.email,
+        latitud: -34.6037, // Coordenadas por defecto (Buenos Aires)
+        longitud: -58.3816
+      };
+
+      // Agregar a la lista de sucursales
+      setSucursales([...sucursales, nuevaSucursal]);
+      setShowAddModal(false);
+      setNewSucursalData({ nombre: '', direccion: '', telefono: '', email: '' });
+    } catch (error) {
+      console.error('Error al crear sucursal:', error);
+    }
+  };
+
+  const handleCancelarAgregar = () => {
+    setShowAddModal(false);
+    setNewSucursalData({ nombre: '', direccion: '', telefono: '', email: '' });
+  };
+
+  const handleEliminarSucursal = (sucursal: Sucursal) => {
+    setSucursalEliminando(sucursal);
+    setShowDeleteModal(true);
+  };
+
+  const confirmarEliminarSucursal = async () => {
+    if (!sucursalEliminando) return;
+
+    try {
+      // TODO: Implementar eliminación de sucursal
+      // await fetch(`/api/sucursales/${sucursalEliminando.id}`, { method: 'DELETE' });
+      setSucursales(sucursales.filter(s => s.id !== sucursalEliminando.id));
+      setShowDeleteModal(false);
+      setSucursalEliminando(null);
+    } catch (error) {
+      console.error('Error al eliminar sucursal:', error);
+    }
+  };
+
+  const cancelarEliminarSucursal = () => {
+    setShowDeleteModal(false);
+    setSucursalEliminando(null);
   };
 
   if (loading) {
@@ -175,7 +283,7 @@ export default function GestionSucursales() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-8 transition-all duration-300 ${showEditModal || showAddModal || showDeleteModal ? 'filter blur-sm pointer-events-none select-none' : ''}`}>
         {/* Mapa */}
         <div className="bg-[#2d1830] rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">Mapa de Sucursales</h2>
@@ -205,13 +313,13 @@ export default function GestionSucursales() {
                     <h3 className="text-white font-semibold">{sucursal.nombre}</h3>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleEditarSucursal(sucursal.id)}
+                        onClick={() => handleEditarSucursal(sucursal)}
                         className="text-[#a16bb7] hover:text-white text-sm"
                       >
                         Editar
                       </button>
                       <button
-                        onClick={() => handleEliminarSucursal(sucursal.id)}
+                        onClick={() => handleEliminarSucursal(sucursal)}
                         className="text-red-400 hover:text-red-300 text-sm"
                       >
                         Eliminar
@@ -227,6 +335,231 @@ export default function GestionSucursales() {
           )}
         </div>
       </div>
+
+      {/* Modal de Edición */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#2d1830] rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">Editar Sucursal</h2>
+              <button
+                onClick={handleCancelarEdicion}
+                className="text-[#a16bb7] hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleGuardarEdicion(); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.direccion}
+                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.telefono}
+                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={handleCancelarEdicion}
+                  className="flex-1 px-4 py-2 bg-[#3d2342] text-white rounded-lg hover:bg-[#4d2b52] transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#a16bb7] text-white rounded-lg hover:bg-[#8a5a9a] transition-colors"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Agregar Sucursal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#2d1830] rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">Agregar Nueva Sucursal</h2>
+              <button
+                onClick={handleCancelarAgregar}
+                className="text-[#a16bb7] hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleGuardarNuevaSucursal(); }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={newSucursalData.nombre}
+                    onChange={(e) => setNewSucursalData({ ...newSucursalData, nombre: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Dirección
+                  </label>
+                  <input
+                    type="text"
+                    value={newSucursalData.direccion}
+                    onChange={(e) => setNewSucursalData({ ...newSucursalData, direccion: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={newSucursalData.telefono}
+                    onChange={(e) => setNewSucursalData({ ...newSucursalData, telefono: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#a16bb7] text-sm font-medium mb-2">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={newSucursalData.email}
+                    onChange={(e) => setNewSucursalData({ ...newSucursalData, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={handleCancelarAgregar}
+                  className="flex-1 px-4 py-2 bg-[#3d2342] text-white rounded-lg hover:bg-[#4d2b52] transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#a16bb7] text-white rounded-lg hover:bg-[#8a5a9a] transition-colors"
+                >
+                  Agregar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#2d1830] rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-white">Confirmar Eliminación</h2>
+              <button
+                onClick={cancelarEliminarSucursal}
+                className="text-[#a16bb7] hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-white mb-2">
+                ¿Está seguro de que desea eliminar esta sucursal?
+              </p>
+              <p className="text-[#a16bb7] font-semibold text-lg">
+                {sucursalEliminando?.nombre}
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={cancelarEliminarSucursal}
+                className="flex-1 px-4 py-2 bg-[#3d2342] text-white rounded-lg hover:bg-[#4d2b52] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarEliminarSucursal}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
