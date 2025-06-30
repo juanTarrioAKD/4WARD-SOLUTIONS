@@ -12,6 +12,7 @@ import { getCategories, getAvailableModels, type Category } from '@/services/cat
 import { getAlquilerById } from '@/services/alquiler';
 import { getAuthToken } from '@/services/auth';
 import 'leaflet/dist/leaflet.css';
+import EmpleadoGestionVehiculos from '@/components/EmpleadoGestionVehiculos';
 
 
 const CategoryList = dynamic(() => import('@/components/CategoryList'), { ssr: false });
@@ -335,6 +336,18 @@ export default function Home() {
                 className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
               />
               <select
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                disabled
+              >
+                <option value="">Sucursal de retiro </option>
+              </select>
+              <select
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                disabled
+              >
+                <option value="">Sucursal de devolución </option>
+              </select>
+              <select
                 value={reservaCategoria ?? ''}
                 onChange={e => setReservaCategoria(Number(e.target.value) || null)}
                 className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
@@ -586,9 +599,9 @@ export default function Home() {
             ) : userState.role === 2 ? (
               <div className="w-full max-w-7xl px-4 space-y-8">
                 {/* Sección de Gestión de Reservas */}
-                <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg">
+                <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg w-full">
                   <h2 className="text-2xl font-semibold mb-6 text-white">Gestión de Reservas</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
                     <button 
                       className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
                       onClick={() => setShowReservaModal(true)}
@@ -613,18 +626,19 @@ export default function Home() {
                     >
                       Devolución de Vehículo
                     </button>
+                    <button 
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
+                      onClick={() => {/* lógica para cancelar reserva */}}
+                    >
+                      Cancelar Reserva
+                    </button>
                   </div>
                 </div>
 
                 {/* Sección de Gestión de Vehículos */}
                 <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg flex flex-col items-center">
                   <h2 className="text-2xl font-semibold mb-6 text-white">Gestión de Vehículos</h2>
-                  <button
-                    className="w-full md:w-1/2 bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-4 rounded-md transition-colors text-lg"
-                    onClick={() => router.push('/admin/vehiculos')}
-                  >
-                    Gestión de Vehículos
-                  </button>
+                  <EmpleadoGestionVehiculos />
                 </div>
 
                 {/* Sección de Gestión de Usuarios */}
