@@ -433,7 +433,7 @@ INSERT INTO sucursal (id, nombre, telefono, direccion, ID_Localidad) VALUES
 (18, 'Sucursal Tres Arroyos', '0018-4123418', 'Calle Falsa 118', 18),
 (19, 'Sucursal Villa Gesell', '0019-4123419', 'Calle Falsa 119', 19),
 (20, 'Sucursal Zárate', '0020-4123420', 'Calle Falsa 120', 20);
-CREATE TABLE IF NOT EXISTS "alquiler" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "fecha_inicio" datetime NOT NULL, "fecha_fin" datetime NOT NULL, "fecha_reserva" datetime NOT NULL, "monto_total" decimal NOT NULL, "ID_Estado" bigint NOT NULL REFERENCES "estado_alquiler" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Vehiculo" bigint NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED);
+CREATE TABLE IF NOT EXISTS "alquiler" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "fecha_inicio" datetime NOT NULL, "fecha_fin" datetime NOT NULL, "fecha_reserva" datetime NOT NULL, "monto_total" decimal NOT NULL, "ID_Estado" bigint NOT NULL REFERENCES "estado_alquiler" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Vehiculo" bigint NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Sucursal_Devolucion" bigint NULL REFERENCES "sucursal" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "rol" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(20) NOT NULL UNIQUE);
 INSERT INTO rol (id, nombre) VALUES
 (1, 'Cliente'),
