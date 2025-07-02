@@ -971,6 +971,39 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    @action(detail=False, methods=['post'], url_path='cancelar-para-cliente', permission_classes=[IsEmpleado])
+    def cancelar_para_cliente(self, request):
+        """
+        Permite a un empleado cancelar un alquiler para un cliente específico.
+        Requiere: cliente_id, alquiler_id
+        """
+        cliente_id = request.data.get('cliente_id')
+        alquiler_id = request.data.get('alquiler_id')
+        if not cliente_id or not alquiler_id:
+            return Response({"error": "Se requiere especificar el id del cliente y el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el usuario cliente
+        try:
+            cliente = Usuario.objects.get(id=cliente_id)
+        except Usuario.DoesNotExist:
+            return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id, cliente=cliente)
+        except Alquiler.DoesNotExist:
+            return Response({"error": "No existe un alquiler con ese id para el cliente especificado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Cancelar el alquiler
+        try:
+            monto_devolucion = alquiler.cancelar()
+            return Response({
+                'mensaje': 'Reserva cancelada exitosamente por empleado',
+                'monto_devolucion': monto_devolucion
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
