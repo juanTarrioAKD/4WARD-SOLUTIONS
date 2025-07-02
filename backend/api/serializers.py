@@ -243,6 +243,7 @@ class AlquilerSerializer(serializers.ModelSerializer):
 
 class AlquilerCreateSerializer(serializers.ModelSerializer):
     sucursal_devolucion = serializers.PrimaryKeyRelatedField(queryset=Sucursal.objects.all())
+    cliente = serializers.PrimaryKeyRelatedField(queryset=Usuario.objects.all())
 
     class Meta:
         model = Alquiler

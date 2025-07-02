@@ -909,6 +909,68 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             return Response({'error': f'Error al registrar la devolución: {str(e)}'}, 
                           status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['post'], url_path='alquilar-para-cliente', permission_classes=[IsEmpleado])
+    def alquilar_para_cliente(self, request):
+        """
+        Permite a un empleado crear un alquiler para un cliente específico.
+        Requiere: cliente_id, modelo_id, sucursal_devolucion, fecha_inicio, fecha_fin
+        """
+        cliente_id = request.data.get('cliente_id')
+        if not cliente_id:
+            return Response({"error": "Se requiere especificar el id del cliente"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el usuario cliente
+        try:
+            cliente = Usuario.objects.get(id=cliente_id)
+        except Usuario.DoesNotExist:
+            return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Reutilizar la lógica de create, pero usando el cliente especificado
+        modelo_id = request.data.get('modelo_id')
+        if not modelo_id:
+            return Response({"error": "Se requiere especificar el modelo del vehículo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sucursal_devolucion_id = request.data.get('sucursal_devolucion')
+        if not sucursal_devolucion_id:
+            return Response({"error": "Se requiere especificar la sucursal de devolución"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
+            fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
+            dias = (fecha_fin - fecha_inicio).days
+        except Exception as e:
+            return Response({"error": f"Formato de fecha inválido: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        vehiculo_disponible = None
+        vehiculos_modelo = Vehiculo.objects.filter(modelo_id=modelo_id, estado__id=1)
+        for vehiculo in vehiculos_modelo:
+            if vehiculo.esta_disponible(fecha_inicio, fecha_fin):
+                vehiculo_disponible = vehiculo
+                break
+        if not vehiculo_disponible:
+            return Response({"error": "No hay vehículos disponibles del modelo seleccionado para las fechas especificadas"}, status=status.HTTP_400_BAD_REQUEST)
+
+        monto_total = vehiculo_disponible.categoria.precio * dias
+        try:
+            estado_confirmado = EstadoAlquiler.objects.get(id=1)
+        except EstadoAlquiler.DoesNotExist:
+            return Response({"error": "Estado de alquiler no encontrado"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        alquiler_data = {
+            'cliente': cliente.id,
+            'vehiculo': vehiculo_disponible.id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'monto_total': monto_total,
+            'estado': estado_confirmado.id,
+            'sucursal_devolucion': sucursal_devolucion_id
+        }
+        serializer = AlquilerCreateSerializer(data=alquiler_data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
