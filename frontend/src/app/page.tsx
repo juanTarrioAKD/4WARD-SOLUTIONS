@@ -55,6 +55,13 @@ export default function Home() {
   const [retiroError, setRetiroError] = useState<string | null>(null);
   const [retiroLoading, setRetiroLoading] = useState(false);
   const [retiroConfirmado, setRetiroConfirmado] = useState(false);
+  const [showCancelarModal, setShowCancelarModal] = useState(false);
+  const [cancelarEmail, setCancelarEmail] = useState('');
+  const [cancelarReservaId, setCancelarReservaId] = useState('');
+  const [cancelarError, setCancelarError] = useState<string | null>(null);
+  const [cancelarLoading, setCancelarLoading] = useState(false);
+  const [cancelarConfirmado, setCancelarConfirmado] = useState(false);
+  const [showModelosModal, setShowModelosModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -210,10 +217,19 @@ export default function Home() {
     }
     setReservaLoading(true);
     try {
-      const fechaInicioStr = reservaFechaRetiro.toISOString();
-      const fechaFinStr = reservaFechaDevolucion.toISOString();
-      const response = await getAvailableModels(reservaCategoria, fechaInicioStr, fechaFinStr);
-      setReservaModelos(response.modelos_disponibles || []);
+      // Simulación de llamada a backend
+      // const fechaInicioStr = reservaFechaRetiro.toISOString();
+      // const fechaFinStr = reservaFechaDevolucion.toISOString();
+      // const response = await getAvailableModels(reservaCategoria, fechaInicioStr, fechaFinStr);
+      // setReservaModelos(response.modelos_disponibles || []);
+      // Simulación de datos
+      const modelosSimulados = [
+        // Puedes dejar vacío para simular sin resultados
+        // { id: 1, nombre: 'Modelo A', descripcion: 'Auto chico', precio_por_dia: 10000 },
+        // { id: 2, nombre: 'Modelo B', descripcion: 'SUV', precio_por_dia: 20000 },
+      ];
+      setReservaModelos(modelosSimulados);
+      setShowModelosModal(true);
     } catch (e: any) {
       setReservaError(e.message || 'Error al buscar modelos disponibles.');
       setReservaModelos([]);
@@ -246,6 +262,29 @@ export default function Home() {
   const handleConfirmarRetiro = () => {
     // Aquí iría la llamada al backend para confirmar el retiro
     setRetiroConfirmado(true);
+  };
+
+  const handleCancelarReserva = async () => {
+    setCancelarError(null);
+    setCancelarConfirmado(false);
+    if (!cancelarEmail || !cancelarReservaId) {
+      setCancelarError('Completa todos los campos');
+      return;
+    }
+    setCancelarLoading(true);
+    try {
+      // Aquí iría la llamada al backend para cancelar la reserva
+      // Por ahora simulamos la operación
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setCancelarConfirmado(true);
+      setCancelarEmail('');
+      setCancelarReservaId('');
+    } catch (e: unknown) {
+      const error = e as Error;
+      setCancelarError(error.message || 'Error al cancelar la reserva');
+    } finally {
+      setCancelarLoading(false);
+    }
   };
 
   return (
@@ -328,13 +367,24 @@ export default function Home() {
             <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowReservaModal(false)}>&times;</button>
             <h2 className="text-2xl font-bold text-white mb-6">Registrar Reserva</h2>
             <div className="space-y-4">
-              <input
-                type="email"
-                placeholder="Email del usuario"
-                value={reservaEmail}
-                onChange={e => setReservaEmail(e.target.value)}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="Email del usuario"
+                  value={reservaEmail}
+                  onChange={e => setReservaEmail(e.target.value)}
+                  className="flex-1 bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                />
+                <button
+                  className="px-4 py-2 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold whitespace-nowrap"
+                  onClick={() => {
+                    // Aquí iría la lógica para verificar el email
+                    console.log('Verificando email:', reservaEmail);
+                  }}
+                >
+                  Verificar
+                </button>
+              </div>
               <select
                 className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
                 disabled
@@ -439,6 +489,74 @@ export default function Home() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Cancelar Reserva */}
+      {showCancelarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-lg relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowCancelarModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Cancelar Reserva</h2>
+            <div className="space-y-4">
+              <input
+                type="email"
+                placeholder="Email del usuario"
+                value={cancelarEmail}
+                onChange={e => setCancelarEmail(e.target.value)}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                disabled={cancelarConfirmado}
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Número de reserva"
+                value={cancelarReservaId}
+                onChange={e => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                disabled={cancelarConfirmado}
+              />
+              <button
+                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
+                onClick={handleCancelarReserva}
+                disabled={cancelarLoading || cancelarConfirmado}
+              >
+                {cancelarLoading ? 'Cancelando...' : 'Cancelar Reserva'}
+              </button>
+              {cancelarError && <div className="text-[#e94b5a] text-sm">{cancelarError}</div>}
+              {cancelarConfirmado && (
+                <div className="text-green-400 text-center mt-4">
+                  Reserva cancelada exitosamente.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de modelos disponibles */}
+      {showModelosModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-2xl relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowModelosModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Modelos disponibles</h2>
+            {reservaModelos.length === 0 ? (
+              <div className="text-white text-center text-lg">No se encuentran modelos disponibles en el rango de fechas seleccionado</div>
+            ) : (
+              <div className="space-y-4">
+                {reservaModelos.map((modelo: any) => (
+                  <div key={modelo.id} className="bg-[#3d2342] rounded-md p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-white font-semibold text-lg">{modelo.nombre}</p>
+                      <p className="text-[#a16bb7]">{modelo.descripcion}</p>
+                    </div>
+                    <div className="text-white font-bold text-xl mt-2 md:mt-0">${'{modelo.precio_por_dia}'} / día</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -628,7 +746,7 @@ export default function Home() {
                     </button>
                     <button 
                       className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
-                      onClick={() => {/* lógica para cancelar reserva */}}
+                      onClick={() => setShowCancelarModal(true)}
                     >
                       Cancelar Reserva
                     </button>
