@@ -913,15 +913,15 @@ class AlquilerViewSet(viewsets.ModelViewSet):
     def alquilar_para_cliente(self, request):
         """
         Permite a un empleado crear un alquiler para un cliente específico.
-        Requiere: cliente_id, modelo_id, sucursal_devolucion, fecha_inicio, fecha_fin
+        Requiere: cliente_email, modelo_id, sucursal_devolucion, fecha_inicio, fecha_fin
         """
-        cliente_id = request.data.get('cliente_id')
-        if not cliente_id:
-            return Response({"error": "Se requiere especificar el id del cliente"}, status=status.HTTP_400_BAD_REQUEST)
+        cliente_email = request.data.get('cliente_email')
+        if not cliente_email:
+            return Response({"error": "Se requiere especificar el email del cliente"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Obtener el usuario cliente
+        # Obtener el usuario cliente por email
         try:
-            cliente = Usuario.objects.get(id=cliente_id)
+            cliente = Usuario.objects.get(email=cliente_email)
         except Usuario.DoesNotExist:
             return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -965,7 +965,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             'estado': estado_confirmado.id,
             'sucursal_devolucion': sucursal_devolucion_id
         }
-        serializer = AlquilerCreateSerializer(data=alquiler_data)
+        serializer = AlquilerCreateSerializer(data=alquiler_data)   #TODO: Verificar si se puede usar el serializer de AlquilerCreateSerializer
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
@@ -975,16 +975,16 @@ class AlquilerViewSet(viewsets.ModelViewSet):
     def cancelar_para_cliente(self, request):
         """
         Permite a un empleado cancelar un alquiler para un cliente específico.
-        Requiere: cliente_id, alquiler_id
+        Requiere: cliente_email, alquiler_id
         """
-        cliente_id = request.data.get('cliente_id')
+        cliente_email = request.data.get('cliente_email')
         alquiler_id = request.data.get('alquiler_id')
-        if not cliente_id or not alquiler_id:
-            return Response({"error": "Se requiere especificar el id del cliente y el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
+        if not cliente_email or not alquiler_id:
+            return Response({"error": "Se requiere especificar el email del cliente y el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Obtener el usuario cliente
+        # Obtener el usuario cliente por email
         try:
-            cliente = Usuario.objects.get(id=cliente_id)
+            cliente = Usuario.objects.get(email=cliente_email)
         except Usuario.DoesNotExist:
             return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
 
