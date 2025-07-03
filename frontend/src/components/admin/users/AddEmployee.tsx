@@ -5,8 +5,8 @@ import { User } from '@/types/user';
 
 interface AddEmployeeData {
   email: string;
-  nombre: string;
-  apellido: string;
+  first_name: string;
+  last_name: string;
   telefono: string;
   fecha_nacimiento: string;
   password: string;
@@ -20,8 +20,8 @@ interface AddEmployeeProps {
 export default function AddEmployee({ onEmployeeAdded }: AddEmployeeProps) {
   const [formData, setFormData] = useState<AddEmployeeData>({
     email: '',
-    nombre: '',
-    apellido: '',
+    first_name: '',
+    last_name: '',
     telefono: '',
     fecha_nacimiento: '',
     password: '',
@@ -50,8 +50,8 @@ export default function AddEmployee({ onEmployeeAdded }: AddEmployeeProps) {
         body: JSON.stringify({
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
-          nombre: formData.nombre.trim(),
-          apellido: formData.apellido.trim(),
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
           telefono: formData.telefono.trim(),
           fecha_nacimiento: formData.fecha_nacimiento,
           rol: '2' // 2 es el ID del rol empleado por defecto
@@ -66,8 +66,8 @@ export default function AddEmployee({ onEmployeeAdded }: AddEmployeeProps) {
       // Limpiar el formulario
       setFormData({
         email: '',
-        nombre: '',
-        apellido: '',
+        first_name: '',
+        last_name: '',
         telefono: '',
         fecha_nacimiento: '',
         password: '',
@@ -115,14 +115,14 @@ export default function AddEmployee({ onEmployeeAdded }: AddEmployeeProps) {
         </div>
 
         <div>
-          <label htmlFor="nombre" className="block text-sm font-medium text-[#a16bb7]">
+          <label htmlFor="first_name" className="block text-sm font-medium text-[#a16bb7]">
             Nombre
           </label>
           <input
             type="text"
-            id="nombre"
-            name="nombre"
-            value={formData.nombre}
+            id="first_name"
+            name="first_name"
+            value={formData.first_name}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md bg-[#3d2342] border-[#a16bb7] text-white shadow-sm focus:border-[#a16bb7] focus:ring-[#a16bb7]"
             required
@@ -130,14 +130,14 @@ export default function AddEmployee({ onEmployeeAdded }: AddEmployeeProps) {
         </div>
 
         <div>
-          <label htmlFor="apellido" className="block text-sm font-medium text-[#a16bb7]">
+          <label htmlFor="last_name" className="block text-sm font-medium text-[#a16bb7]">
             Apellido
           </label>
           <input
             type="text"
-            id="apellido"
-            name="apellido"
-            value={formData.apellido}
+            id="last_name"
+            name="last_name"
+            value={formData.last_name}
             onChange={handleChange}
             className="mt-1 block w-full rounded-md bg-[#3d2342] border-[#a16bb7] text-white shadow-sm focus:border-[#a16bb7] focus:ring-[#a16bb7]"
             required

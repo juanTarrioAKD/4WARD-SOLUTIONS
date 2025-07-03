@@ -30,7 +30,7 @@ const Navbar: React.FC = () => {
             {user ? (
               <>
                 <span className="text-gray-700">
-                  {user.nombre} {user.apellido}
+                  {user.first_name} {user.last_name}
                 </span>
                 <button
                   onClick={handleLogout}

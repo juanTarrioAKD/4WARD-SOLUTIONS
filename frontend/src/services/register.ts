@@ -21,8 +21,8 @@ export const registerUser = async (userData: RegisterData): Promise<{ success: b
       body: JSON.stringify({
         email: userData.email.trim().toLowerCase(),
         password: userData.password,
-        nombre: userData.nombre.trim(),
-        apellido: userData.apellido.trim(),
+        first_name: userData.nombre.trim(),
+        last_name: userData.apellido.trim(),
         telefono: userData.telefono.trim(),
         fecha_nacimiento: userData.fecha_nacimiento,
         rol: 1 // ID 1 corresponde al rol "cliente"

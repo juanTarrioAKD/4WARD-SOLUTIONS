@@ -25,7 +25,7 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
         console.error('Error fetching categories:', error);
         setError('Error al cargar las categorías');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -66,12 +66,13 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
           onClick={() => handleCategoryClick(category.id)}
         >
           <div className="relative h-48">
-  
+            <Image
+              src={category.image || '/default-category.jpg'}
               alt={category.nombre}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            
+            />
           </div>
           <div className="p-6">
             <h3 className="text-xl font-semibold text-white mb-2">
@@ -90,6 +91,4 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
       ))}
     </div>
   );
-};
-
-export default CategoryList; 
+}; 

@@ -10,8 +10,8 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  nombre: string;
-  apellido: string;
+  first_name: string;
+  last_name: string;
   telefono: string;
   fecha_nacimiento: string;
 }
@@ -22,8 +22,8 @@ export interface AuthResponse {
   user: {
     id: number;
     email: string;
-    nombre: string;
-    apellido: string;
+    first_name: string;
+    last_name: string;
     telefono: string;
     fecha_nacimiento: string;
     rol: string;

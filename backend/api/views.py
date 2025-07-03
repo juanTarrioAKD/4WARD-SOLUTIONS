@@ -233,8 +233,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 'user': {
                     'id': authenticated_user.id,
                     'email': authenticated_user.email,
-                    'nombre': authenticated_user.nombre,
-                    'apellido': authenticated_user.apellido,
+                    'nombre': authenticated_user.first_name,
+                    'apellido': authenticated_user.last_name,
                     'telefono': authenticated_user.telefono,
                     'fecha_nacimiento': authenticated_user.fecha_nacimiento,
                     'rol': authenticated_user.rol.id if authenticated_user.rol else 1,  # 1 es cliente por defecto
@@ -272,8 +272,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return Response({
             'id': usuario.id,
             'email': usuario.email,
-            'nombre': usuario.nombre,
-            'apellido': usuario.apellido,
+            'nombre': usuario.first_name,
+            'apellido': usuario.last_name,
             'telefono': usuario.telefono,
             'fecha_nacimiento': usuario.fecha_nacimiento,
             'rol': usuario.rol.nombre if usuario.rol else None,
@@ -767,7 +767,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.rol.id == 1:  # Si es administrador
+        if user.rol.id in [2, 3]:  # Empleado o Admin
             return Alquiler.objects.all()
         return Alquiler.objects.filter(cliente=user)
 
@@ -984,7 +984,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
                 'mensaje': 'Devolución registrada exitosamente',
                 'alquiler_id': alquiler.id,
                 'vehiculo': f"{alquiler.vehiculo.marca} {alquiler.vehiculo.modelo} - {alquiler.vehiculo.patente}",
-                'cliente': f"{alquiler.cliente.nombre} {alquiler.cliente.apellido}",
+                'cliente': f"{alquiler.cliente.first_name} {alquiler.cliente.last_name}",
                 'sucursal_asignada': alquiler.sucursal_devolucion.nombre,
                 'sucursal_devolucion_real': sucursal_devolucion.nombre,
                 'monto_extra': monto_extra

@@ -45,11 +45,11 @@ export default function MiCuenta() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[#a16bb7] text-sm">Nombre</label>
-              <p className="text-white">{userData.nombre}</p>
+              <p className="text-white">{userData.first_name}</p>
             </div>
             <div>
               <label className="block text-[#a16bb7] text-sm">Apellido</label>
-              <p className="text-white">{userData.apellido}</p>
+              <p className="text-white">{userData.last_name}</p>
             </div>
             <div>
               <label className="block text-[#a16bb7] text-sm">Email</label>
@@ -87,8 +87,8 @@ export default function MiCuenta() {
           onClose={() => setShowEditForm(false)}
           onUpdateSuccess={handleUpdateSuccess}
           initialData={{
-            firstName: userData.nombre,
-            lastName: userData.apellido,
+            firstName: userData.first_name,
+            lastName: userData.last_name,
             phoneNumber: userData.telefono
           }}
         />

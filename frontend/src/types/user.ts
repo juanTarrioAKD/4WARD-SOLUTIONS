@@ -2,14 +2,14 @@ export interface User {
   id: number;
   email: string;
   rol: string;
-  nombre?: string;
-  apellido?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface AddEmployeeData {
   email: string;
   password: string;
-  nombre: string;
-  apellido: string;
+  first_name: string;
+  last_name: string;
   rol: string;
 } 

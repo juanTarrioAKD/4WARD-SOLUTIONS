@@ -25,7 +25,7 @@ interface UserState {
 interface User {
   id: number;
   email: string;
-  nombre: string;
+  first_name: string;
 }
 
 export default function Home() {
@@ -50,9 +50,27 @@ export default function Home() {
   const [reservaLoading, setReservaLoading] = useState(false);
   const [showRetiroModal, setShowRetiroModal] = useState(false);
   const [retiroReservaId, setRetiroReservaId] = useState('');
+  const [showCancelarModal, setShowCancelarModal] = useState(false);
+  const [showRegistrarUsuarioModal, setShowRegistrarUsuarioModal] = useState(false);
+  const [nuevoUsuario, setNuevoUsuario] = useState({
+    email: '',
+    first_name: '',
+    last_name: '',
+    telefono: '',
+    fecha_nacimiento: ''
+  });
+  const [registrarUsuarioLoading, setRegistrarUsuarioLoading] = useState(false);
+  const [registrarUsuarioError, setRegistrarUsuarioError] = useState<string | null>(null);
+  const [registrarUsuarioSuccess, setRegistrarUsuarioSuccess] = useState(false);
+  const [passwordGenerada, setPasswordGenerada] = useState('');
+  const [cancelarEmail, setCancelarEmail] = useState('');
+  const [cancelarReservaId, setCancelarReservaId] = useState('');
+  const [cancelarLoading, setCancelarLoading] = useState(false);
+  const [cancelarError, setCancelarError] = useState<string | null>(null);
+  const [cancelarConfirmado, setCancelarConfirmado] = useState(false);
   const [retiroReserva, setRetiroReserva] = useState<any>(null);
-  const [retiroError, setRetiroError] = useState<string | null>(null);
   const [retiroLoading, setRetiroLoading] = useState(false);
+  const [retiroError, setRetiroError] = useState<string | null>(null);
   const [retiroConfirmado, setRetiroConfirmado] = useState(false);
   const router = useRouter();
 
@@ -62,7 +80,7 @@ export default function Home() {
       setUserState({
         isAuthenticated: true,
         role: Number(user.rol),
-        username: user.nombre
+        username: user.first_name
       });
     }
   }, []);
@@ -73,7 +91,7 @@ export default function Home() {
       setUserState({
         isAuthenticated: true,
         role: Number(user.rol),
-        username: user.nombre
+        username: user.first_name
       });
       setShowLoginForm(false);
     }
@@ -166,8 +184,8 @@ export default function Home() {
     // Por ahora usamos datos de ejemplo
     if (email) {
       const mockResults = [
-        { id: 1, email: 'usuario1@example.com', nombre: 'Usuario 1' },
-        { id: 2, email: 'usuario2@example.com', nombre: 'Usuario 2' },
+        { id: 1, email: 'usuario1@example.com', first_name: 'Usuario 1' },
+        { id: 2, email: 'usuario2@example.com', first_name: 'Usuario 2' },
       ].filter(user => user.email.toLowerCase().includes(email.toLowerCase()));
       setSearchResults(mockResults);
     } else {
@@ -245,6 +263,105 @@ export default function Home() {
   const handleConfirmarRetiro = () => {
     // Aquí iría la llamada al backend para confirmar el retiro
     setRetiroConfirmado(true);
+  };
+
+  const handleCancelarReserva = async () => {
+    setCancelarError(null);
+    if (!cancelarReservaId) {
+      setCancelarError('Ingresa el número de reserva');
+      return;
+    }
+    setCancelarLoading(true);
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error('No autenticado');
+
+      const response = await fetch(`http://localhost:8000/api/alquileres/${cancelarReservaId}/cancelar/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cancelar la reserva');
+      }
+
+      setCancelarConfirmado(true);
+      
+      // Limpiar formulario después de 3 segundos
+      setTimeout(() => {
+        setShowCancelarModal(false);
+        setCancelarConfirmado(false);
+        setCancelarReservaId('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error:', error);
+      setCancelarError(error instanceof Error ? error.message : 'Error al cancelar la reserva');
+    } finally {
+      setCancelarLoading(false);
+    }
+  };
+
+  const handleRegistrarUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegistrarUsuarioLoading(true);
+    setRegistrarUsuarioError(null);
+    setRegistrarUsuarioSuccess(false);
+
+    try {
+      const token = getAuthToken();
+      if (!token) throw new Error('No autenticado');
+
+      const response = await fetch('http://localhost:8000/api/usuarios/registrar-cliente/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: nuevoUsuario.email,
+          first_name: nuevoUsuario.first_name,
+          last_name: nuevoUsuario.last_name,
+          telefono: nuevoUsuario.telefono,
+          fecha_nacimiento: nuevoUsuario.fecha_nacimiento,
+          rol: 1 // Cliente
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al registrar el cliente');
+      }
+
+      // Éxito
+      setRegistrarUsuarioSuccess(true);
+      setPasswordGenerada(data.password_generada);
+      
+      // Limpiar formulario después de 3 segundos
+      setTimeout(() => {
+        setShowRegistrarUsuarioModal(false);
+        setRegistrarUsuarioSuccess(false);
+        setNuevoUsuario({
+          email: '',
+          first_name: '',
+          last_name: '',
+          telefono: '',
+          fecha_nacimiento: ''
+        });
+      }, 3000);
+
+    } catch (error) {
+      console.error('Error:', error);
+      setRegistrarUsuarioError(error instanceof Error ? error.message : 'Error al registrar el cliente');
+    } finally {
+      setRegistrarUsuarioLoading(false);
+    }
   };
 
   return (
@@ -430,6 +547,108 @@ export default function Home() {
         </div>
       )}
 
+      {/* Modal de Registrar Usuario */}
+      {showRegistrarUsuarioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowRegistrarUsuarioModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Registrar Nuevo Cliente</h2>
+            <form className="space-y-4" onSubmit={handleRegistrarUsuario}>
+              <input
+                type="email"
+                placeholder="Email del cliente"
+                value={nuevoUsuario.email}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Nombre"
+                value={nuevoUsuario.first_name}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, first_name: e.target.value})}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Apellido"
+                value={nuevoUsuario.last_name}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, last_name: e.target.value})}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                required
+              />
+              <input
+                type="tel"
+                placeholder="Teléfono"
+                value={nuevoUsuario.telefono}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, telefono: e.target.value})}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                required
+              />
+              <input
+                type="date"
+                placeholder="Fecha de nacimiento"
+                value={nuevoUsuario.fecha_nacimiento}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, fecha_nacimiento: e.target.value})}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                required
+              />
+              <button
+                type="submit"
+                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
+                disabled={registrarUsuarioLoading}
+              >
+                {registrarUsuarioLoading ? 'Registrando...' : 'Registrar Cliente'}
+              </button>
+              {registrarUsuarioError && <div className="text-[#e94b5a] text-sm">{registrarUsuarioError}</div>}
+              {registrarUsuarioSuccess && (
+                <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
+                  <p>✅ Cliente registrado exitosamente</p>
+                  <p>Email: {nuevoUsuario.email}</p>
+                  <p>Contraseña: {passwordGenerada}</p>
+                </div>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Cancelar Reserva */}
+      {showCancelarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowCancelarModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Cancelar Reserva</h2>
+            <div className="space-y-4">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Número de reserva"
+                value={cancelarReservaId}
+                onChange={(e) => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                disabled={cancelarConfirmado}
+              />
+              <button
+                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
+                onClick={handleCancelarReserva}
+                disabled={cancelarLoading || cancelarConfirmado}
+              >
+                {cancelarLoading ? 'Cancelando...' : 'Cancelar Reserva'}
+              </button>
+              {cancelarError && <div className="text-[#e94b5a] text-sm">{cancelarError}</div>}
+              {cancelarConfirmado && (
+                <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
+                  ✅ Reserva cancelada exitosamente
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Menú lateral */}
       <div 
         className={`fixed top-0 right-0 h-full w-64 bg-[#2d1830]/90 backdrop-blur-sm transform transition-transform duration-300 ease-in-out z-50 ${
@@ -586,9 +805,9 @@ export default function Home() {
             ) : userState.role === 2 ? (
               <div className="w-full max-w-7xl px-4 space-y-8">
                 {/* Sección de Gestión de Reservas */}
-                <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg">
+                <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg w-full">
                   <h2 className="text-2xl font-semibold mb-6 text-white">Gestión de Reservas</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
                     <button 
                       className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
                       onClick={() => setShowReservaModal(true)}
@@ -612,6 +831,12 @@ export default function Home() {
                       onClick={() => router.push('/empleado/reservas/devolver')}
                     >
                       Devolución de Vehículo
+                    </button>
+                    <button 
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
+                      onClick={() => setShowCancelarModal(true)}
+                    >
+                      Cancelar Reserva
                     </button>
                   </div>
                 </div>
@@ -642,7 +867,7 @@ export default function Home() {
                       <button
                         className="h-12 px-8 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold flex items-center justify-center whitespace-nowrap text-base"
                         style={{ minWidth: '180px' }}
-                        onClick={() => router.push('/empleado/usuarios/agregar')}
+                        onClick={() => setShowRegistrarUsuarioModal(true)}
                       >
                         Agregar usuario
                       </button>
@@ -651,7 +876,7 @@ export default function Home() {
                       {searchResults.map((user) => (
                         <div key={user.id} className="flex items-center justify-between bg-[#3d2342] p-4 rounded-md">
                           <div>
-                            <p className="text-white font-medium">{user.nombre}</p>
+                            <p className="text-white font-medium">{user.first_name}</p>
                             <p className="text-[#a16bb7]">{user.email}</p>
                           </div>
                           <button

@@ -21,8 +21,8 @@ export const updateProfile = async (data: UpdateProfileData) => {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
-        nombre: data.firstName,
-        apellido: data.lastName,
+        first_name: data.firstName,
+        last_name: data.lastName,
         telefono: data.phoneNumber
       })
     });

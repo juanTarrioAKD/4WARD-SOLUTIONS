@@ -12,9 +12,11 @@ class Rol(models.Model):
         db_table = 'rol'
 
 class Usuario(AbstractUser):
+    # Sobrescribir los campos de AbstractUser para usar nombre y apellido
+    first_name = models.CharField(max_length=150, verbose_name='nombre', db_column='nombre')
+    last_name = models.CharField(max_length=150, verbose_name='apellido', db_column='apellido')
+    
     email = models.EmailField(unique=True)
-    nombre = models.CharField(max_length=100)
-    apellido = models.CharField(max_length=100)
     telefono = models.CharField(max_length=20)
     fecha_nacimiento = models.DateField()
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
@@ -27,7 +29,7 @@ class Usuario(AbstractUser):
     last_admin_code_attempt = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nombre', 'apellido', 'telefono', 'fecha_nacimiento']
+    REQUIRED_FIELDS = ['first_name', 'last_name', 'telefono', 'fecha_nacimiento']
 
     def increment_login_attempts(self):
         self.login_attempts += 1
@@ -50,7 +52,7 @@ class Usuario(AbstractUser):
         self.save()
 
     def __str__(self):
-        return f"{self.nombre} {self.apellido}"
+        return f"{self.first_name} {self.last_name}"
 
     class Meta:
         db_table = 'usuario'

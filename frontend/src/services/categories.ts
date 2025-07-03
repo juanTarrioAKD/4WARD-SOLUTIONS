@@ -97,12 +97,8 @@ export const searchAvailableCategories = async (
 
 export const getCategories = async (): Promise<Category[]> => {
   try {
-<<<<<<< HEAD
     console.log('Fetching categories from:', `${API_BASE_URL}/api/categorias/`);
     const response = await fetch(`${API_BASE_URL}/api/categorias/`, {
-=======
-    const response = await fetch('http://localhost:8000/api/categorias/', {
->>>>>>> origin/main-Tomas
       method: 'GET',
       headers: {
         'Accept': 'application/json',

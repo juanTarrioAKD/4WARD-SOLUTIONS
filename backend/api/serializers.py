@@ -51,7 +51,7 @@ def generar_contrasena_aleatoria():
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ('id', 'email', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad')
+        fields = ('id', 'email', 'first_name', 'last_name', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad')
 
 class UsuarioCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -60,7 +60,7 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ('email', 'password', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username')
+        fields = ('email', 'password', 'first_name', 'last_name', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username')
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -86,26 +86,36 @@ class UsuarioEmpleadoCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ('email', 'nombre', 'apellido', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username', 'password_generada')
+        fields = ('email', 'first_name', 'last_name', 'telefono', 'fecha_nacimiento', 'rol', 'puesto', 'localidad', 'username', 'password_generada')
+
+    def validate(self, data):
+        # Validar email único
+        email = data.get('email')
+        if Usuario.objects.filter(email=email).exists():
+            raise serializers.ValidationError({'email': 'El email ya está registrado'})
+        # Validar edad mínima
+        fecha_nacimiento = data.get('fecha_nacimiento')
+        if fecha_nacimiento:
+            from datetime import date
+            today = date.today()
+            edad = today.year - fecha_nacimiento.year - ((today.month, today.day) < (fecha_nacimiento.month, fecha_nacimiento.day))
+            if edad < 18:
+                raise serializers.ValidationError({'fecha_nacimiento': 'No es posible crear un usuario para personas menores a 18 años'})
+        return data
 
     def create(self, validated_data):
         validated_data.pop('username', None)  # Removemos el username si existe
-        
         # Si no se envía rol, asignar el rol con ID 1 (cliente)
         if 'rol' not in validated_data or validated_data['rol'] is None:
             validated_data['rol'] = Rol.objects.get(pk=1)
-        
         # Generar contraseña aleatoria
         password_generada = generar_contrasena_aleatoria()
-        
         usuario = Usuario(**validated_data)
         usuario.username = validated_data['email']  # Usamos el email como username
         usuario.set_password(password_generada)
         usuario.save()
-        
         # Agregar la contraseña generada al serializer para mostrarla
         self.fields['password_generada'].default = password_generada
-        
         return usuario
 
 class MarcaSerializer(serializers.ModelSerializer):
