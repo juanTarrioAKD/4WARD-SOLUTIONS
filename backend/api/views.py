@@ -12,7 +12,7 @@ from .models import (
     Alquiler, EstadoAlquiler
 )
 from .serializers import (
-    UsuarioSerializer, UsuarioCreateSerializer,
+    UsuarioSerializer, UsuarioCreateSerializer, UsuarioEmpleadoCreateSerializer,
     VehiculoSerializer, VehiculoCreateSerializer,
     PublicacionSerializer, PublicacionCreateSerializer,
     SucursalSerializer, PoliticaDeCancelacionSerializer,
@@ -26,6 +26,7 @@ from .serializers import (
 from .permissions import *
 from django.utils import timezone
 from datetime import datetime
+from django.db.models import Count, Sum
 
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
@@ -35,6 +36,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['create', 'register']:
             return UsuarioCreateSerializer
+        elif self.action == 'registrar_cliente':
+            return UsuarioEmpleadoCreateSerializer
         return UsuarioSerializer
 
     def get_permissions(self):
@@ -42,6 +45,8 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         elif self.action in ['modificar', 'baja', 'perfil', 'mis_alquileres']:
             return [IsAuthenticated()]
+        elif self.action == 'registrar_cliente':
+            return [IsEmpleadoOrAdmin()]
         return [IsAdmin()]
 
     @action(detail=False, methods=['put'])
@@ -139,6 +144,36 @@ class UsuarioViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
             usuario = serializer.save()
             return Response(UsuarioSerializer(usuario).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='registrar-cliente')
+    def registrar_cliente(self, request):
+        """
+        Endpoint para que empleados y administradores registren clientes con contraseña automática.
+        Solo pueden acceder usuarios con rol 2 (empleado) o 3 (admin).
+        """
+        serializer = UsuarioEmpleadoCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Verificar que el email no esté registrado
+            if Usuario.objects.filter(email=serializer.validated_data['email']).exists():
+                return Response({'error': 'El email ya está registrado'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Crear el usuario con contraseña automática
+            usuario = serializer.save()
+            
+            # Obtener la contraseña generada del serializer
+            password_generada = serializer.fields['password_generada'].default
+            
+            # Retornar la información del usuario creado junto con la contraseña generada
+            response_data = UsuarioSerializer(usuario).data
+            response_data['password_generada'] = password_generada
+            
+            return Response({
+                'mensaje': 'Usuario registrado exitosamente',
+                'usuario': response_data,
+                'password_generada': password_generada
+            }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
@@ -741,12 +776,25 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             return AlquilerCreateSerializer
         return AlquilerSerializer
 
+    def get_permissions(self):
+        if self.action == 'registrar_devolucion':
+            return [IsEmpleadoOrAdmin()]
+        return [IsAuthenticated()]
+
     def create(self, request, *args, **kwargs):
         # Obtener el modelo del vehículo solicitado
         modelo_id = request.data.get('modelo_id')
         if not modelo_id:
             return Response(
                 {"error": "Se requiere especificar el modelo del vehículo"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Obtener la sucursal de devolución
+        sucursal_devolucion_id = request.data.get('sucursal_devolucion')
+        if not sucursal_devolucion_id:
+            return Response(
+                {"error": "Se requiere especificar la sucursal de devolución"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -806,7 +854,8 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             'fecha_inicio': fecha_inicio,
             'fecha_fin': fecha_fin,
             'monto_total': monto_total,
-            'estado': estado_confirmado.id
+            'estado': estado_confirmado.id,
+            'sucursal_devolucion': sucursal_devolucion_id
         }
 
         serializer = self.get_serializer(data=alquiler_data)
@@ -859,45 +908,195 @@ class AlquilerViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancelar(self, request, pk=None):
+        alquiler = self.get_object()
+        
+        # Verificar que el usuario sea el cliente del alquiler o un empleado/admin
+        if request.user.rol.id == 1 and alquiler.cliente != request.user:  # Si es cliente y no es su alquiler
+            return Response({'error': 'Solo puedes cancelar tus propias reservas'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
         try:
-            alquiler = self.get_object()
-            
-            # Verificar que el usuario sea el cliente dueño del alquiler
-            if request.user != alquiler.cliente:
-                return Response(
-                    {'error': 'No tienes permiso para cancelar esta reserva'},
-                    status=status.HTTP_403_FORBIDDEN
-                )
-            
-            serializer = self.get_serializer(alquiler)
-            alquiler = serializer.cancel(alquiler)
-            
-            # Obtener los datos serializados
-            serialized_data = serializer.data
-            
-            # Calcular el monto de devolución basado en la política
-            try:
-                monto_total = float(serialized_data.get('monto_total', 0))
-                porcentaje_devolucion = float(serialized_data.get('vehiculo', {}).get('politica', {}).get('porcentaje', {}))
-                monto_devolucion = (monto_total * porcentaje_devolucion) / 100
-            except (ValueError, AttributeError) as e:
-                return Response(
-                    {'error': f'Error al calcular el monto de devolución: {str(e)}'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
+            monto_devolucion = alquiler.cancelar()
             return Response({
-                'message': 'Alquiler cancelado exitosamente',
-                'alquiler': serialized_data,
-                'monto_devolucion': monto_devolucion,
-                'porcentaje_devolucion': porcentaje_devolucion
-            }, status=status.HTTP_200_OK)
+                'mensaje': 'Reserva cancelada exitosamente',
+                'monto_devolucion': monto_devolucion
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='registrar-devolucion')
+    def registrar_devolucion(self, request):
+        """
+        Endpoint para que empleados registren la devolución de un vehículo.
+        Solo pueden acceder usuarios con rol 2 (empleado) o 3 (admin).
+        Recibe el ID del alquiler y opcionalmente la sucursal de devolución en el body del request.
+        """
+        # Verificar que el usuario sea empleado o admin
+        if request.user.rol.id not in [2, 3]:  # 2=empleado, 3=admin
+            return Response({'error': 'Solo los empleados y administradores pueden registrar devoluciones'}, 
+                          status=status.HTTP_403_FORBIDDEN)
+        
+        # Obtener el ID del alquiler del body
+        alquiler_id = request.data.get('alquiler_id')
+        if not alquiler_id:
+            return Response({'error': 'Se debe especificar el ID del alquiler'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return Response({'error': 'El alquiler especificado no existe'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verificar el estado del alquiler antes de procesar
+        if alquiler.estado.id == 2:  # Cancelado
+            return Response({
+                'mensaje': 'No se puede registrar devolución',
+                'alquiler_id': alquiler.id,
+                'estado_actual': 'Cancelado',
+                'detalle': 'El alquiler ya está cancelado'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if alquiler.estado.id == 3:  # Finalizado
+            return Response({
+                'mensaje': 'No se puede registrar devolución',
+                'alquiler_id': alquiler.id,
+                'estado_actual': 'Finalizado',
+                'detalle': 'El alquiler ya está finalizado'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtener la sucursal de devolución (opcional, por defecto usa la asignada)
+        sucursal_devolucion_id = request.data.get('sucursal_devolucion')
+        if sucursal_devolucion_id:
+            try:
+                sucursal_devolucion = Sucursal.objects.get(id=sucursal_devolucion_id)
+            except Sucursal.DoesNotExist:
+                return Response({'error': 'La sucursal de devolución especificada no existe'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Si no se especifica, usar la sucursal originalmente asignada
+            sucursal_devolucion = alquiler.sucursal_devolucion
+        
+        try:
+            monto_extra = alquiler.registrar_devolucion(sucursal_devolucion)
             
+            response_data = {
+                'mensaje': 'Devolución registrada exitosamente',
+                'alquiler_id': alquiler.id,
+                'vehiculo': f"{alquiler.vehiculo.marca} {alquiler.vehiculo.modelo} - {alquiler.vehiculo.patente}",
+                'cliente': f"{alquiler.cliente.nombre} {alquiler.cliente.apellido}",
+                'sucursal_asignada': alquiler.sucursal_devolucion.nombre,
+                'sucursal_devolucion_real': sucursal_devolucion.nombre,
+                'monto_extra': monto_extra
+            }
+            
+            if monto_extra > 0:
+                response_data['mensaje_cobro'] = f"Se debe cobrar ${monto_extra} pesos por devolución en sucursal diferente"
+            else:
+                response_data['mensaje_cobro'] = "No hay cargo adicional por devolución en sucursal asignada"
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+            
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': f'Error al registrar la devolución: {str(e)}'}, 
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], url_path='alquilar-para-cliente', permission_classes=[IsEmpleado])
+    def alquilar_para_cliente(self, request):
+        """
+        Permite a un empleado crear un alquiler para un cliente específico.
+        Requiere: cliente_email, modelo_id, sucursal_devolucion, fecha_inicio, fecha_fin
+        """
+        cliente_email = request.data.get('cliente_email')
+        if not cliente_email:
+            return Response({"error": "Se requiere especificar el email del cliente"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el usuario cliente por email
+        try:
+            cliente = Usuario.objects.get(email=cliente_email)
+        except Usuario.DoesNotExist:
+            return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Reutilizar la lógica de create, pero usando el cliente especificado
+        modelo_id = request.data.get('modelo_id')
+        if not modelo_id:
+            return Response({"error": "Se requiere especificar el modelo del vehículo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sucursal_devolucion_id = request.data.get('sucursal_devolucion')
+        if not sucursal_devolucion_id:
+            return Response({"error": "Se requiere especificar la sucursal de devolución"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fecha_inicio = datetime.fromisoformat(request.data['fecha_inicio'].replace('Z', '+00:00'))
+            fecha_fin = datetime.fromisoformat(request.data['fecha_fin'].replace('Z', '+00:00'))
+            dias = (fecha_fin - fecha_inicio).days
+        except Exception as e:
+            return Response({"error": f"Formato de fecha inválido: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        vehiculo_disponible = None
+        vehiculos_modelo = Vehiculo.objects.filter(modelo_id=modelo_id, estado__id=1)
+        for vehiculo in vehiculos_modelo:
+            if vehiculo.esta_disponible(fecha_inicio, fecha_fin):
+                vehiculo_disponible = vehiculo
+                break
+        if not vehiculo_disponible:
+            return Response({"error": "No hay vehículos disponibles del modelo seleccionado para las fechas especificadas"}, status=status.HTTP_400_BAD_REQUEST)
+
+        monto_total = vehiculo_disponible.categoria.precio * dias
+        try:
+            estado_confirmado = EstadoAlquiler.objects.get(id=1)
+        except EstadoAlquiler.DoesNotExist:
+            return Response({"error": "Estado de alquiler no encontrado"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        alquiler_data = {
+            'cliente': cliente.id,
+            'vehiculo': vehiculo_disponible.id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'monto_total': monto_total,
+            'estado': estado_confirmado.id,
+            'sucursal_devolucion': sucursal_devolucion_id
+        }
+        serializer = AlquilerCreateSerializer(data=alquiler_data)   #TODO: Verificar si se puede usar el serializer de AlquilerCreateSerializer
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=False, methods=['post'], url_path='cancelar-para-cliente', permission_classes=[IsEmpleado])
+    def cancelar_para_cliente(self, request):
+        """
+        Permite a un empleado cancelar un alquiler para un cliente específico.
+        Requiere: cliente_email, alquiler_id
+        """
+        cliente_email = request.data.get('cliente_email')
+        alquiler_id = request.data.get('alquiler_id')
+        if not cliente_email or not alquiler_id:
+            return Response({"error": "Se requiere especificar el email del cliente y el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el usuario cliente por email
+        try:
+            cliente = Usuario.objects.get(email=cliente_email)
+        except Usuario.DoesNotExist:
+            return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Obtener el alquiler
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id, cliente=cliente)
+        except Alquiler.DoesNotExist:
+            return Response({"error": "No existe un alquiler con ese id para el cliente especificado"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Cancelar el alquiler
+        try:
+            monto_devolucion = alquiler.cancelar()
+            return Response({
+                'mensaje': 'Reserva cancelada exitosamente por empleado',
+                'monto_devolucion': monto_devolucion
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
@@ -913,20 +1112,53 @@ class EstadoAlquilerViewSet(viewsets.ModelViewSet):
 class EstadisticasViewSet(viewsets.ViewSet):
     permission_classes = [IsAdmin]
 
-    @action(detail=False, methods=['get'])
-    def mejor_calificado(self, request):
-        # Implementar lógica para obtener el vehículo mejor calificado
-        pass
+    @action(detail=False, methods=['post'])
+    def recaudado_por_mes(self, request):
+        # Devuelve el total recaudado entre dos fechas para alquileres finalizados (estado_id=3)
+        from django.db.models import Sum
+        from .models import Alquiler
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        if not fecha_inicio or not fecha_fin:
+            return Response({'error': 'Debe proporcionar fecha_inicio y fecha_fin en el body (JSON)'}, status=400)
+        total = Alquiler.objects.filter(
+            estado_id=3,
+            fecha_inicio__gte=fecha_inicio,
+            fecha_fin__lte=fecha_fin
+        ).aggregate(total_recaudado=Sum('monto_total'))['total_recaudado'] or 0
+        return Response({'total_recaudado': float(total)})
 
     @action(detail=False, methods=['get'])
-    def registros_periodo(self, request):
-        # Implementar lógica para obtener registros en un período
-        pass
+    def clientes_con_mas_alquileres(self, request):
+        # Devuelve los 5 clientes con más cantidad de alquileres junto a la cantidad
+        from django.db.models import Count
+        from .models import Usuario
+        from .serializers import UsuarioSerializer
+        clientes = Usuario.objects.annotate(num_alquileres=Count('alquiler')).order_by('-num_alquileres')[:5]
+        data = [
+            {
+                'cliente': UsuarioSerializer(cliente).data,
+                'cantidad_alquileres': cliente.num_alquileres
+            }
+            for cliente in clientes
+        ]
+        return Response(data)
 
     @action(detail=False, methods=['get'])
     def mas_alquilado(self, request):
-        # Implementar lógica para obtener el vehículo más alquilado
-        pass
+        # Devuelve los 10 vehículos más alquilados junto a la cantidad de veces que se alquiló
+        from django.db.models import Count
+        from .models import Vehiculo
+        from .serializers import VehiculoSerializer
+        vehiculos = Vehiculo.objects.annotate(num_alquileres=Count('alquileres')).order_by('-num_alquileres')[:10]
+        data = [
+            {
+                'vehiculo': VehiculoSerializer(vehiculo).data,
+                'cantidad_alquileres': vehiculo.num_alquileres
+            }
+            for vehiculo in vehiculos
+        ]
+        return Response(data)
 
 def searchAvailableCategories(request):
     """

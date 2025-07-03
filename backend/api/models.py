@@ -26,10 +26,6 @@ class Usuario(AbstractUser):
     last_login_attempt = models.DateTimeField(null=True, blank=True)
     last_admin_code_attempt = models.DateTimeField(null=True, blank=True)
 
-    # Eliminamos los campos redundantes
-    first_name = None
-    last_name = None
-
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['nombre', 'apellido', 'telefono', 'fecha_nacimiento']
 
@@ -85,6 +81,7 @@ class Alquiler(models.Model):
     fecha_reserva = models.DateTimeField(auto_now_add=True)
     monto_total = models.DecimalField(max_digits=10, decimal_places=2)
     estado = models.ForeignKey(EstadoAlquiler, on_delete=models.CASCADE, db_column='ID_Estado')
+    sucursal_devolucion = models.ForeignKey('Sucursal', on_delete=models.CASCADE, related_name='alquileres_devolucion', db_column='ID_Sucursal_Devolucion', null=True, blank=True)
 
     class Meta:
         db_table = 'alquiler'
@@ -111,6 +108,33 @@ class Alquiler(models.Model):
         monto_devolucion = self.monto_total * (porcentaje_devolucion / 100)
         
         return monto_devolucion
+
+    def registrar_devolucion(self, sucursal_devolucion_real):
+        """
+        Registra la devolución del vehículo y calcula el monto extra si es necesario.
+        """
+        if self.estado.id == 3:  # Si ya está finalizado
+            raise ValueError("Esta reserva ya ha sido finalizada")
+        
+        # Obtener el estado "Finalizado"
+        estado_finalizado = EstadoAlquiler.objects.get(id=3)
+        
+        # Actualizar el estado del alquiler
+        self.estado = estado_finalizado
+        self.save()
+        
+        # Actualizar el estado del vehículo a "Disponible"
+        estado_disponible = EstadoVehiculo.objects.get(id=1)
+        self.vehiculo.estado = estado_disponible
+        self.vehiculo.save()
+        
+        # Calcular monto extra si la devolución es en sucursal diferente
+        monto_extra = 0
+        if sucursal_devolucion_real.id != self.sucursal_devolucion.id:
+            # Monto fijo por devolución en sucursal diferente (puede ser configurable)
+            monto_extra = 5000  # $5000 pesos por devolución en sucursal diferente
+        
+        return monto_extra
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=100)

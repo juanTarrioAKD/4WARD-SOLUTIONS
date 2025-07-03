@@ -1,4 +1,4 @@
--- Insertar roles
+﻿-- Insertar roles
 INSERT INTO rol (id, nombre) VALUES
 (1, 'Cliente'),
 (2, 'Empleado'),
@@ -145,7 +145,7 @@ INSERT INTO usuario (id, password, last_login, is_superuser, username, is_staff,
 (4,'pbkdf2_sha256$1000000$xpckn9Wlata5cF4QHOJKDU$tGvP1qoJa16L06qQOWir9oJzXN5YoiPve6tc/4IUlFg=',NULL,0,'empleado1@empleado.com',0,1,'2025-05-27 23:38:56.046102','empleado1@empleado.com','Empleado','Emple','1234567890','1990-01-01',NULL,NULL,0,NULL,0,0,NULL,2);
 
 /*-- Insertar vehículos
-INSERT INTO vehiculo (patente, capacidad, año_fabricacion, ID_Cate, ID_EstVehi, ID_Marca, ID_Politica, ID_Sucursal, ID_Modelo) VALUES
+INSERT INTO vehiculo (patente, capacidad, anio_fabricacion, ID_Cate, ID_EstVehi, ID_Marca, ID_Politica, ID_Sucursal, ID_Modelo) VALUES
 ('AB444BI', 5, 2019, 4, 1, 2, 2, 11, 21),
 ('AC753CF', 5, 2019, 6, 1, 4, 2, 19, 13),
 ('AF972DO', 5, 2018, 2, 1, 7, 3, 20, 17),

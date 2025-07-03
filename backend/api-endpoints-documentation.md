@@ -592,3 +592,178 @@ Modify a rental using PUT/PATCH to /api/alquileres/{id}/modificar/
 Delete a rental using DELETE to /api/alquileres/{id}/baja/
 List all rentals using GET to /api/alquileres/
 Get a specific rental using GET to /api/alquileres/{id}/
+
+## Usuarios
+
+### Registrar Cliente (Empleados/Admin)
+**POST** `/api/usuarios/registrar-cliente/`
+
+Permite a empleados (rol 2) y administradores (rol 3) registrar nuevos clientes con contraseña generada automáticamente.
+
+**Headers requeridos:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+    "email": "cliente@ejemplo.com",
+    "nombre": "Juan",
+    "apellido": "Pérez",
+    "telefono": "123456789",
+    "fecha_nacimiento": "1990-01-01",
+    "rol": 1,
+    "puesto": null,
+    "localidad": 1
+}
+```
+
+**Campos requeridos:**
+- `email`: Email único del cliente
+- `nombre`: Nombre del cliente
+- `apellido`: Apellido del cliente
+- `telefono`: Número de teléfono
+- `fecha_nacimiento`: Fecha de nacimiento (YYYY-MM-DD)
+
+**Campos opcionales:**
+- `rol`: ID del rol (por defecto 1 = cliente)
+- `puesto`: Puesto del empleado (solo para empleados)
+- `localidad`: ID de la localidad
+
+**Respuesta exitosa (201 Created):**
+```json
+{
+    "mensaje": "Usuario registrado exitosamente",
+    "usuario": {
+        "id": 123,
+        "email": "cliente@ejemplo.com",
+        "nombre": "Juan",
+        "apellido": "Pérez",
+        "telefono": "123456789",
+        "fecha_nacimiento": "1990-01-01",
+        "rol": 1,
+        "puesto": null,
+        "localidad": 1
+    },
+    "password_generada": "Kj9#mN2$pL5"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "error": "El email ya está registrado"
+}
+```
+
+**Respuesta de error (403 Forbidden):**
+```json
+{
+    "detail": "No tienes permiso para realizar esta acción"
+}
+```
+
+**Notas importantes:**
+- Solo empleados (rol 2) y administradores (rol 3) pueden usar este endpoint
+- La contraseña se genera automáticamente y cumple con los requisitos de seguridad
+- La contraseña generada se devuelve en la respuesta para que el empleado se la proporcione al cliente
+- El usuario creado tendrá rol de cliente (1) por defecto
+
+## Alquileres
+
+### Registrar Devolución
+**POST** `/api/alquileres/registrar-devolucion/`
+
+Permite a empleados (rol 2) y administradores (rol 3) registrar la devolución de un vehículo alquilado.
+
+**Headers requeridos:**
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+    "alquiler_id": 1,
+    "sucursal_devolucion": 2
+}
+```
+
+**Campos requeridos:**
+- `alquiler_id`: ID del alquiler que se va a devolver
+
+**Campos opcionales:**
+- `sucursal_devolucion`: ID de la sucursal donde se devuelve físicamente el vehículo (si no se especifica, usa la sucursal originalmente asignada)
+
+**Respuesta exitosa (200 OK):**
+```json
+{
+    "mensaje": "Devolución registrada exitosamente",
+    "alquiler_id": 1,
+    "vehiculo": "Toyota Corolla - ABC123",
+    "cliente": "Juan Pérez",
+    "sucursal_asignada": "Sucursal Central",
+    "sucursal_devolucion_real": "Sucursal Norte",
+    "monto_extra": 5000,
+    "mensaje_cobro": "Se debe cobrar $5000 pesos por devolución en sucursal diferente"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "error": "Se debe especificar el ID del alquiler"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "error": "El alquiler especificado no existe"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "error": "La sucursal de devolución especificada no existe"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "mensaje": "No se puede registrar devolución",
+    "alquiler_id": 1,
+    "estado_actual": "Cancelado",
+    "detalle": "El alquiler ya está cancelado"
+}
+```
+
+**Respuesta de error (400 Bad Request):**
+```json
+{
+    "mensaje": "No se puede registrar devolución",
+    "alquiler_id": 1,
+    "estado_actual": "Finalizado",
+    "detalle": "El alquiler ya está finalizado"
+}
+```
+
+**Respuesta de error (403 Forbidden):**
+```json
+{
+    "error": "Solo los empleados y administradores pueden registrar devoluciones"
+}
+```
+
+**Notas importantes:**
+- Solo empleados (rol 2) y administradores (rol 3) pueden usar este endpoint
+- El alquiler debe estar en estado activo (no cancelado ni finalizado)
+- El vehículo se marca automáticamente como "Disponible" después de la devolución
+- El alquiler se marca como "Finalizado" (estado_id=3) después de la devolución
+- Si no se especifica sucursal_devolucion, se usa la sucursal originalmente asignada
+- Si se especifica una sucursal diferente, se cobra un monto extra de $5000 pesos

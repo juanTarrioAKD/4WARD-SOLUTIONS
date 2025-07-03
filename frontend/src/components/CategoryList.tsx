@@ -25,7 +25,7 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
         console.error('Error fetching categories:', error);
         setError('Error al cargar las categorías');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -90,4 +90,6 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
       ))}
     </div>
   );
-} 
+};
+
+export default CategoryList; 
