@@ -120,7 +120,7 @@ export const getCategories = async (): Promise<Category[]> => {
       id: category.id,
       nombre: category.nombre || '',
       precio: parseFloat(category.precio) || 0,
-      image: category.imagen || '/default-category.jpg',
+      image: category.imagen || '/images/down.png',
       name: category.nombre || '', // Para compatibilidad con el componente
       price: parseFloat(category.precio) || 0, // Para compatibilidad con el componente
       description: category.descripcion || '',
@@ -135,7 +135,7 @@ export const getCategories = async (): Promise<Category[]> => {
 
 // Función auxiliar para manejar las URLs de las imágenes
 export const getImageUrl = (imageUrl: string | undefined): string => {
-  if (!imageUrl) return '/default-category.jpg';
+  if (!imageUrl) return '/images/down.png';
   return imageUrl.startsWith('http') ? imageUrl : `/${imageUrl}`;
 };
 
