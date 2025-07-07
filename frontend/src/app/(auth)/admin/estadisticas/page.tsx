@@ -133,7 +133,7 @@ export default function Estadisticas() {
 
   // Función para manejar la redirección al detalle del vehículo
   const handleVerMasVehiculo = (vehiculoId: string) => {
-    router.push(`/admin/vehiculos/${vehiculoId}/alquileres`);
+    router.push(`/admin/estadisticas/detalles_de_estadisticas/vehiculos/${vehiculoId}/alquileres`);
   };
 
   // Función para manejar la redirección al detalle de registros por fecha
