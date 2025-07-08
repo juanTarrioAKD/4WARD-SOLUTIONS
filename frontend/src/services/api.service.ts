@@ -1,6 +1,7 @@
 import { authService } from './auth.service';
+import { API_BASE_URL } from '@/config/config';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_URL = `${API_BASE_URL}/api`;
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
@@ -10,20 +11,28 @@ export const apiService = {
   async fetch<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { requiresAuth = true, ...fetchOptions } = options;
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...fetchOptions.headers,
+      ...fetchOptions.headers as Record<string, string>,
     };
 
     if (requiresAuth) {
       const token = authService.getToken();
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+        console.log('Token encontrado:', token.substring(0, 20) + '...');
+      } else {
+        console.warn('No se encontró token de autenticación');
       }
     }
 
     // Asegurarse de que la URL se construya correctamente
-    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    
+    console.log('API URL construida:', url);
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('API_URL:', API_URL);
+    console.log('endpoint:', endpoint);
 
     const response = await fetch(url, {
       ...fetchOptions,
@@ -32,13 +41,18 @@ export const apiService = {
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Token expirado o inválido
+        // Token expirado o inválido - no redirigir automáticamente
+        console.warn('Error 401: Token expirado o inválido');
         authService.logout();
-        window.location.href = '/login';
-        throw new Error('Sesión expirada');
+        throw new Error('No autorizado. Verifique que esté logueado como administrador.');
       }
       const error = await response.json();
       throw new Error(error.error || 'Error en la petición');
+    }
+
+    // Si la respuesta es 204 No Content, no intentes parsear JSON
+    if (response.status === 204) {
+      return undefined as unknown as T;
     }
 
     return response.json();

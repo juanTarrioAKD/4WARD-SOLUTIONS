@@ -143,7 +143,7 @@ export default function Estadisticas() {
         startDate: registrosRange.startDate,
         endDate: registrosRange.endDate
       });
-      router.push(`/admin/registros?${queryParams.toString()}`);
+      router.push(`/admin/estadisticas/detalles_de_estadisticas/registros?${queryParams.toString()}`);
     }
   };
 

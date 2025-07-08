@@ -581,7 +581,7 @@ class PublicacionViewSet(viewsets.ModelViewSet):
 class SucursalViewSet(viewsets.ModelViewSet):
     queryset = Sucursal.objects.all()
     serializer_class = SucursalSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]
 
     @action(detail=True, methods=['put', 'patch'])
     def modificar(self, request, pk=None):
@@ -704,7 +704,7 @@ class ModeloViewSet(viewsets.ModelViewSet):
 class LocalidadViewSet(viewsets.ModelViewSet):
     queryset = Localidad.objects.all()
     serializer_class = LocalidadSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

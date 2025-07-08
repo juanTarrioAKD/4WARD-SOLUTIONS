@@ -139,16 +139,17 @@ class LocalidadSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre']
 
 class SucursalSerializer(serializers.ModelSerializer):
-    localidad = LocalidadSerializer(read_only=True)
+    localidad = serializers.StringRelatedField(source='localidad.nombre', read_only=True)
     localidad_id = serializers.PrimaryKeyRelatedField(
         queryset=Localidad.objects.all(),
         source='localidad',
         write_only=True
     )
+    localidad_id_read = serializers.IntegerField(source='localidad.id', read_only=True)
 
     class Meta:
         model = Sucursal
-        fields = ['id', 'nombre', 'telefono', 'localidad', 'localidad_id', 'direccion']
+        fields = ['id', 'nombre', 'telefono', 'localidad', 'localidad_id', 'localidad_id_read', 'direccion']
 
 class CategoriaSerializer(serializers.ModelSerializer):
     class Meta:

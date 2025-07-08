@@ -18,7 +18,7 @@ interface Sucursal {
   nombre: string;
   direccion: string;
   telefono: string;
-  email: string;
+  localidad?: string;
   latitud: number;
   longitud: number;
 }
@@ -70,7 +70,7 @@ export default function MapComponent({ sucursales }: MapComponentProps) {
               <h3 className="font-bold text-lg text-gray-800">{sucursal.nombre}</h3>
               <p className="text-gray-600 text-sm mb-1">{sucursal.direccion}</p>
               <p className="text-gray-600 text-sm mb-1">{sucursal.telefono}</p>
-              <p className="text-gray-600 text-sm">{sucursal.email}</p>
+              <p className="text-gray-600 text-sm">{sucursal.localidad}</p>
             </div>
           </Popup>
         </Marker>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
+import { sucursalesService, Sucursal, CreateSucursalData, UpdateSucursalData } from '@/services/sucursales';
+import { localidadesService, Localidad } from '@/services/localidades';
 import dynamic from 'next/dynamic';
 
 // Importación dinámica del mapa para evitar errores de SSR
@@ -18,52 +20,74 @@ const MapComponent = dynamic(() => import('./MapComponent'), {
   )
 });
 
-interface Sucursal {
-  id: number;
-  nombre: string;
-  direccion: string;
-  telefono: string;
-  email: string;
+// Extender la interfaz Sucursal para incluir coordenadas del mapa
+interface SucursalWithCoords extends Sucursal {
   latitud: number;
   longitud: number;
 }
 
+// Función para geocodificar direcciones usando Nominatim
+const geocodificarDireccion = async (direccion: string, localidad?: string): Promise<{latitud: number, longitud: number} | null> => {
+  try {
+    const query = localidad ? `${direccion}, ${localidad}, Argentina` : `${direccion}, Argentina`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data && data.length > 0) {
+      return {
+        latitud: parseFloat(data[0].lat),
+        longitud: parseFloat(data[0].lon)
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error al geocodificar dirección:', error);
+    return null;
+  }
+};
+
+// Función para esperar un tiempo entre llamadas a la API (para respetar límites de rate)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export default function GestionSucursales() {
   const router = useRouter();
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [sucursalesFiltradas, setSucursalesFiltradas] = useState<Sucursal[]>([]);
+  const [sucursales, setSucursales] = useState<SucursalWithCoords[]>([]);
+  const [sucursalesFiltradas, setSucursalesFiltradas] = useState<SucursalWithCoords[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [sucursalEliminando, setSucursalEliminando] = useState<Sucursal | null>(null);
-  const [sucursalEditando, setSucursalEditando] = useState<Sucursal | null>(null);
+  const [sucursalEliminando, setSucursalEliminando] = useState<SucursalWithCoords | null>(null);
+  const [sucursalEditando, setSucursalEditando] = useState<SucursalWithCoords | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
     direccion: '',
     telefono: '',
-    email: ''
+    localidad_id: 0
   });
   const [newSucursalData, setNewSucursalData] = useState({
     nombre: '',
     direccion: '',
     telefono: '',
-    email: ''
+    localidad_id: 0
   });
+  const [localidades, setLocalidades] = useState<Localidad[]>([]);
+  const [localidadBusqueda, setLocalidadBusqueda] = useState('');
 
-  // Verificar que el usuario es admin al cargar la página
+  // Cargar sucursales al montar el componente
   useEffect(() => {
-    const user = getCurrentUser();
-    const userRoleId = Number(user?.rol);
-    if (!user || userRoleId !== 3) {
-      router.push('/');
-      return;
-    }
-    
-    // Cargar sucursales (placeholder - implementar llamada a API)
+    console.log('Cargando sucursales...');
     cargarSucursales();
-  }, [router]);
+    // Cargar localidades
+    localidadesService.getLocalidades().then(data => {
+      setLocalidades(data);
+      console.log('Localidades cargadas:', data);
+    });
+  }, []);
 
   // Filtrar sucursales basado en la búsqueda
   useEffect(() => {
@@ -77,46 +101,33 @@ export default function GestionSucursales() {
   const cargarSucursales = async () => {
     try {
       setLoading(true);
-      // TODO: Implementar llamada a API para obtener sucursales
-      // const response = await fetch('/api/sucursales');
-      // const data = await response.json();
-      // setSucursales(data);
       
-      // Datos de ejemplo - Coordenadas dentro de la provincia de Buenos Aires
-      const sucursalesEjemplo: Sucursal[] = [
-        {
-          id: 1,
-          nombre: 'Sucursal La Plata',
-          direccion: 'Av. 7 1234, La Plata',
-          telefono: '0221-1234-5678',
-          email: 'laplata@4ward.com',
-          latitud: -34.9215,
-          longitud: -57.9545
-        },
-        {
-          id: 2,
-          nombre: 'Sucursal Mar del Plata',
-          direccion: 'Av. Colón 456, Mar del Plata',
-          telefono: '0223-8765-4321',
-          email: 'mardelplata@4ward.com',
-          latitud: -38.0023,
-          longitud: -57.5425
-        },
-        {
-          id: 3,
-          nombre: 'Sucursal Bahía Blanca',
-          direccion: 'Alsina 789, Bahía Blanca',
-          telefono: '0291-5555-1234',
-          email: 'bahiablanca@4ward.com',
-          latitud: -38.7183,
-          longitud: -62.2663
-        }
-      ];
+      // Llamada real a la API
+      const sucursalesData = await sucursalesService.getSucursales();
       
-      setSucursales(sucursalesEjemplo);
-      setSucursalesFiltradas(sucursalesEjemplo);
+      // Geocodificar direcciones para obtener coordenadas reales
+      const sucursalesConCoords: SucursalWithCoords[] = [];
+      
+      for (const sucursal of sucursalesData) {
+        const coordenadas = await geocodificarDireccion(sucursal.direccion, sucursal.localidad);
+        
+        sucursalesConCoords.push({
+          ...sucursal,
+          latitud: coordenadas?.latitud || -34.6037, // Coordenadas por defecto (Buenos Aires) si falla la geocodificación
+          longitud: coordenadas?.longitud || -58.3816
+        });
+        
+        // Esperar 1 segundo entre llamadas para respetar los límites de la API
+        await delay(200);
+      }
+      
+      setSucursales(sucursalesConCoords);
+      setSucursalesFiltradas(sucursalesConCoords);
     } catch (error) {
       console.error('Error al cargar sucursales:', error);
+      // En caso de error, mostrar mensaje y lista vacía
+      setSucursales([]);
+      setSucursalesFiltradas([]);
     } finally {
       setLoading(false);
     }
@@ -127,19 +138,22 @@ export default function GestionSucursales() {
       nombre: '',
       direccion: '',
       telefono: '',
-      email: ''
+      localidad_id: 0
     });
+    setLocalidadBusqueda('');
     setShowAddModal(true);
   };
 
-  const handleEditarSucursal = (sucursal: Sucursal) => {
+  const handleEditarSucursal = (sucursal: SucursalWithCoords) => {
+    const localidadId = localidades.find(l => l.nombre === sucursal.localidad)?.id || 0;
     setSucursalEditando(sucursal);
     setFormData({
       nombre: sucursal.nombre,
       direccion: sucursal.direccion,
       telefono: sucursal.telefono,
-      email: sucursal.email
+      localidad_id: localidadId
     });
+    setLocalidadBusqueda('');
     setShowEditModal(true);
   };
 
@@ -147,24 +161,33 @@ export default function GestionSucursales() {
     if (!sucursalEditando) return;
 
     try {
-      // TODO: Implementar llamada a API para actualizar sucursal
-      // await fetch(`/api/sucursales/${sucursalEditando.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
+      // Llamada real a la API para actualizar sucursal
+      const sucursalActualizada = await sucursalesService.updateSucursal(
+        sucursalEditando.id,
+        formData
+      );
 
-      // Actualizar estado local
+      // Geocodificar la nueva dirección
+      const localidadNombreEditar = localidades.find(l => l.id === formData.localidad_id)?.nombre || '';
+      const coordenadas = await geocodificarDireccion(formData.direccion, localidadNombreEditar);
+
+      // Actualizar estado local con nuevas coordenadas
       const sucursalesActualizadas = sucursales.map(sucursal =>
         sucursal.id === sucursalEditando.id
-          ? { ...sucursal, ...formData }
+          ? { 
+              ...sucursal, 
+              ...sucursalActualizada,
+              latitud: coordenadas?.latitud || sucursal.latitud || -34.6037,
+              longitud: coordenadas?.longitud || sucursal.longitud || -58.3816
+            }
           : sucursal
       );
       
       setSucursales(sucursalesActualizadas);
+      setSucursalesFiltradas(sucursalesActualizadas);
       setShowEditModal(false);
       setSucursalEditando(null);
-      setFormData({ nombre: '', direccion: '', telefono: '', email: '' });
+      setFormData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
     } catch (error) {
       console.error('Error al actualizar sucursal:', error);
     }
@@ -173,34 +196,31 @@ export default function GestionSucursales() {
   const handleCancelarEdicion = () => {
     setShowEditModal(false);
     setSucursalEditando(null);
-    setFormData({ nombre: '', direccion: '', telefono: '', email: '' });
+    setFormData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
   };
 
   const handleGuardarNuevaSucursal = async () => {
     try {
-      // TODO: Implementar llamada a API para crear sucursal
-      // const response = await fetch('/api/sucursales', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newSucursalData)
-      // });
-      // const nuevaSucursal = await response.json();
+      // Llamada real a la API para crear sucursal
+      const nuevaSucursal = await sucursalesService.createSucursal(newSucursalData);
 
-      // Crear nueva sucursal con ID temporal
-      const nuevaSucursal: Sucursal = {
-        id: Math.max(...sucursales.map(s => s.id)) + 1,
-        nombre: newSucursalData.nombre,
-        direccion: newSucursalData.direccion,
-        telefono: newSucursalData.telefono,
-        email: newSucursalData.email,
-        latitud: -34.6037, // Coordenadas por defecto (Buenos Aires)
-        longitud: -58.3816
+      // Geocodificar la dirección de la nueva sucursal
+      const localidadNombreNueva = localidades.find(l => l.id === newSucursalData.localidad_id)?.nombre || '';
+      const coordenadas = await geocodificarDireccion(newSucursalData.direccion, localidadNombreNueva);
+
+      // Agregar coordenadas para el mapa
+      const nuevaSucursalConCoords: SucursalWithCoords = {
+        ...nuevaSucursal,
+        latitud: coordenadas?.latitud || -34.6037, // Coordenadas por defecto (Buenos Aires)
+        longitud: coordenadas?.longitud || -58.3816
       };
 
       // Agregar a la lista de sucursales
-      setSucursales([...sucursales, nuevaSucursal]);
+      const sucursalesActualizadas = [...sucursales, nuevaSucursalConCoords];
+      setSucursales(sucursalesActualizadas);
+      setSucursalesFiltradas(sucursalesActualizadas);
       setShowAddModal(false);
-      setNewSucursalData({ nombre: '', direccion: '', telefono: '', email: '' });
+      setNewSucursalData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
     } catch (error) {
       console.error('Error al crear sucursal:', error);
     }
@@ -208,10 +228,10 @@ export default function GestionSucursales() {
 
   const handleCancelarAgregar = () => {
     setShowAddModal(false);
-    setNewSucursalData({ nombre: '', direccion: '', telefono: '', email: '' });
+    setNewSucursalData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
   };
 
-  const handleEliminarSucursal = (sucursal: Sucursal) => {
+  const handleEliminarSucursal = (sucursal: SucursalWithCoords) => {
     setSucursalEliminando(sucursal);
     setShowDeleteModal(true);
   };
@@ -220,9 +240,13 @@ export default function GestionSucursales() {
     if (!sucursalEliminando) return;
 
     try {
-      // TODO: Implementar eliminación de sucursal
-      // await fetch(`/api/sucursales/${sucursalEliminando.id}`, { method: 'DELETE' });
-      setSucursales(sucursales.filter(s => s.id !== sucursalEliminando.id));
+      // Llamada real a la API para eliminar sucursal
+      await sucursalesService.deleteSucursal(sucursalEliminando.id);
+      
+      // Actualizar estado local
+      const sucursalesActualizadas = sucursales.filter(s => s.id !== sucursalEliminando.id);
+      setSucursales(sucursalesActualizadas);
+      setSucursalesFiltradas(sucursalesActualizadas);
       setShowDeleteModal(false);
       setSucursalEliminando(null);
     } catch (error) {
@@ -328,7 +352,7 @@ export default function GestionSucursales() {
                   </div>
                   <p className="text-[#a16bb7] text-sm mb-1">{sucursal.direccion}</p>
                   <p className="text-[#a16bb7] text-sm mb-1">{sucursal.telefono}</p>
-                  <p className="text-[#a16bb7] text-sm">{sucursal.email}</p>
+                  <p className="text-[#a16bb7] text-sm">{sucursal.localidad}</p>
                 </div>
               ))}
             </div>
@@ -395,15 +419,20 @@ export default function GestionSucursales() {
 
                 <div>
                   <label className="block text-[#a16bb7] text-sm font-medium mb-2">
-                    Email
+                    Localidad
                   </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  <select
+                    value={formData.localidad_id.toString()}
+                    onChange={e => setFormData({ ...formData, localidad_id: Number(e.target.value) })}
                     className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
                     required
-                  />
+                  >
+                    <option value="0">Seleccionar localidad</option>
+                    {localidades
+                      .map(l => (
+                        <option key={l.id} value={l.id.toString()}>{l.nombre}</option>
+                      ))}
+                  </select>
                 </div>
               </div>
 
@@ -486,15 +515,20 @@ export default function GestionSucursales() {
 
                 <div>
                   <label className="block text-[#a16bb7] text-sm font-medium mb-2">
-                    Email
+                    Localidad
                   </label>
-                  <input
-                    type="email"
-                    value={newSucursalData.email}
-                    onChange={(e) => setNewSucursalData({ ...newSucursalData, email: e.target.value })}
+                  <select
+                    value={newSucursalData.localidad_id.toString()}
+                    onChange={e => setNewSucursalData({ ...newSucursalData, localidad_id: Number(e.target.value) })}
                     className="w-full px-3 py-2 bg-[#1a0f1c] text-white border border-[#3d2342] rounded-lg focus:outline-none focus:border-[#a16bb7]"
                     required
-                  />
+                  >
+                    <option value="0">Seleccionar localidad</option>
+                    {localidades
+                      .map(l => (
+                        <option key={l.id} value={l.id.toString()}>{l.nombre}</option>
+                      ))}
+                  </select>
                 </div>
               </div>
 
