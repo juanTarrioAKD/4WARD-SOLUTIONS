@@ -515,7 +515,7 @@ POST /api/vehiculos/
         },
         "patente": "asdadasdas",
         "capacidad": 5,
-        "año_fabricacion": 2015
+        "anio_fabricacion": 2015
     }
 }
 ```

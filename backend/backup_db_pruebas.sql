@@ -161,7 +161,8 @@ CREATE TABLE IF NOT EXISTS "estado_alquiler" ("id" integer NOT NULL PRIMARY KEY 
 INSERT INTO estado_alquiler (id, nombre) VALUES
 (1, 'Confirmada'),
 (2, 'Cancelada'),
-(3, 'Finalizada');
+(3, 'Finalizada'),
+(4, 'En Curso');
 CREATE TABLE IF NOT EXISTS "estado_vehiculo" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(100) NOT NULL);
 INSERT INTO estado_vehiculo (id, nombre) VALUES
 (1, 'Disponible'),
@@ -252,7 +253,8 @@ CREATE TABLE IF NOT EXISTS "publicacion" ("id" integer NOT NULL PRIMARY KEY AUTO
 CREATE TABLE IF NOT EXISTS "pregunta" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "comentario" text NOT NULL, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Publi" bigint NOT NULL REFERENCES "publicacion" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "calificacion" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "puntaje" integer NOT NULL, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Publi" bigint NOT NULL REFERENCES "publicacion" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "respuesta" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "comentario" text NOT NULL, "ID_Usuario" bigint NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED);
-CREATE TABLE IF NOT EXISTS "vehiculo" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "patente" varchar(20) NOT NULL UNIQUE, "capacidad" integer NOT NULL, "año_fabricacion" integer NOT NULL, "ID_Cate" bigint NOT NULL REFERENCES "categoria" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_EstVehi" bigint NOT NULL REFERENCES "estado_vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Marca" bigint NOT NULL REFERENCES "marca" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Politica" bigint NOT NULL REFERENCES "politica_de_cancelacion" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Sucursal" bigint NOT NULL REFERENCES "sucursal" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Modelo" bigint NOT NULL REFERENCES "modelo" ("id") DEFERRABLE INITIALLY DEFERRED);
+CREATE TABLE IF NOT EXISTS "vehiculo" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "patente" varchar(20) NOT NULL UNIQUE, "capacidad" integer NOT NULL, "anio_fabricacion" integer NOT NULL, "ID_Cate" bigint NOT NULL REFERENCES "categoria" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_EstVehi" bigint NOT NULL REFERENCES "estado_vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Marca" bigint NOT NULL REFERENCES "marca" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Politica" bigint NOT NULL REFERENCES "politica_de_cancelacion" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Sucursal" bigint NOT NULL REFERENCES "sucursal" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Modelo" bigint NOT NULL REFERENCES "modelo" ("id") DEFERRABLE INITIALLY DEFERRED);
+INSERT INTO vehiculo (patente, capacidad, anio_fabricacion, ID_Cate, ID_EstVehi, ID_Marca, ID_Politica, ID_Sucursal, ID_Modelo) VALUES ('AC226VV', 5, 2018, 4, 1, 2, 3, 11, 21);
 CREATE TABLE IF NOT EXISTS "foto" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "imagen" varchar(100) NOT NULL, "ID_Vehi" bigint NOT NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "django_admin_log" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "object_id" text NULL, "object_repr" varchar(200) NOT NULL, "action_flag" smallint unsigned NOT NULL CHECK ("action_flag" >= 0), "change_message" text NOT NULL, "content_type_id" integer NULL REFERENCES "django_content_type" ("id") DEFERRABLE INITIALLY DEFERRED, "user_id" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED, "action_time" datetime NOT NULL);
 CREATE TABLE IF NOT EXISTS "django_session" ("session_key" varchar(40) NOT NULL PRIMARY KEY, "session_data" text NOT NULL, "expire_date" datetime NOT NULL);
@@ -283,7 +285,7 @@ INSERT INTO sucursal (id, nombre, telefono, direccion, ID_Localidad) VALUES
 (18, 'Sucursal Tres Arroyos', '0018-4123418', 'Calle Falsa 118', 18),
 (19, 'Sucursal Villa Gesell', '0019-4123419', 'Calle Falsa 119', 19),
 (20, 'Sucursal Zárate', '0020-4123420', 'Calle Falsa 120', 20);
-CREATE TABLE IF NOT EXISTS "alquiler" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "fecha_inicio" datetime NOT NULL, "fecha_fin" datetime NOT NULL, "fecha_reserva" datetime NOT NULL, "monto_total" decimal NOT NULL, "ID_Estado" bigint NOT NULL REFERENCES "estado_alquiler" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Vehiculo" bigint NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED);
+CREATE TABLE IF NOT EXISTS "alquiler" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "fecha_inicio" datetime NOT NULL, "fecha_fin" datetime NOT NULL, "fecha_reserva" datetime NOT NULL, "monto_total" decimal NOT NULL, "ID_Estado" bigint NOT NULL REFERENCES "estado_alquiler" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Vehiculo" bigint NULL REFERENCES "vehiculo" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Usuario" bigint NOT NULL REFERENCES "usuario" ("id") DEFERRABLE INITIALLY DEFERRED, "ID_Sucursal_Devolucion" bigint NULL REFERENCES "sucursal" ("id") DEFERRABLE INITIALLY DEFERRED);
 CREATE TABLE IF NOT EXISTS "rol" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(20) NOT NULL UNIQUE);
 INSERT INTO rol (id, nombre) VALUES
 (1, 'Cliente'),
@@ -339,9 +341,9 @@ CREATE INDEX "django_admin_log_content_type_id_c4bce8eb" ON "django_admin_log" (
 CREATE INDEX "django_admin_log_user_id_c564eba6" ON "django_admin_log" ("user_id");
 CREATE INDEX "django_session_expire_date_a5c62663" ON "django_session" ("expire_date");
 CREATE INDEX "sucursal_ID_Localidad_f1480a8e" ON "sucursal" ("ID_Localidad");
-CREATE INDEX "alquiler_IDEstado_1b7d682e" ON "alquiler" ("IDEstado");
-CREATE INDEX "alquiler_vehiculo_id_d29a842f" ON "alquiler" ("vehiculo_id");
-CREATE INDEX "alquiler_cliente_id_534fada6" ON "alquiler" ("cliente_id");
+CREATE INDEX "alquiler_IDEstado_1b7d682e" ON "alquiler" ("ID_Estado");
+CREATE INDEX "alquiler_vehiculo_id_d29a842f" ON "alquiler" ("ID_Vehiculo");
+CREATE INDEX "alquiler_cliente_id_534fada6" ON "alquiler" ("ID_Usuario");
 CREATE INDEX "usuario_localidad_id_a6e4e82e" ON "usuario" ("localidad_id");
 CREATE INDEX "usuario_rol_id_ac58b608" ON "usuario" ("rol_id");
 COMMIT;

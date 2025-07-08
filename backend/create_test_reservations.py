@@ -63,7 +63,7 @@ def create_test_reservations():
                 'estado': estado_vehiculo,
                 'sucursal': sucursal,
                 'capacidad': 5,
-                'año_fabricacion': 2020
+                'anio_fabricacion': 2020
             }
         )
         if created:
