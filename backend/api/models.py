@@ -114,29 +114,48 @@ class Alquiler(models.Model):
     def registrar_devolucion(self, sucursal_devolucion_real):
         """
         Registra la devolución del vehículo y calcula el monto extra si es necesario.
+        Valida los estados: cancelado, finalizado, confirmado (no en curso).
         """
-        if self.estado.id == 3:  # Si ya está finalizado
-            raise ValueError("Esta reserva ya ha sido finalizada")
-        
+        if self.estado.id == 2:  # Cancelado
+            raise ValueError("No se puede registrar devolución: el alquiler ya está cancelado")
+        if self.estado.id == 3:  # Finalizado
+            raise ValueError("No se puede registrar devolución: la reserva ya ha sido finalizada")
+        if self.estado.id == 1:  # Confirmado pero no en curso
+            raise ValueError("No se puede registrar devolución: la reserva está confirmada pero no en curso")
+
         # Obtener el estado "Finalizado"
         estado_finalizado = EstadoAlquiler.objects.get(id=3)
-        
         # Actualizar el estado del alquiler
         self.estado = estado_finalizado
         self.save()
-        
-        # Actualizar el estado del vehículo a "Disponible"
-        estado_disponible = EstadoVehiculo.objects.get(id=1)
-        self.vehiculo.estado = estado_disponible
-        self.vehiculo.save()
-        
+
         # Calcular monto extra si la devolución es en sucursal diferente
         monto_extra = 0
         if sucursal_devolucion_real.id != self.sucursal_devolucion.id:
-            # Monto fijo por devolución en sucursal diferente (puede ser configurable)
-            monto_extra = 5000  # $5000 pesos por devolución en sucursal diferente
-        
+            monto_extra = 5000  # $5000 pesos por devolución en sucursal diferente  
         return monto_extra
+
+    def retirar_vehiculo(self):
+        """
+        Cambia el estado de la reserva a "En Curso" cuando el cliente retira el vehículo.
+        """
+        if self.estado.id == 2:  # Si está cancelado
+            raise ValueError("No se puede retirar un vehículo de una reserva cancelada")
+        
+        if self.estado.id == 3:  # Si ya está finalizado
+            raise ValueError("No se puede retirar un vehículo de una reserva finalizada")
+        
+        if self.estado.id == 4:  # Si ya está en curso
+            raise ValueError("El vehículo ya ha sido retirado")
+        
+        # Obtener el estado "En Curso"
+        estado_en_curso = EstadoAlquiler.objects.get(id=4)
+        
+        # Actualizar el estado del alquiler
+        self.estado = estado_en_curso
+        self.save()
+        
+        return True
 
 class Marca(models.Model):
     nombre = models.CharField(max_length=100)
@@ -186,7 +205,7 @@ class PoliticaDeCancelacion(models.Model):
 class Vehiculo(models.Model):
     patente = models.CharField(max_length=20, unique=True)
     capacidad = models.IntegerField()   
-    año_fabricacion = models.IntegerField()
+    anio_fabricacion = models.IntegerField()
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, db_column='ID_Cate')
     estado = models.ForeignKey(EstadoVehiculo, on_delete=models.CASCADE, db_column='ID_EstVehi')
     marca = models.ForeignKey(Marca, on_delete=models.CASCADE, db_column='ID_Marca')

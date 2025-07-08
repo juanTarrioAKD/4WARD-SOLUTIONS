@@ -161,7 +161,8 @@ CREATE TABLE IF NOT EXISTS "estado_alquiler" ("id" integer NOT NULL PRIMARY KEY 
 INSERT INTO estado_alquiler (id, nombre) VALUES
 (1, 'Confirmada'),
 (2, 'Cancelada'),
-(3, 'Finalizada');
+(3, 'Finalizada'),
+(4, 'En Curso');
 CREATE TABLE IF NOT EXISTS "estado_vehiculo" ("id" integer NOT NULL PRIMARY KEY AUTOINCREMENT, "nombre" varchar(100) NOT NULL);
 INSERT INTO estado_vehiculo (id, nombre) VALUES
 (1, 'Disponible'),
@@ -489,9 +490,9 @@ CREATE INDEX "django_admin_log_content_type_id_c4bce8eb" ON "django_admin_log" (
 CREATE INDEX "django_admin_log_user_id_c564eba6" ON "django_admin_log" ("user_id");
 CREATE INDEX "django_session_expire_date_a5c62663" ON "django_session" ("expire_date");
 CREATE INDEX "sucursal_ID_Localidad_f1480a8e" ON "sucursal" ("ID_Localidad");
-CREATE INDEX "alquiler_IDEstado_1b7d682e" ON "alquiler" ("IDEstado");
-CREATE INDEX "alquiler_vehiculo_id_d29a842f" ON "alquiler" ("vehiculo_id");
-CREATE INDEX "alquiler_cliente_id_534fada6" ON "alquiler" ("cliente_id");
+CREATE INDEX "alquiler_IDEstado_1b7d682e" ON "alquiler" ("ID_Estado");
+CREATE INDEX "alquiler_vehiculo_id_d29a842f" ON "alquiler" ("ID_Vehiculo");
+CREATE INDEX "alquiler_cliente_id_534fada6" ON "alquiler" ("ID_Usuario");
 CREATE INDEX "usuario_localidad_id_a6e4e82e" ON "usuario" ("localidad_id");
 CREATE INDEX "usuario_rol_id_ac58b608" ON "usuario" ("rol_id");
 COMMIT;

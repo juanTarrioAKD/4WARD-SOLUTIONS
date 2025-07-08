@@ -17,7 +17,8 @@ INSERT INTO categoria (id, precio, nombre) VALUES
 INSERT INTO estado_alquiler (id, nombre) VALUES
 (1, 'Confirmada'),
 (2, 'Cancelada'),
-(3, 'Finalizada');
+(3, 'Finalizada'),
+(4, 'En Curso');
 
 -- Insertar estados de vehículo
 INSERT INTO estado_vehiculo (id, nombre) VALUES

@@ -510,7 +510,7 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                             'id': v.id,
                             'patente': v.patente,
                             'marca': v.marca.nombre,
-                            'año': v.año_fabricacion,
+                            'año': v.anio_fabricacion,
                             'capacidad': v.capacidad
                         } for v in vehiculos_modelo
                     ]
@@ -533,6 +533,90 @@ class VehiculoViewSet(viewsets.ModelViewSet):
                 {"error": f"Error al procesar la solicitud: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=False, methods=['post'], url_path='modelos-disponibles-por-sucursal')
+    def modelos_disponibles_por_sucursal(self, request):
+        """
+        Devuelve los modelos de vehículos disponibles para alquilar según:
+        - id de categoría
+        - sucursal de retiro
+        - sucursal de devolución (no filtra, solo la incluye en la respuesta)
+        - fecha de inicio
+        - fecha de fin
+        """
+        categoria_id = request.data.get('categoria_id')
+        sucursal_retiro_id = request.data.get('sucursal_retiro_id')
+        sucursal_devolucion_id = request.data.get('sucursal_devolucion_id')
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+
+        if not all([categoria_id, sucursal_retiro_id, sucursal_devolucion_id, fecha_inicio, fecha_fin]):
+            return Response({
+                'error': 'Se requieren los parámetros: categoria_id, sucursal_retiro_id, sucursal_devolucion_id, fecha_inicio y fecha_fin'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            fecha_inicio = datetime.fromisoformat(fecha_inicio.replace('Z', '+00:00'))
+            fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
+        except ValueError:
+            return Response({
+                'error': 'Formato de fecha inválido. Use formato ISO (YYYY-MM-DDTHH:MM:SSZ)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if fecha_inicio >= fecha_fin:
+            return Response({
+                'error': 'La fecha de inicio debe ser anterior a la fecha de fin'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Filtrar vehículos por categoría y sucursal de retiro
+        vehiculos_disponibles = Vehiculo.objects.filter(
+            categoria_id=categoria_id,
+            sucursal_id=sucursal_retiro_id,
+            estado__id=1  # estado disponible
+        ).exclude(
+            alquileres__estado__id=1,  # Solo reservas confirmadas
+            alquileres__fecha_inicio__lte=fecha_fin,
+            alquileres__fecha_fin__gte=fecha_inicio
+        ).distinct()
+
+        modelos_disponibles = Modelo.objects.filter(
+            vehiculo__in=vehiculos_disponibles
+        ).distinct()
+
+        if not modelos_disponibles.exists():
+            return Response({
+                'error': 'No se encuentran modelos disponibles en las fechas y sucursal seleccionadas'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        modelos_data = []
+        for modelo in modelos_disponibles:
+            vehiculos_modelo = vehiculos_disponibles.filter(modelo=modelo)
+            cantidad_disponible = vehiculos_modelo.count()
+            precio_categoria = Categoria.objects.get(id=categoria_id).precio
+            modelos_data.append({
+                'id': modelo.id,
+                'nombre': modelo.nombre,
+                'cantidad_disponible': cantidad_disponible,
+                'precio_por_dia': precio_categoria,
+                'vehiculos': [
+                    {
+                        'id': v.id,
+                        'patente': v.patente,
+                        'marca': v.marca.nombre,
+                        'año': v.anio_fabricacion,
+                        'capacidad': v.capacidad
+                    } for v in vehiculos_modelo
+                ]
+            })
+
+        return Response({
+            'categoria_id': categoria_id,
+            'sucursal_retiro_id': sucursal_retiro_id,
+            'sucursal_devolucion_id': sucursal_devolucion_id,
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'modelos_disponibles': modelos_data
+        })
 
 class PublicacionViewSet(viewsets.ModelViewSet):
     queryset = Publicacion.objects.all()
@@ -929,7 +1013,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         """
         Endpoint para que empleados registren la devolución de un vehículo.
         Solo pueden acceder usuarios con rol 2 (empleado) o 3 (admin).
-        Recibe el ID del alquiler y opcionalmente la sucursal de devolución en el body del request.
+        Recibe solo el ID del alquiler en el body del request.
         """
         # Verificar que el usuario sea empleado o admin
         if request.user.rol.id not in [2, 3]:  # 2=empleado, 3=admin
@@ -948,55 +1032,26 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             return Response({'error': 'El alquiler especificado no existe'}, 
                           status=status.HTTP_400_BAD_REQUEST)
         
-        # Verificar el estado del alquiler antes de procesar
-        if alquiler.estado.id == 2:  # Cancelado
-            return Response({
-                'mensaje': 'No se puede registrar devolución',
-                'alquiler_id': alquiler.id,
-                'estado_actual': 'Cancelado',
-                'detalle': 'El alquiler ya está cancelado'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if alquiler.estado.id == 3:  # Finalizado
-            return Response({
-                'mensaje': 'No se puede registrar devolución',
-                'alquiler_id': alquiler.id,
-                'estado_actual': 'Finalizado',
-                'detalle': 'El alquiler ya está finalizado'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Obtener la sucursal de devolución (opcional, por defecto usa la asignada)
-        sucursal_devolucion_id = request.data.get('sucursal_devolucion')
-        if sucursal_devolucion_id:
-            try:
-                sucursal_devolucion = Sucursal.objects.get(id=sucursal_devolucion_id)
-            except Sucursal.DoesNotExist:
-                return Response({'error': 'La sucursal de devolución especificada no existe'}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-        else:
-            # Si no se especifica, usar la sucursal originalmente asignada
-            sucursal_devolucion = alquiler.sucursal_devolucion
+        # Usar la sucursal del empleado como sucursal de devolución real
+        sucursal_devolucion_real = request.user.sucursal
+        sucursal_asignada = alquiler.sucursal_devolucion
         
         try:
-            monto_extra = alquiler.registrar_devolucion(sucursal_devolucion)
-            
+            monto_extra = alquiler.registrar_devolucion(sucursal_devolucion_real)
             response_data = {
                 'mensaje': 'Devolución registrada exitosamente',
                 'alquiler_id': alquiler.id,
                 'vehiculo': f"{alquiler.vehiculo.marca} {alquiler.vehiculo.modelo} - {alquiler.vehiculo.patente}",
                 'cliente': f"{alquiler.cliente.first_name} {alquiler.cliente.last_name}",
-                'sucursal_asignada': alquiler.sucursal_devolucion.nombre,
-                'sucursal_devolucion_real': sucursal_devolucion.nombre,
+                'sucursal_asignada': sucursal_asignada.nombre,
+                'sucursal_devolucion_real': sucursal_devolucion_real.nombre,
                 'monto_extra': monto_extra
             }
-            
             if monto_extra > 0:
                 response_data['mensaje_cobro'] = f"Se debe cobrar ${monto_extra} pesos por devolución en sucursal diferente"
             else:
                 response_data['mensaje_cobro'] = "No hay cargo adicional por devolución en sucursal asignada"
-            
             return Response(response_data, status=status.HTTP_200_OK)
-            
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
@@ -1007,7 +1062,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
     def alquilar_para_cliente(self, request):
         """
         Permite a un empleado crear un alquiler para un cliente específico.
-        Requiere: cliente_email, modelo_id, sucursal_devolucion, fecha_inicio, fecha_fin
+        Requiere: cliente_email, modelo_id, sucursal_retiro, sucursal_devolucion, fecha_inicio, fecha_fin
         """
         cliente_email = request.data.get('cliente_email')
         if not cliente_email:
@@ -1019,10 +1074,13 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         except Usuario.DoesNotExist:
             return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Reutilizar la lógica de create, pero usando el cliente especificado
         modelo_id = request.data.get('modelo_id')
         if not modelo_id:
             return Response({"error": "Se requiere especificar el modelo del vehículo"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sucursal_retiro_id = request.data.get('sucursal_retiro')
+        if not sucursal_retiro_id:
+            return Response({"error": "Se requiere especificar la sucursal de retiro"}, status=status.HTTP_400_BAD_REQUEST)
 
         sucursal_devolucion_id = request.data.get('sucursal_devolucion')
         if not sucursal_devolucion_id:
@@ -1036,15 +1094,16 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             return Response({"error": f"Formato de fecha inválido: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
         vehiculo_disponible = None
-        vehiculos_modelo = Vehiculo.objects.filter(modelo_id=modelo_id, estado__id=1)
+        vehiculos_modelo = Vehiculo.objects.filter(modelo_id=modelo_id, sucursal_id=sucursal_retiro_id)
         for vehiculo in vehiculos_modelo:
             if vehiculo.esta_disponible(fecha_inicio, fecha_fin):
                 vehiculo_disponible = vehiculo
                 break
         if not vehiculo_disponible:
-            return Response({"error": "No hay vehículos disponibles del modelo seleccionado para las fechas especificadas"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No hay vehículos disponibles del modelo seleccionado para las fechas y sucursal de retiro especificadas"}, status=status.HTTP_400_BAD_REQUEST)
 
         monto_total = vehiculo_disponible.categoria.precio * dias
+
         try:
             estado_confirmado = EstadoAlquiler.objects.get(id=1)
         except EstadoAlquiler.DoesNotExist:
@@ -1059,7 +1118,7 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             'estado': estado_confirmado.id,
             'sucursal_devolucion': sucursal_devolucion_id
         }
-        serializer = AlquilerCreateSerializer(data=alquiler_data)   #TODO: Verificar si se puede usar el serializer de AlquilerCreateSerializer
+        serializer = AlquilerCreateSerializer(data=alquiler_data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
@@ -1069,24 +1128,17 @@ class AlquilerViewSet(viewsets.ModelViewSet):
     def cancelar_para_cliente(self, request):
         """
         Permite a un empleado cancelar un alquiler para un cliente específico.
-        Requiere: cliente_email, alquiler_id
+        Requiere: alquiler_id
         """
-        cliente_email = request.data.get('cliente_email')
         alquiler_id = request.data.get('alquiler_id')
-        if not cliente_email or not alquiler_id:
-            return Response({"error": "Se requiere especificar el email del cliente y el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Obtener el usuario cliente por email
-        try:
-            cliente = Usuario.objects.get(email=cliente_email)
-        except Usuario.DoesNotExist:
-            return Response({"error": "El cliente especificado no existe"}, status=status.HTTP_400_BAD_REQUEST)
+        if not alquiler_id:
+            return Response({"error": "Se requiere especificar el id de la reserva/alquiler"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Obtener el alquiler
         try:
-            alquiler = Alquiler.objects.get(id=alquiler_id, cliente=cliente)
+            alquiler = Alquiler.objects.get(id=alquiler_id)
         except Alquiler.DoesNotExist:
-            return Response({"error": "No existe un alquiler con ese id para el cliente especificado"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "No existe un alquiler con ese id"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Cancelar el alquiler
         try:
@@ -1097,6 +1149,57 @@ class AlquilerViewSet(viewsets.ModelViewSet):
             })
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='retirar-vehiculo', permission_classes=[IsEmpleado])
+    def retirar_vehiculo(self, request):
+        """
+        Permite a un empleado registrar el retiro de un vehículo por parte de un cliente.
+        Requiere: alquiler_id
+        """
+        alquiler_id = request.data.get('alquiler_id')
+        if not alquiler_id:
+            return Response({
+                "error": "Se requiere especificar el id de la reserva/alquiler"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar que el número de reserva existe
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return Response({
+                "error": "El número de reserva no existe"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retirar el vehículo (cambiar estado a "En Curso")
+        try:
+            alquiler.retirar_vehiculo()
+            return Response({
+                'mensaje': 'Vehículo retirado exitosamente',
+                'alquiler_id': alquiler.id,
+                'cliente': f"{alquiler.cliente.first_name} {alquiler.cliente.last_name}",
+                'vehiculo': f"{alquiler.vehiculo.marca} {alquiler.vehiculo.modelo} - {alquiler.vehiculo.patente}",
+                'estado': 'En Curso'
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get'], url_path='reserva-y-cliente', permission_classes=[IsEmpleado])
+    def reserva_y_cliente(self, request, pk=None):
+        """
+        Devuelve los datos de la reserva y del cliente asociado dado el ID de la reserva (alquiler).
+        """
+        try:
+            alquiler = self.get_object()
+            reserva_serializer = AlquilerSerializer(alquiler)
+            cliente_serializer = UsuarioSerializer(alquiler.cliente)
+            return Response({
+                'reserva': reserva_serializer.data,
+                'cliente': cliente_serializer.data
+            })
+        except Alquiler.DoesNotExist:
+            return Response({'error': 'La reserva no existe'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()

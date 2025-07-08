@@ -295,11 +295,6 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
         # Crear el alquiler
         alquiler = Alquiler.objects.create(**validated_data)
         
-        # Cambiar el estado del vehículo a "Alquilado" (id=2)
-        estado_alquilado = EstadoVehiculo.objects.get(id=2)
-        alquiler.vehiculo.estado = estado_alquilado
-        alquiler.vehiculo.save()
-        
         return alquiler
 
 class EstadoAlquilerSerializer(serializers.ModelSerializer):
