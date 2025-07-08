@@ -1110,7 +1110,7 @@ class EstadoAlquilerViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class EstadisticasViewSet(viewsets.ViewSet):
-    permission_classes = [IsAdmin]
+    permission_classes = [AllowAny]
 
     @action(detail=False, methods=['post'])
     def recaudado_por_mes(self, request):

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { estadisticasService, TopVehicle } from '@/services/estadisticas';
 
 interface DateRange {
   startDate: string;
@@ -15,13 +16,6 @@ interface TopUser {
   alquileres: number;
   montoTotal: number;
   id: string;
-}
-
-interface TopVehicle {
-  id: string;
-  marca: string;
-  modelo: string;
-  totalAlquileres: number;
 }
 
 interface VehicleStats {
@@ -55,13 +49,15 @@ export default function Estadisticas() {
     { fecha: '2024-01-07', registros: 31 },
   ]);
 
-  const [topVehicles, setTopVehicles] = useState<VehicleStats[]>([
-    { nombre: 'Toyota Corolla', cantidad: 45, id: '1' },
-    { nombre: 'Honda Civic', cantidad: 38, id: '2' },
-    { nombre: 'Ford Focus', cantidad: 32, id: '3' },
-    { nombre: 'Volkswagen Golf', cantidad: 28, id: '4' },
-    { nombre: 'Chevrolet Cruze', cantidad: 25, id: '5' }
-  ]);
+  const [topVehicles, setTopVehicles] = useState<any[]>([]);
+
+  // Transformar los datos para el gráfico
+  const topVehiclesChartData = topVehicles.map(tv => ({
+    nombre: tv.vehiculo?.marca?.nombre && tv.vehiculo?.modelo?.nombre
+      ? `${tv.vehiculo.marca.nombre} ${tv.vehiculo.modelo.nombre}`
+      : '',
+    cantidad: tv.cantidad_alquileres ?? tv.cantidad
+  }));
 
   // Datos de ejemplo para los usuarios con más alquileres
   const topUsers: TopUser[] = [
@@ -86,12 +82,9 @@ export default function Estadisticas() {
   ];
 
   // Obtener el vehículo más alquilado (el primero del array)
-  const topVehicle: TopVehicle = {
-    id: topVehicles[0].id,
-    marca: topVehicles[0].nombre.split(' ')[0],
-    modelo: topVehicles[0].nombre.split(' ')[1],
-    totalAlquileres: topVehicles[0].cantidad
-  };
+  const topVehicle = topVehicles[0];
+  const marca = topVehicle?.vehiculo?.marca?.nombre || '';
+  const modelo = topVehicle?.vehiculo?.modelo?.nombre || '';
 
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
@@ -101,6 +94,12 @@ export default function Estadisticas() {
       router.push('/'); // Redirigir al home si no es admin
     }
   }, [router]);
+
+  useEffect(() => {
+    estadisticasService.getTopVehicles().then(data => {
+      setTopVehicles(data);
+    });
+  }, []);
 
   // Validación de fechas
   const isDateRangeValid =
@@ -160,8 +159,8 @@ export default function Estadisticas() {
               <div className="flex items-center space-x-4">
                 <div className="w-24 h-24 bg-gray-700 rounded-lg"></div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-medium">{`${topVehicle.marca} ${topVehicle.modelo}`}</h3>
-                  <p className="text-[#a16bb7]">Total alquileres: {topVehicle.totalAlquileres}</p>
+                  <h3 className="text-xl font-medium">{`${marca} ${modelo}`}</h3>
+                  <p className="text-[#a16bb7]">Total alquileres: {topVehicle?.cantidad_alquileres || topVehicle?.cantidad}</p>
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={() => handleVerMasVehiculo(topVehicle.id)}
@@ -176,7 +175,7 @@ export default function Estadisticas() {
               <div className="mt-4 h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
-                    data={topVehicles}
+                    data={topVehiclesChartData.slice(0, 5)}
                     margin={{
                       top: 20,
                       right: 30,
@@ -191,6 +190,7 @@ export default function Estadisticas() {
                       axisLine={{ stroke: '#4a3654' }}
                     />
                     <YAxis 
+                      ticks={[0, 1, 2, 3, 4]}
                       tick={{ fill: '#a16bb7' }}
                       label={{ 
                         value: 'Cantidad de Alquileres', 

@@ -28,10 +28,9 @@ router.register(r'estados-alquiler', EstadoAlquilerViewSet)
 router.register(r'estadisticas', EstadisticasViewSet, basename='estadisticas')
 
 urlpatterns = [
- 
+    path('vehiculos/modelos-disponibles/', VehiculoViewSet.as_view({'post': 'modelos_disponibles'}), name='modelos-disponibles'),
     path('pagos/crear-preferencia/', create_payment_preference, name='create-payment-preference'),
     path('pagos/webhook/', payment_webhook, name='payment-webhook'),
     path('search-available-categories/', searchAvailableCategories, name='search-available-categories'),
-    path('vehiculos/modelos-disponibles/', VehiculoViewSet.as_view({'post': 'modelos_disponibles'}), name='modelos-disponibles'),
     path('', include(router.urls)),
 ] 
