@@ -6,12 +6,16 @@ import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import { getCurrentUser, logout } from '@/services/auth';
 import { useRouter } from 'next/navigation';
-import ModelList from '@/components/ModelList';
-import DatePicker from '@/components/DatePicker';
-import { getCategories, getAvailableModels, type Category } from '@/services/categories';
+// import { getCategories, type Category } from '@/services/categories';
 import { getAlquilerById } from '@/services/alquiler';
 import { getAuthToken } from '@/services/auth';
 import 'leaflet/dist/leaflet.css';
+import AgregarVehiculoForm from '@/components/vehicles/AgregarVehiculoForm';
+import EditarVehiculoForm from '@/components/vehicles/EditarVehiculoForm';
+import ConfirmarEliminarVehiculo from '@/components/vehicles/ConfirmarEliminarVehiculo';
+import { buscarVehiculoPorPatente, type Vehiculo } from '@/services/vehiculos';
+import { Model } from '@/types/models';
+import DatePicker from '@/components/DatePicker';
 
 
 const CategoryList = dynamic(() => import('@/components/CategoryList'), { ssr: false });
@@ -28,6 +32,52 @@ interface User {
   first_name: string;
 }
 
+interface RetiroReserva {
+  id: number;
+  cliente?: { nombre?: string; apellido?: string; email?: string };
+  vehiculo?: {
+    marca?: { nombre?: string };
+    modelo?: { nombre?: string };
+    patente?: string;
+  };
+  fecha_inicio?: string;
+  fecha_fin?: string;
+}
+
+// MOCK DATA para sucursales, categorías y modelos
+const mockSucursales = [
+  { id: 1, nombre: 'Sucursal Centro' },
+  { id: 2, nombre: 'Sucursal Norte' },
+];
+const mockCategoriasPorSucursal: { [sucursalId: number]: { id: number; nombre: string }[] } = {
+  1: [
+    { id: 1, nombre: 'Económico' },
+    { id: 2, nombre: 'SUV' },
+  ],
+  2: [
+    { id: 3, nombre: 'Deportivo' },
+    { id: 4, nombre: 'Van' },
+  ],
+};
+const mockModelosPorCategoria: { [categoriaId: number]: { id: number; nombre: string; precio_por_dia: number }[] } = {
+  1: [
+    { id: 101, nombre: 'Toyota Etios', precio_por_dia: 10000 },
+    { id: 102, nombre: 'Fiat Mobi', precio_por_dia: 9500 },
+  ],
+  2: [
+    { id: 201, nombre: 'Toyota SW4', precio_por_dia: 20000 },
+    { id: 202, nombre: 'Jeep Compass', precio_por_dia: 18000 },
+  ],
+  3: [
+    { id: 301, nombre: 'Ford Mustang', precio_por_dia: 30000 },
+    { id: 302, nombre: 'Chevrolet Camaro', precio_por_dia: 32000 },
+  ],
+  4: [
+    { id: 401, nombre: 'Renault Kangoo', precio_por_dia: 15000 },
+    { id: 402, nombre: 'Peugeot Partner', precio_por_dia: 14500 },
+  ],
+};
+
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
@@ -42,10 +92,9 @@ export default function Home() {
   const [showReservaModal, setShowReservaModal] = useState(false);
   const [reservaEmail, setReservaEmail] = useState('');
   const [reservaCategoria, setReservaCategoria] = useState<number | null>(null);
-  const [reservaCategorias, setReservaCategorias] = useState<Category[]>([]);
   const [reservaFechaRetiro, setReservaFechaRetiro] = useState<Date | null>(null);
   const [reservaFechaDevolucion, setReservaFechaDevolucion] = useState<Date | null>(null);
-  const [reservaModelos, setReservaModelos] = useState<any[]>([]);
+  const [reservaModelos, setReservaModelos] = useState<Model[]>([]);
   const [reservaError, setReservaError] = useState<string | null>(null);
   const [reservaLoading, setReservaLoading] = useState(false);
   const [showRetiroModal, setShowRetiroModal] = useState(false);
@@ -62,17 +111,71 @@ export default function Home() {
   const [registrarUsuarioLoading, setRegistrarUsuarioLoading] = useState(false);
   const [registrarUsuarioError, setRegistrarUsuarioError] = useState<string | null>(null);
   const [registrarUsuarioSuccess, setRegistrarUsuarioSuccess] = useState(false);
-  const [passwordGenerada, setPasswordGenerada] = useState('');
-  const [cancelarEmail, setCancelarEmail] = useState('');
   const [cancelarReservaId, setCancelarReservaId] = useState('');
   const [cancelarLoading, setCancelarLoading] = useState(false);
   const [cancelarError, setCancelarError] = useState<string | null>(null);
   const [cancelarConfirmado, setCancelarConfirmado] = useState(false);
-  const [retiroReserva, setRetiroReserva] = useState<any>(null);
+  const [retiroReserva, setRetiroReserva] = useState<RetiroReserva | null>(null);
   const [retiroLoading, setRetiroLoading] = useState(false);
   const [retiroError, setRetiroError] = useState<string | null>(null);
   const [retiroConfirmado, setRetiroConfirmado] = useState(false);
+  const [vehiculoPatente, setVehiculoPatente] = useState('');
+  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
+  const [vehiculoError, setVehiculoError] = useState<string | null>(null);
+  const [vehiculoLoading, setVehiculoLoading] = useState(false);
+  const [showAddVehiculoForm, setShowAddVehiculoForm] = useState(false);
+  const [vehiculoAEditar, setVehiculoAEditar] = useState<Vehiculo | null>(null);
+  const [vehiculoAEliminar, setVehiculoAEliminar] = useState<Vehiculo | null>(null);
+  const [sucursales, setSucursales] = useState<{ id: number; nombre: string }[]>(mockSucursales);
+  const [reservaSucursalRetiro, setReservaSucursalRetiro] = useState<number | null>(null);
+  const [reservaSucursalDevolucion, setReservaSucursalDevolucion] = useState<number | null>(null);
+  const [reservaCategoriasSucursal, setReservaCategoriasSucursal] = useState<{ id: number; nombre: string }[]>([]);
+  const [reservaModelosSucursal, setReservaModelosSucursal] = useState<Model[]>([]);
+  const [reservaModelo, setReservaModelo] = useState<number | null>(null);
+  const [emailValido, setEmailValido] = useState<null | boolean>(null);
+  const [modelosDisponibles, setModelosDisponibles] = useState<{ id: number; nombre: string; precio_por_dia: number }[]>([]);
+  const [mostrarModelos, setMostrarModelos] = useState(false);
+  const [montoACobrar, setMontoACobrar] = useState<number | null>(null);
+  const [showDevolucionModal, setShowDevolucionModal] = useState(false);
+  const [devolucionReservaId, setDevolucionReservaId] = useState('');
+  const [devolucionReserva, setDevolucionReserva] = useState<RetiroReserva | null>(null);
+  const [devolucionLoading, setDevolucionLoading] = useState(false);
+  const [devolucionError, setDevolucionError] = useState<string | null>(null);
+  const [devolucionConfirmado, setDevolucionConfirmado] = useState(false);
+  const [cancelarReservaInfo, setCancelarReservaInfo] = useState<RetiroReserva | null>(null);
+  const [cancelarReservaLoading, setCancelarReservaLoading] = useState(false);
+  const [cancelarReservaError, setCancelarReservaError] = useState<string | null>(null);
+  const [cancelarReservaConfirmado, setCancelarReservaConfirmado] = useState(false);
   const router = useRouter();
+  // Reemplazar los usuarios mock por una lista más variada, ahora como estado dentro del componente
+  const [mockUsers, setMockUsers] = useState<User[]>([
+    { id: 1, email: 'ana.garcia@example.com', first_name: 'Ana' },
+    { id: 2, email: 'bruno.martinez@example.com', first_name: 'Bruno' },
+    { id: 3, email: 'carla.lopez@example.com', first_name: 'Carla' },
+    { id: 4, email: 'daniel.sosa@example.com', first_name: 'Daniel' },
+    { id: 5, email: 'elena.perez@example.com', first_name: 'Elena' },
+    { id: 6, email: 'franco.ramos@example.com', first_name: 'Franco' },
+    { id: 7, email: 'gabriela.torres@example.com', first_name: 'Gabriela' },
+    { id: 8, email: 'hector.mendez@example.com', first_name: 'Héctor' },
+    { id: 9, email: 'ines.silva@example.com', first_name: 'Inés' },
+    { id: 10, email: 'jose.alvarez@example.com', first_name: 'José' },
+    { id: 11, email: 'karina.fernandez@example.com', first_name: 'Karina' },
+    { id: 12, email: 'lucas.gomez@example.com', first_name: 'Lucas' },
+    { id: 13, email: 'marina.diaz@example.com', first_name: 'Marina' },
+    { id: 14, email: 'nicolas.bustos@example.com', first_name: 'Nicolás' },
+    { id: 15, email: 'olga.castro@example.com', first_name: 'Olga' },
+    { id: 16, email: 'pablo.vazquez@example.com', first_name: 'Pablo' },
+    { id: 17, email: 'quimey.rios@example.com', first_name: 'Quimey' },
+    { id: 18, email: 'rocio.molina@example.com', first_name: 'Rocío' },
+    { id: 19, email: 'sofia.cabrera@example.com', first_name: 'Sofía' },
+    { id: 20, email: 'tomas.flores@example.com', first_name: 'Tomás' },
+    { id: 21, email: 'ursula.martin@example.com', first_name: 'Úrsula' },
+    { id: 22, email: 'valentin.vera@example.com', first_name: 'Valentín' },
+    { id: 23, email: 'wanda.iglesias@example.com', first_name: 'Wanda' },
+    { id: 24, email: 'ximena.ayala@example.com', first_name: 'Ximena' },
+    { id: 25, email: 'yago.paz@example.com', first_name: 'Yago' },
+    { id: 26, email: 'zulema.ortiz@example.com', first_name: 'Zulema' },
+  ]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -80,7 +183,7 @@ export default function Home() {
       setUserState({
         isAuthenticated: true,
         role: Number(user.rol),
-        username: user.first_name
+        username: user.nombre
       });
     }
   }, []);
@@ -91,7 +194,7 @@ export default function Home() {
       setUserState({
         isAuthenticated: true,
         role: Number(user.rol),
-        username: user.first_name
+        username: user.nombre
       });
       setShowLoginForm(false);
     }
@@ -178,19 +281,21 @@ export default function Home() {
     }
   };
 
-  const handleSearchEmail = async (email: string) => {
-    setSearchEmail(email);
-    // Aquí iría la llamada al backend para buscar usuarios
-    // Por ahora usamos datos de ejemplo
-    if (email) {
-      const mockResults = [
-        { id: 1, email: 'usuario1@example.com', first_name: 'Usuario 1' },
-        { id: 2, email: 'usuario2@example.com', first_name: 'Usuario 2' },
-      ].filter(user => user.email.toLowerCase().includes(email.toLowerCase()));
-      setSearchResults(mockResults);
+  // Actualizar la búsqueda para que filtre en tiempo real por cada letra
+  useEffect(() => {
+    if (searchEmail) {
+      const filtered = mockUsers.filter(user =>
+        user.email.toLowerCase().includes(searchEmail.toLowerCase())
+      );
+      setSearchResults(filtered);
     } else {
       setSearchResults([]);
     }
+  }, [searchEmail, mockUsers]);
+
+  // handleSearchEmail solo actualiza el estado
+  const handleSearchEmail = (email: string) => {
+    setSearchEmail(email);
   };
 
   const handleDeleteUser = async (userId: number) => {
@@ -199,10 +304,9 @@ export default function Home() {
     setSearchResults(prev => prev.filter(user => user.id !== userId));
   };
 
-  // Cargar categorías al abrir el modal
+  // Limpiar campos al abrir el modal, pero sin fetch ni sobrescribir categorías
   useEffect(() => {
     if (showReservaModal) {
-      getCategories().then(setReservaCategorias).catch(() => setReservaCategorias([]));
       setReservaEmail('');
       setReservaCategoria(null);
       setReservaFechaRetiro(null);
@@ -219,24 +323,19 @@ export default function Home() {
     }
   }, [reservaFechaRetiro]);
 
-  const handleBuscarModelos = async () => {
+  const handleBuscarModelos = () => {
     setReservaError(null);
-    if (!reservaEmail || !reservaCategoria || !reservaFechaRetiro || !reservaFechaDevolucion) {
+    setMostrarModelos(false);
+    setMontoACobrar(null);
+    if (!reservaCategoria || !reservaSucursalRetiro || !reservaFechaRetiro || !reservaFechaDevolucion) {
       setReservaError('Completa todos los campos para buscar modelos disponibles.');
       return;
     }
-    setReservaLoading(true);
-    try {
-      const fechaInicioStr = reservaFechaRetiro.toISOString();
-      const fechaFinStr = reservaFechaDevolucion.toISOString();
-      const response = await getAvailableModels(reservaCategoria, fechaInicioStr, fechaFinStr);
-      setReservaModelos(response.modelos_disponibles || []);
-    } catch (e: any) {
-      setReservaError(e.message || 'Error al buscar modelos disponibles.');
-      setReservaModelos([]);
-    } finally {
-      setReservaLoading(false);
-    }
+    // Simular modelos disponibles según la categoría
+    setTimeout(() => {
+      setModelosDisponibles(mockModelosPorCategoria[reservaCategoria] || []);
+      setMostrarModelos(true);
+    }, 500);
   };
 
   const handleBuscarReserva = async () => {
@@ -249,12 +348,23 @@ export default function Home() {
     }
     setRetiroLoading(true);
     try {
-      const token = getAuthToken();
-      if (!token) throw new Error('No autenticado');
-      const reserva = await getAlquilerById(Number(retiroReservaId), token);
-      setRetiroReserva(reserva);
-    } catch (e: any) {
-      setRetiroError(e.message || 'Reserva no encontrada');
+      // MOCK: Reserva ficticia
+      const reservaMock = {
+        id: Number(retiroReservaId),
+        cliente: { nombre: "Juan", apellido: "Pérez", email: "juan.perez@email.com" },
+        vehiculo: {
+          marca: { nombre: "Toyota" },
+          modelo: { nombre: "Corolla" },
+          patente: "ABC123"
+        },
+        fecha_inicio: new Date().toISOString(),
+        fecha_fin: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      };
+      // Simula un retardo de red
+      await new Promise(res => setTimeout(res, 1000));
+      setRetiroReserva(reservaMock);
+    } catch {
+      setRetiroError('Reserva no encontrada');
     } finally {
       setRetiroLoading(false);
     }
@@ -263,6 +373,12 @@ export default function Home() {
   const handleConfirmarRetiro = () => {
     // Aquí iría la llamada al backend para confirmar el retiro
     setRetiroConfirmado(true);
+    setTimeout(() => {
+      setShowRetiroModal(false);
+      setRetiroConfirmado(false);
+      setRetiroReservaId('');
+      setRetiroReserva(null);
+    }, 1500);
   };
 
   const handleCancelarReserva = async () => {
@@ -291,14 +407,12 @@ export default function Home() {
       }
 
       setCancelarConfirmado(true);
-      
-      // Limpiar formulario después de 3 segundos
+      // Limpiar formulario y cerrar modal después de 1.5 segundos
       setTimeout(() => {
         setShowCancelarModal(false);
         setCancelarConfirmado(false);
         setCancelarReservaId('');
-      }, 3000);
-      
+      }, 1500);
     } catch (error) {
       console.error('Error:', error);
       setCancelarError(error instanceof Error ? error.message : 'Error al cancelar la reserva');
@@ -313,55 +427,265 @@ export default function Home() {
     setRegistrarUsuarioError(null);
     setRegistrarUsuarioSuccess(false);
 
+    // Validación simple de email duplicado
+    if (mockUsers.some(u => u.email.toLowerCase() === nuevoUsuario.email.toLowerCase())) {
+      setRegistrarUsuarioError('El email ya está registrado');
+      setRegistrarUsuarioLoading(false);
+      return;
+    }
+
+    // Agregar usuario mock
+    setMockUsers((prev: User[]) => [
+      ...prev,
+      {
+        id: prev.length + 1,
+        email: nuevoUsuario.email,
+        first_name: nuevoUsuario.first_name,
+        // Puedes agregar last_name, telefono, etc. si quieres mostrarlo
+      }
+    ]);
+
+    setRegistrarUsuarioSuccess(true);
+    // Limpiar formulario después de 2 segundos
+    setTimeout(() => {
+      setShowRegistrarUsuarioModal(false);
+      setRegistrarUsuarioSuccess(false);
+      setNuevoUsuario({
+        email: '',
+        first_name: '',
+        last_name: '',
+        telefono: '',
+        fecha_nacimiento: ''
+      });
+    }, 2000);
+    setRegistrarUsuarioLoading(false);
+  };
+
+  const handleVehiculoSearch = async () => {
+    if (!vehiculoPatente.trim()) {
+      setVehiculoError('Ingrese una patente para buscar');
+      return;
+    }
+    setVehiculoLoading(true);
+    setVehiculoError(null);
+    try {
+      const resultados = await buscarVehiculoPorPatente(vehiculoPatente);
+      setVehiculos(resultados);
+      if (resultados.length === 0) {
+        setVehiculoError('No se encontraron vehículos con esa patente');
+      }
+    } catch (error) {
+      setVehiculoError('Error al buscar vehículo. Por favor, intente nuevamente.');
+      console.error('Error al buscar vehículo:', error);
+    } finally {
+      setVehiculoLoading(false);
+    }
+  };
+
+  const handleVehiculoAdd = () => setShowAddVehiculoForm(true);
+
+  const handleVehiculoCreado = () => {
+    setShowAddVehiculoForm(false);
+    if (vehiculoPatente.trim()) handleVehiculoSearch();
+  };
+
+  const handleVehiculoEdit = (vehiculo: Vehiculo) => setVehiculoAEditar(vehiculo);
+
+  const handleVehiculoEditado = () => {
+    setVehiculoAEditar(null);
+    if (vehiculoPatente.trim()) handleVehiculoSearch();
+  };
+
+  const handleVehiculoDelete = (vehiculo: Vehiculo) => setVehiculoAEliminar(vehiculo);
+
+  const confirmarEliminarVehiculo = async () => {
+    if (!vehiculoAEliminar) return;
     try {
       const token = getAuthToken();
-      if (!token) throw new Error('No autenticado');
-
-      const response = await fetch('http://localhost:8000/api/usuarios/registrar-cliente/', {
-        method: 'POST',
+      if (!token) throw new Error('No autorizado');
+      const response = await fetch(`http://localhost:8000/api/vehiculos/${vehiculoAEliminar.id}/baja/`, {
+        method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          email: nuevoUsuario.email,
-          first_name: nuevoUsuario.first_name,
-          last_name: nuevoUsuario.last_name,
-          telefono: nuevoUsuario.telefono,
-          fecha_nacimiento: nuevoUsuario.fecha_nacimiento,
-          rol: 1 // Cliente
-        })
       });
-
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Error al registrar el cliente');
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.error) throw new Error(errorData.error);
+        throw new Error('Error al eliminar el vehículo');
       }
-
-      // Éxito
-      setRegistrarUsuarioSuccess(true);
-      setPasswordGenerada(data.password_generada);
-      
-      // Limpiar formulario después de 3 segundos
-      setTimeout(() => {
-        setShowRegistrarUsuarioModal(false);
-        setRegistrarUsuarioSuccess(false);
-        setNuevoUsuario({
-          email: '',
-          first_name: '',
-          last_name: '',
-          telefono: '',
-          fecha_nacimiento: ''
-        });
-      }, 3000);
-
+      setVehiculos(vehiculos.filter(v => v.id !== vehiculoAEliminar.id));
+      setVehiculoAEliminar(null);
     } catch (error) {
-      console.error('Error:', error);
-      setRegistrarUsuarioError(error instanceof Error ? error.message : 'Error al registrar el cliente');
-    } finally {
-      setRegistrarUsuarioLoading(false);
+      setVehiculoError(error instanceof Error ? error.message : 'Error al eliminar el vehículo. Por favor, intente nuevamente.');
     }
+  };
+
+  useEffect(() => {
+    if (vehiculoPatente.trim() !== '') {
+      handleVehiculoSearch();
+    } else {
+      setVehiculos([]);
+      setVehiculoError(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehiculoPatente]);
+
+  // Limpiar campos al abrir el modal, pero sin fetch ni sobrescribir sucursales
+  useEffect(() => {
+    if (showReservaModal) {
+      setReservaSucursalRetiro(null);
+      setReservaSucursalDevolucion(null);
+      setReservaCategoriasSucursal([]);
+      setReservaCategoria(null);
+      setReservaModelosSucursal([]);
+      setReservaModelo(null);
+      setReservaEmail('');
+      setEmailValido(null);
+      setReservaFechaRetiro(null);
+      setReservaFechaDevolucion(null);
+      setReservaError(null);
+    }
+  }, [showReservaModal]);
+
+  // Validar email al salir del campo
+  const handleEmailBlur = async () => {
+    if (!reservaEmail) return;
+    setEmailValido(true);
+  };
+
+  // Cargar categorías disponibles en la sucursal de retiro
+  useEffect(() => {
+    if (reservaSucursalRetiro) {
+      setReservaCategoriasSucursal(mockCategoriasPorSucursal[reservaSucursalRetiro] || []);
+      setReservaCategoria(null);
+    } else {
+      setReservaCategoriasSucursal([]);
+      setReservaCategoria(null);
+    }
+  }, [reservaSucursalRetiro]);
+
+  // Mostrar modelos automáticamente cuando todos los campos estén completos
+  useEffect(() => {
+    if (reservaCategoria && reservaSucursalRetiro && reservaFechaRetiro && reservaFechaDevolucion) {
+      setReservaError(null);
+      setMostrarModelos(false);
+      setMontoACobrar(null);
+      setTimeout(() => {
+        setModelosDisponibles(mockModelosPorCategoria[reservaCategoria] || []);
+        setMostrarModelos(true);
+      }, 500);
+    } else {
+      setMostrarModelos(false);
+    }
+  }, [reservaCategoria, reservaSucursalRetiro, reservaFechaRetiro, reservaFechaDevolucion]);
+
+  // Calcular monto al elegir modelo
+  useEffect(() => {
+    if (reservaModelo && modelosDisponibles.length > 0 && reservaFechaRetiro && reservaFechaDevolucion) {
+      const modelo = modelosDisponibles.find(m => m.id === reservaModelo);
+      if (modelo) {
+        const dias = Math.ceil((reservaFechaDevolucion.getTime() - reservaFechaRetiro.getTime()) / (1000 * 60 * 60 * 24));
+        setMontoACobrar(dias * modelo.precio_por_dia);
+      } else {
+        setMontoACobrar(null);
+      }
+    } else {
+      setMontoACobrar(null);
+    }
+  }, [reservaModelo, modelosDisponibles, reservaFechaRetiro, reservaFechaDevolucion]);
+
+  // Función mock para buscar reserva (reutilizable)
+  const buscarReservaMock = async (id: string) => {
+    // Simula búsqueda y retardo
+    await new Promise(res => setTimeout(res, 1000));
+    if (!id) throw new Error('Ingrese el número de reserva');
+    return {
+      id: Number(id),
+      cliente: { nombre: 'Juan', apellido: 'Pérez', email: 'juan.perez@email.com' },
+      vehiculo: { marca: { nombre: 'Toyota' }, modelo: { nombre: 'Corolla' }, patente: 'ABC123' },
+      fecha_inicio: new Date().toISOString(),
+      fecha_fin: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+    };
+  };
+
+  // Handlers para devolución
+  const handleBuscarDevolucion = async () => {
+    setDevolucionError(null);
+    setDevolucionReserva(null);
+    setDevolucionConfirmado(false);
+    if (!devolucionReservaId) {
+      setDevolucionError('Ingrese el número de reserva');
+      return;
+    }
+    setDevolucionLoading(true);
+    try {
+      const reserva = await buscarReservaMock(devolucionReservaId);
+      setDevolucionReserva(reserva);
+    } catch (e: any) {
+      setDevolucionError(e.message);
+    } finally {
+      setDevolucionLoading(false);
+    }
+  };
+  const handleConfirmarDevolucion = () => {
+    setDevolucionConfirmado(true);
+    setTimeout(() => {
+      setShowDevolucionModal(false);
+      setDevolucionConfirmado(false);
+      setDevolucionReservaId('');
+      setDevolucionReserva(null);
+    }, 1500);
+  };
+
+  // Handlers para cancelar (mostrar info antes de confirmar)
+  const handleBuscarCancelar = async () => {
+    setCancelarReservaError(null);
+    setCancelarReservaInfo(null);
+    setCancelarReservaConfirmado(false);
+    if (!cancelarReservaId) {
+      setCancelarReservaError('Ingrese el número de reserva');
+      return;
+    }
+    setCancelarReservaLoading(true);
+    try {
+      const reserva = await buscarReservaMock(cancelarReservaId);
+      setCancelarReservaInfo(reserva);
+    } catch (e: any) {
+      setCancelarReservaError(e.message);
+    } finally {
+      setCancelarReservaLoading(false);
+    }
+  };
+  const handleConfirmarCancelar = () => {
+    setCancelarReservaConfirmado(true);
+    setTimeout(() => {
+      setShowCancelarModal(false);
+      setCancelarReservaConfirmado(false);
+      setCancelarReservaId('');
+      setCancelarReservaInfo(null);
+    }, 1500);
+  };
+
+  // 1. Agregar función para calcular monto total
+  const calcularMontoReserva = (reserva: RetiroReserva) => {
+    if (!reserva.fecha_inicio || !reserva.fecha_fin || !reserva.vehiculo?.modelo?.nombre) return null;
+    // Mock precios por modelo
+    const precios: Record<string, number> = {
+      'Corolla': 20000,
+      'Etios': 10000,
+      'Mobi': 9500,
+      'SW4': 20000,
+      'Compass': 18000,
+      'Mustang': 30000,
+      'Camaro': 32000,
+      'Kangoo': 15000,
+      'Partner': 14500
+    };
+    const precio = precios[reserva.vehiculo.modelo.nombre] || 10000;
+    const dias = Math.ceil((new Date(reserva.fecha_fin).getTime() - new Date(reserva.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24));
+    return dias * precio;
   };
 
   return (
@@ -444,57 +768,116 @@ export default function Home() {
             <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowReservaModal(false)}>&times;</button>
             <h2 className="text-2xl font-bold text-white mb-6">Registrar Reserva</h2>
             <div className="space-y-4">
-              <input
-                type="email"
-                placeholder="Email del usuario"
-                value={reservaEmail}
-                onChange={e => setReservaEmail(e.target.value)}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-              />
-              <select
-                value={reservaCategoria ?? ''}
-                onChange={e => setReservaCategoria(Number(e.target.value) || null)}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
-              >
-                <option value="">Seleccionar categoría</option>
-                {reservaCategorias.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                ))}
-              </select>
-              <div className="flex gap-4">
+              {/* Email */}
+              <div>
+                <input
+                  type="email"
+                  placeholder="Email del usuario"
+                  value={reservaEmail}
+                  onChange={e => { setReservaEmail(e.target.value); setEmailValido(null); }}
+                  onBlur={handleEmailBlur}
+                  className={`w-full bg-[#3d2342] border ${emailValido === null ? 'border-[#a16bb7]' : emailValido ? 'border-green-500' : 'border-red-500'} rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none`}
+                />
+                {emailValido === false && <div className="text-[#e94b5a] text-sm">El email no está registrado</div>}
+              </div>
+              {/* Primera fila: Sucursales */}
+              <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
+                  <label className="text-white">Sucursal de retiro</label>
+                  <select
+                    value={reservaSucursalRetiro ?? ''}
+                    onChange={e => setReservaSucursalRetiro(Number(e.target.value) || null)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  >
+                    <option value="">Seleccionar sucursal</option>
+                    {sucursales.length > 0 ? (
+                      sucursales.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No hay sucursales disponibles</option>
+                    )}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-white">Sucursal de devolución</label>
+                  <select
+                    value={reservaSucursalDevolucion ?? ''}
+                    onChange={e => setReservaSucursalDevolucion(Number(e.target.value) || null)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  >
+                    <option value="">Seleccionar sucursal</option>
+                    {sucursales.length > 0 ? (
+                      sucursales.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No hay sucursales disponibles</option>
+                    )}
+                  </select>
+                </div>
+              </div>
+              {/* Segunda fila: Categoría */}
+              <div>
+                <label className="text-white">Categoría</label>
+                <select
+                  value={reservaCategoria ?? ''}
+                  onChange={e => setReservaCategoria(Number(e.target.value) || null)}
+                  className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  disabled={!reservaSucursalRetiro}
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {reservaCategoriasSucursal.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              {/* Tercera fila: Fechas */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="text-white">Fecha de inicio</label>
                   <DatePicker
                     selected={reservaFechaRetiro}
                     onChange={setReservaFechaRetiro}
                     minDate={new Date()}
-                    placeholderText="Fecha de retiro"
-                    isDisabled={!reservaCategoria}
+                    placeholderText="Fecha de inicio"
+                    isDisabled={!reservaCategoria || !reservaSucursalRetiro}
                   />
                 </div>
                 <div className="flex-1">
+                  <label className="text-white">Fecha de fin</label>
                   <DatePicker
                     selected={reservaFechaDevolucion}
                     onChange={setReservaFechaDevolucion}
                     minDate={reservaFechaRetiro || new Date()}
-                    placeholderText="Fecha de devolución"
-                    isDisabled={!reservaCategoria}
+                    placeholderText="Fecha de fin"
+                    isDisabled={!reservaCategoria || !reservaSucursalRetiro}
                   />
                 </div>
-                <button
-                  className="h-12 px-6 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold mt-6"
-                  onClick={handleBuscarModelos}
-                  disabled={reservaLoading}
-                >
-                  {reservaLoading ? 'Buscando...' : 'Buscar'}
-                </button>
               </div>
-              {reservaError && <div className="text-[#e94b5a] text-sm">{reservaError}</div>}
-              {reservaModelos.length > 0 && (
+              {/* Modelos disponibles solo después de buscar */}
+              {mostrarModelos && (
                 <div className="mt-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Modelos disponibles</h3>
-                  <ModelList models={reservaModelos} onSelectModel={() => {}} />
+                  <select
+                    value={reservaModelo ?? ''}
+                    onChange={e => setReservaModelo(Number(e.target.value) || null)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  >
+                    <option value="">Seleccionar modelo</option>
+                    {modelosDisponibles.map(m => (
+                      <option key={m.id} value={m.id}>{m.nombre} - ${m.precio_por_dia}/día</option>
+                    ))}
+                  </select>
+                  {modelosDisponibles.length === 0 && <div className="text-[#e94b5a] text-sm mt-2">No hay modelos disponibles para la selección.</div>}
                 </div>
               )}
+              {montoACobrar !== null && (
+                <div className="mt-4 text-white text-lg font-semibold">
+                  El monto a cobrar es: ${montoACobrar}
+                </div>
+              )}
+              {reservaError && <div className="text-[#e94b5a] text-sm">{reservaError}</div>}
             </div>
           </div>
         </div>
@@ -528,17 +911,27 @@ export default function Home() {
               {retiroReserva && (
                 <div className="bg-[#3d2342] rounded-md p-4 mt-4">
                   <h3 className="text-lg font-semibold text-white mb-2">Reserva #{retiroReserva.id}</h3>
-                  <p className="text-white">Usuario: {retiroReserva.cliente?.nombre} {retiroReserva.cliente?.apellido}</p>
-                  <p className="text-white">Vehículo: {retiroReserva.vehiculo?.marca?.nombre} {retiroReserva.vehiculo?.modelo?.nombre} ({retiroReserva.vehiculo?.patente})</p>
-                  <p className="text-white">Fecha inicio: {new Date(retiroReserva.fecha_inicio).toLocaleString()}</p>
-                  <p className="text-white">Fecha fin: {new Date(retiroReserva.fecha_fin).toLocaleString()}</p>
-                  <button
-                    className="w-full h-12 mt-4 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold"
-                    onClick={handleConfirmarRetiro}
-                    disabled={retiroConfirmado}
-                  >
-                    {retiroConfirmado ? 'Retiro Confirmado' : 'Confirmar'}
-                  </button>
+                  <p className="text-white mb-1">Usuario: {retiroReserva.cliente?.nombre} {retiroReserva.cliente?.apellido}</p>
+                  <p className="text-white mb-1">Email: {retiroReserva.cliente?.email}</p>
+                  <p className="text-white mb-1">Vehículo: {retiroReserva.vehiculo?.marca?.nombre} {retiroReserva.vehiculo?.modelo?.nombre} ({retiroReserva.vehiculo?.patente})</p>
+                  <p className="text-white mb-1">Fecha inicio: {retiroReserva.fecha_inicio ? new Date(retiroReserva.fecha_inicio).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1">Fecha fin: {retiroReserva.fecha_fin ? new Date(retiroReserva.fecha_fin).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1 font-semibold">Monto total: ${calcularMontoReserva(retiroReserva) ?? '-'}</p>
+                  <div className="flex gap-4 mt-4">
+                    <button
+                      className="w-full h-12 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold"
+                      onClick={handleConfirmarRetiro}
+                      disabled={retiroConfirmado}
+                    >
+                      {retiroConfirmado ? 'Retiro Confirmado' : 'Confirmar'}
+                    </button>
+                    <button
+                      className="w-full h-12 border border-[#a16bb7] text-[#a16bb7] rounded-md hover:text-[#e94b5a] hover:border-[#e94b5a] transition-colors font-semibold bg-transparent"
+                      onClick={() => setShowRetiroModal(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                   {retiroConfirmado && <div className="text-green-400 mt-2">Retiro registrado exitosamente.</div>}
                 </div>
               )}
@@ -606,7 +999,6 @@ export default function Home() {
                 <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
                   <p>✅ Cliente registrado exitosamente</p>
                   <p>Email: {nuevoUsuario.email}</p>
-                  <p>Contraseña: {passwordGenerada}</p>
                 </div>
               )}
             </form>
@@ -627,21 +1019,100 @@ export default function Home() {
                 pattern="[0-9]*"
                 placeholder="Número de reserva"
                 value={cancelarReservaId}
-                onChange={(e) => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
+                onChange={e => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                disabled={cancelarConfirmado}
+                disabled={cancelarReservaInfo !== null}
               />
               <button
                 className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
-                onClick={handleCancelarReserva}
-                disabled={cancelarLoading || cancelarConfirmado}
+                onClick={handleBuscarCancelar}
+                disabled={cancelarReservaLoading || cancelarReservaInfo !== null}
               >
-                {cancelarLoading ? 'Cancelando...' : 'Cancelar Reserva'}
+                {cancelarReservaLoading ? 'Buscando...' : 'Buscar Reserva'}
               </button>
-              {cancelarError && <div className="text-[#e94b5a] text-sm">{cancelarError}</div>}
-              {cancelarConfirmado && (
-                <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
-                  ✅ Reserva cancelada exitosamente
+              {cancelarReservaError && <div className="text-[#e94b5a] text-sm">{cancelarReservaError}</div>}
+              {cancelarReservaInfo && (
+                <div className="bg-[#3d2342] rounded-md p-4 mt-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Reserva #{cancelarReservaInfo.id}</h3>
+                  <p className="text-white mb-1">Usuario: {cancelarReservaInfo.cliente?.nombre} {cancelarReservaInfo.cliente?.apellido}</p>
+                  <p className="text-white mb-1">Email: {cancelarReservaInfo.cliente?.email}</p>
+                  <p className="text-white mb-1">Vehículo: {cancelarReservaInfo.vehiculo?.marca?.nombre} {cancelarReservaInfo.vehiculo?.modelo?.nombre} ({cancelarReservaInfo.vehiculo?.patente})</p>
+                  <p className="text-white mb-1">Fecha inicio: {cancelarReservaInfo.fecha_inicio ? new Date(cancelarReservaInfo.fecha_inicio).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1">Fecha fin: {cancelarReservaInfo.fecha_fin ? new Date(cancelarReservaInfo.fecha_fin).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1 font-semibold">Monto total: ${calcularMontoReserva(cancelarReservaInfo) ?? '-'}</p>
+                  <div className="flex gap-4 mt-4">
+                    <button
+                      className="w-full h-12 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold"
+                      onClick={handleConfirmarCancelar}
+                      disabled={cancelarReservaConfirmado}
+                    >
+                      {cancelarReservaConfirmado ? 'Reserva Cancelada' : 'Confirmar Cancelación'}
+                    </button>
+                    <button
+                      className="w-full h-12 border border-[#a16bb7] text-[#a16bb7] rounded-md hover:text-[#e94b5a] hover:border-[#e94b5a] transition-colors font-semibold bg-transparent"
+                      onClick={() => setShowCancelarModal(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {cancelarReservaConfirmado && <div className="text-green-400 mt-2">Reserva cancelada exitosamente.</div>}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Devolución de Vehículo */}
+      {showDevolucionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-lg relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowDevolucionModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Devolución de Vehículo</h2>
+            <div className="space-y-4">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Número de reserva"
+                value={devolucionReservaId}
+                onChange={e => setDevolucionReservaId(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                disabled={devolucionReserva !== null}
+              />
+              <button
+                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
+                onClick={handleBuscarDevolucion}
+                disabled={devolucionLoading || devolucionReserva !== null}
+              >
+                {devolucionLoading ? 'Buscando...' : 'Buscar Reserva'}
+              </button>
+              {devolucionError && <div className="text-[#e94b5a] text-sm">{devolucionError}</div>}
+              {devolucionReserva && (
+                <div className="bg-[#3d2342] rounded-md p-4 mt-4">
+                  <h3 className="text-lg font-semibold text-white mb-2">Reserva #{devolucionReserva.id}</h3>
+                  <p className="text-white mb-1">Usuario: {devolucionReserva.cliente?.nombre} {devolucionReserva.cliente?.apellido}</p>
+                  <p className="text-white mb-1">Email: {devolucionReserva.cliente?.email}</p>
+                  <p className="text-white mb-1">Vehículo: {devolucionReserva.vehiculo?.marca?.nombre} {devolucionReserva.vehiculo?.modelo?.nombre} ({devolucionReserva.vehiculo?.patente})</p>
+                  <p className="text-white mb-1">Fecha inicio: {devolucionReserva.fecha_inicio ? new Date(devolucionReserva.fecha_inicio).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1">Fecha fin: {devolucionReserva.fecha_fin ? new Date(devolucionReserva.fecha_fin).toLocaleString() : ''}</p>
+                  <p className="text-white mb-1 font-semibold">Monto total: ${calcularMontoReserva(devolucionReserva) ?? '-'}</p>
+                  <div className="flex gap-4 mt-4">
+                    <button
+                      className="w-full h-12 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold"
+                      onClick={handleConfirmarDevolucion}
+                      disabled={devolucionConfirmado}
+                    >
+                      {devolucionConfirmado ? 'Devolución Confirmada' : 'Confirmar'}
+                    </button>
+                    <button
+                      className="w-full h-12 border border-[#a16bb7] text-[#a16bb7] rounded-md hover:text-[#e94b5a] hover:border-[#e94b5a] transition-colors font-semibold bg-transparent"
+                      onClick={() => setShowDevolucionModal(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {devolucionConfirmado && <div className="text-green-400 mt-2">Devolución registrada exitosamente.</div>}
                 </div>
               )}
             </div>
@@ -807,33 +1278,27 @@ export default function Home() {
                 {/* Sección de Gestión de Reservas */}
                 <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg w-full">
                   <h2 className="text-2xl font-semibold mb-6 text-white">Gestión de Reservas</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full justify-items-center">
                     <button 
-                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
                       onClick={() => setShowReservaModal(true)}
                     >
                       Registrar Reserva
                     </button>
                     <button 
-                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
                       onClick={() => setShowRetiroModal(true)}
                     >
                       Retirar Vehículo
                     </button>
                     <button 
-                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
-                      onClick={() => router.push('/empleado/reservas/entregar')}
-                    >
-                      Entregar Vehículo
-                    </button>
-                    <button 
-                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
-                      onClick={() => router.push('/empleado/reservas/devolver')}
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
+                      onClick={() => setShowDevolucionModal(true)}
                     >
                       Devolución de Vehículo
                     </button>
                     <button 
-                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors"
+                      className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
                       onClick={() => setShowCancelarModal(true)}
                     >
                       Cancelar Reserva
@@ -844,12 +1309,105 @@ export default function Home() {
                 {/* Sección de Gestión de Vehículos */}
                 <div className="bg-[#2d1830] p-8 rounded-lg shadow-lg flex flex-col items-center">
                   <h2 className="text-2xl font-semibold mb-6 text-white">Gestión de Vehículos</h2>
-                  <button
-                    className="w-full md:w-1/2 bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-4 rounded-md transition-colors text-lg"
-                    onClick={() => router.push('/admin/vehiculos')}
-                  >
-                    Gestión de Vehículos
-                  </button>
+                  {/* Barra de búsqueda y botón de agregar */}
+                  <div className="flex gap-4 mb-8 w-full max-w-2xl">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={vehiculoPatente}
+                        onChange={e => setVehiculoPatente(e.target.value.toUpperCase())}
+                        placeholder="Buscar por patente..."
+                        className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
+                      />
+                      <button
+                        onClick={handleVehiculoSearch}
+                        disabled={vehiculoLoading}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-[#e94b5a] hover:text-[#b13e4a] transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleVehiculoAdd}
+                      className="px-6 py-2 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                      </svg>
+                      Agregar Vehículo
+                    </button>
+                  </div>
+                  {/* Mensaje de error */}
+                  {vehiculoError && (
+                    <div className="mb-4 p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md w-full max-w-2xl">{vehiculoError}</div>
+                  )}
+                  {/* Estado de carga */}
+                  {vehiculoLoading && (
+                    <div className="text-center text-white mb-4 w-full max-w-2xl">Buscando vehículos...</div>
+                  )}
+                  {/* Tabla de resultados */}
+                  {vehiculos.length > 0 && (
+                    <div className="bg-[#3d2342] rounded-lg shadow-lg overflow-hidden w-full max-w-2xl">
+                      <table className="w-full text-white">
+                        <thead className="bg-[#4c3246]">
+                          <tr>
+                            <th className="px-6 py-3 text-left">Patente</th>
+                            <th className="px-6 py-3 text-left">Marca</th>
+                            <th className="px-6 py-3 text-left">Modelo</th>
+                            <th className="px-6 py-3 text-left">Año</th>
+                            <th className="px-6 py-3 text-left">Estado</th>
+                            <th className="px-6 py-3 text-left">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#4c3246]">
+                          {vehiculos.map((vehiculo) => (
+                            <tr key={vehiculo.id} className="hover:bg-[#4c3246]/50">
+                              <td className="px-6 py-4">{vehiculo.patente}</td>
+                              <td className="px-6 py-4">{vehiculo.marca?.nombre || 'N/A'}</td>
+                              <td className="px-6 py-4">{vehiculo.modelo?.nombre || 'N/A'}</td>
+                              <td className="px-6 py-4">{vehiculo.año_fabricacion}</td>
+                              <td className="px-6 py-4">{vehiculo.estado?.nombre || 'N/A'}</td>
+                              <td className="px-6 py-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleVehiculoEdit(vehiculo)}
+                                    className="text-[#a16bb7] hover:text-[#e94b5a] transition-colors"
+                                    title="Editar vehículo"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                    </svg>
+                                  </button>
+                                  <button
+                                    onClick={() => handleVehiculoDelete(vehiculo)}
+                                    className="text-[#e94b5a] hover:text-[#b13e4a] transition-colors"
+                                    title="Eliminar vehículo"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                      <path fillRule="evenodd" d="M6 8a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm2 4a1 1 0 100-2 1 1 0 000 2zm2 0a1 1 0 100-2 1 1 0 000 2zm2 0a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                                      <path d="M4 6h12M9 6v6m2-6v6m-7 6a2 2 0 002 2h6a2 2 0 002-2V6H5v12z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {/* Modales de agregar, editar y eliminar */}
+                  {showAddVehiculoForm && (
+                    <AgregarVehiculoForm onClose={() => setShowAddVehiculoForm(false)} onVehiculoCreado={handleVehiculoCreado} />
+                  )}
+                  {vehiculoAEditar && (
+                    <EditarVehiculoForm vehiculo={vehiculoAEditar} onClose={() => setVehiculoAEditar(null)} onVehiculoEditado={handleVehiculoEditado} />
+                  )}
+                  {vehiculoAEliminar && (
+                    <ConfirmarEliminarVehiculo patente={vehiculoAEliminar.patente} onConfirm={confirmarEliminarVehiculo} onCancel={() => setVehiculoAEliminar(null)} />
+                  )}
                 </div>
 
                 {/* Sección de Gestión de Usuarios */}
