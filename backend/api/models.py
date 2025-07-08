@@ -138,6 +138,28 @@ class Alquiler(models.Model):
         
         return monto_extra
 
+    def retirar_vehiculo(self):
+        """
+        Cambia el estado de la reserva a "En Curso" cuando el cliente retira el vehículo.
+        """
+        if self.estado.id == 2:  # Si está cancelado
+            raise ValueError("No se puede retirar un vehículo de una reserva cancelada")
+        
+        if self.estado.id == 3:  # Si ya está finalizado
+            raise ValueError("No se puede retirar un vehículo de una reserva finalizada")
+        
+        if self.estado.id == 4:  # Si ya está en curso
+            raise ValueError("El vehículo ya ha sido retirado")
+        
+        # Obtener el estado "En Curso"
+        estado_en_curso = EstadoAlquiler.objects.get(id=4)
+        
+        # Actualizar el estado del alquiler
+        self.estado = estado_en_curso
+        self.save()
+        
+        return True
+
 class Marca(models.Model):
     nombre = models.CharField(max_length=100)
 

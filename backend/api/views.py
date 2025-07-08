@@ -1098,6 +1098,55 @@ class AlquilerViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'], url_path='retirar-vehiculo', permission_classes=[IsEmpleado])
+    def retirar_vehiculo(self, request):
+        """
+        Permite a un empleado registrar el retiro de un vehículo por parte de un cliente.
+        Requiere: cliente_email, alquiler_id
+        """
+        cliente_email = request.data.get('cliente_email')
+        alquiler_id = request.data.get('alquiler_id')
+        
+        if not cliente_email or not alquiler_id:
+            return Response({
+                "error": "Se requiere especificar el email del cliente y el id de la reserva/alquiler"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar que el email existe
+        try:
+            cliente = Usuario.objects.get(email=cliente_email)
+        except Usuario.DoesNotExist:
+            return Response({
+                "error": "El email del cliente no existe"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar que el número de reserva existe
+        try:
+            alquiler = Alquiler.objects.get(id=alquiler_id)
+        except Alquiler.DoesNotExist:
+            return Response({
+                "error": "El número de reserva no existe"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verificar que el email pertenece al cliente de la reserva
+        if alquiler.cliente.email != cliente_email:
+            return Response({
+                "error": "El email no pertenece al cliente de la reserva especificada"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Retirar el vehículo (cambiar estado a "En Curso")
+        try:
+            alquiler.retirar_vehiculo()
+            return Response({
+                'mensaje': 'Vehículo retirado exitosamente',
+                'alquiler_id': alquiler.id,
+                'cliente': f"{alquiler.cliente.first_name} {alquiler.cliente.last_name}",
+                'vehiculo': f"{alquiler.vehiculo.marca} {alquiler.vehiculo.modelo} - {alquiler.vehiculo.patente}",
+                'estado': 'En Curso'
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 class EstadoAlquilerViewSet(viewsets.ModelViewSet):
     queryset = EstadoAlquiler.objects.all()
     serializer_class = EstadoAlquilerSerializer
