@@ -22,6 +22,7 @@ class Usuario(AbstractUser):
     rol = models.ForeignKey(Rol, on_delete=models.PROTECT)
     puesto = models.CharField(max_length=100, null=True, blank=True)
     localidad = models.ForeignKey('Localidad', on_delete=models.SET_NULL, null=True, blank=True)
+    sucursal = models.ForeignKey('Sucursal', on_delete=models.SET_NULL, null=True, blank=True)
     is_locked = models.BooleanField(default=False)
     login_attempts = models.IntegerField(default=0)
     admin_code_attempts = models.IntegerField(default=0)
@@ -95,11 +96,11 @@ class Alquiler(models.Model):
         """
         Cancela la reserva y actualiza el estado del vehículo si es necesario.
         """
-        if self.estado.id in [2, 3]:  # Si ya está cancelado o finalizado
+        if self.estado.id in [5, 6]:  # Si ya está cancelado o finalizado (IDs 5 y 6)
             raise ValueError("No se puede cancelar una reserva que ya está cancelada o finalizada")
             
         # Obtener el estado "Cancelado"
-        estado_cancelado = EstadoAlquiler.objects.get(id=2)
+        estado_cancelado = EstadoAlquiler.objects.get(id=5)
         
         # Actualizar el estado del alquiler
         self.estado = estado_cancelado
@@ -114,17 +115,19 @@ class Alquiler(models.Model):
     def registrar_devolucion(self, sucursal_devolucion_real):
         """
         Registra la devolución del vehículo y calcula el monto extra si es necesario.
-        Valida los estados: cancelado, finalizado, confirmado (no en curso).
+        Solo se puede devolver un vehículo que esté en curso (estado id=7).
         """
-        if self.estado.id == 2:  # Cancelado
+        if self.estado.id == 5:  # Cancelado (ID 5)
             raise ValueError("No se puede registrar devolución: el alquiler ya está cancelado")
-        if self.estado.id == 3:  # Finalizado
+        if self.estado.id == 6:  # Finalizado (ID 6)
             raise ValueError("No se puede registrar devolución: la reserva ya ha sido finalizada")
-        if self.estado.id == 1:  # Confirmado pero no en curso
-            raise ValueError("No se puede registrar devolución: la reserva está confirmada pero no en curso")
+        if self.estado.id == 4:  # Confirmado pero no en curso (ID 4)
+            raise ValueError("No se puede registrar devolución: la reserva está confirmada pero no en curso. Primero debe retirar el vehículo.")
+        if self.estado.id != 7:  # No está en curso (usando ID 7 como "En Curso")
+            raise ValueError("No se puede registrar devolución: el alquiler no está en curso")
 
-        # Obtener el estado "Finalizado"
-        estado_finalizado = EstadoAlquiler.objects.get(id=3)
+        # Obtener el estado "Finalizado" (usando ID 6)
+        estado_finalizado = EstadoAlquiler.objects.get(id=6)
         # Actualizar el estado del alquiler
         self.estado = estado_finalizado
         self.save()
@@ -139,22 +142,31 @@ class Alquiler(models.Model):
         """
         Cambia el estado de la reserva a "En Curso" cuando el cliente retira el vehículo.
         """
-        if self.estado.id == 2:  # Si está cancelado
+        print(f"DEBUG: Estado actual del alquiler {self.id}: {self.estado.id} - {self.estado.nombre}")
+        
+        if self.estado.id == 5:  # Si está cancelado (ID 5)
             raise ValueError("No se puede retirar un vehículo de una reserva cancelada")
         
-        if self.estado.id == 3:  # Si ya está finalizado
+        if self.estado.id == 6:  # Si ya está finalizado (ID 6)
             raise ValueError("No se puede retirar un vehículo de una reserva finalizada")
         
-        if self.estado.id == 4:  # Si ya está en curso
+        if self.estado.id == 7:  # Si ya está en curso
             raise ValueError("El vehículo ya ha sido retirado")
         
-        # Obtener el estado "En Curso"
-        estado_en_curso = EstadoAlquiler.objects.get(id=4)
+        # Obtener el estado "En Curso" (usando ID 7)
+        try:
+            estado_en_curso = EstadoAlquiler.objects.get(id=7)
+            print(f"DEBUG: Estado 'En Curso' encontrado: {estado_en_curso.id} - {estado_en_curso.nombre}")
+        except EstadoAlquiler.DoesNotExist:
+            print("ERROR: El estado con ID 7 ('En Curso') no existe en la base de datos")
+            raise ValueError("El estado 'En Curso' no existe en la base de datos")
         
         # Actualizar el estado del alquiler
+        print(f"DEBUG: Cambiando estado de {self.estado.id} a {estado_en_curso.id}")
         self.estado = estado_en_curso
         self.save()
         
+        print(f"DEBUG: Estado actualizado. Nuevo estado: {self.estado.id} - {self.estado.nombre}")
         return True
 
 class Marca(models.Model):

@@ -7,8 +7,9 @@ import RegisterForm from '@/components/auth/RegisterForm';
 import { getCurrentUser, logout } from '@/services/auth';
 import { useRouter } from 'next/navigation';
 // import { getCategories, type Category } from '@/services/categories';
-import { getAlquilerById } from '@/services/alquiler';
+import { getAlquilerById, registrarAlquilerParaCliente, cancelarAlquilerParaCliente, retirarVehiculo, registrarDevolucion, getReservaYCliente } from '@/services/alquiler';
 import { getAuthToken } from '@/services/auth';
+import { API_BASE_URL } from '@/config/config';
 import 'leaflet/dist/leaflet.css';
 import AgregarVehiculoForm from '@/components/vehicles/AgregarVehiculoForm';
 import EditarVehiculoForm from '@/components/vehicles/EditarVehiculoForm';
@@ -16,7 +17,7 @@ import ConfirmarEliminarVehiculo from '@/components/vehicles/ConfirmarEliminarVe
 import { buscarVehiculoPorPatente, type Vehiculo } from '@/services/vehiculos';
 import { Model } from '@/types/models';
 import DatePicker from '@/components/DatePicker';
-
+import { searchUsersByEmail, registerClient, deleteUser, getAllUsers, type User, type CreateUserData } from '@/services/users';
 
 const CategoryList = dynamic(() => import('@/components/CategoryList'), { ssr: false });
 
@@ -24,12 +25,6 @@ interface UserState {
   isAuthenticated: boolean;
   role: number | null;
   username: string | null;
-}
-
-interface User {
-  id: number;
-  email: string;
-  first_name: string;
 }
 
 interface RetiroReserva {
@@ -59,22 +54,22 @@ const mockCategoriasPorSucursal: { [sucursalId: number]: { id: number; nombre: s
     { id: 4, nombre: 'Van' },
   ],
 };
-const mockModelosPorCategoria: { [categoriaId: number]: { id: number; nombre: string; precio_por_dia: number }[] } = {
+const mockModelosPorCategoria: { [categoriaId: number]: { id: number; nombre: string; precio_por_dia: number; categoria_nombre: string }[] } = {
   1: [
-    { id: 101, nombre: 'Toyota Etios', precio_por_dia: 10000 },
-    { id: 102, nombre: 'Fiat Mobi', precio_por_dia: 9500 },
+    { id: 101, nombre: 'Toyota Etios', precio_por_dia: 10000, categoria_nombre: 'Económico' },
+    { id: 102, nombre: 'Fiat Mobi', precio_por_dia: 9500, categoria_nombre: 'Económico' },
   ],
   2: [
-    { id: 201, nombre: 'Toyota SW4', precio_por_dia: 20000 },
-    { id: 202, nombre: 'Jeep Compass', precio_por_dia: 18000 },
+    { id: 201, nombre: 'Toyota SW4', precio_por_dia: 20000, categoria_nombre: 'SUV' },
+    { id: 202, nombre: 'Jeep Compass', precio_por_dia: 18000, categoria_nombre: 'SUV' },
   ],
   3: [
-    { id: 301, nombre: 'Ford Mustang', precio_por_dia: 30000 },
-    { id: 302, nombre: 'Chevrolet Camaro', precio_por_dia: 32000 },
+    { id: 301, nombre: 'Ford Mustang', precio_por_dia: 30000, categoria_nombre: 'Premium' },
+    { id: 302, nombre: 'Chevrolet Camaro', precio_por_dia: 32000, categoria_nombre: 'Premium' },
   ],
   4: [
-    { id: 401, nombre: 'Renault Kangoo', precio_por_dia: 15000 },
-    { id: 402, nombre: 'Peugeot Partner', precio_por_dia: 14500 },
+    { id: 401, nombre: 'Renault Kangoo', precio_por_dia: 15000, categoria_nombre: 'Utilitario' },
+    { id: 402, nombre: 'Peugeot Partner', precio_por_dia: 14500, categoria_nombre: 'Utilitario' },
   ],
 };
 
@@ -89,6 +84,8 @@ export default function Home() {
   });
   const [searchEmail, setSearchEmail] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [showReservaModal, setShowReservaModal] = useState(false);
   const [reservaEmail, setReservaEmail] = useState('');
   const [reservaCategoria, setReservaCategoria] = useState<number | null>(null);
@@ -101,16 +98,18 @@ export default function Home() {
   const [retiroReservaId, setRetiroReservaId] = useState('');
   const [showCancelarModal, setShowCancelarModal] = useState(false);
   const [showRegistrarUsuarioModal, setShowRegistrarUsuarioModal] = useState(false);
-  const [nuevoUsuario, setNuevoUsuario] = useState({
+  const [nuevoUsuario, setNuevoUsuario] = useState<CreateUserData>({
     email: '',
     first_name: '',
     last_name: '',
     telefono: '',
-    fecha_nacimiento: ''
+    fecha_nacimiento: '',
+    rol: 1 // Cliente por defecto
   });
   const [registrarUsuarioLoading, setRegistrarUsuarioLoading] = useState(false);
   const [registrarUsuarioError, setRegistrarUsuarioError] = useState<string | null>(null);
   const [registrarUsuarioSuccess, setRegistrarUsuarioSuccess] = useState(false);
+  const [passwordGenerada, setPasswordGenerada] = useState<string>('');
   const [cancelarReservaId, setCancelarReservaId] = useState('');
   const [cancelarLoading, setCancelarLoading] = useState(false);
   const [cancelarError, setCancelarError] = useState<string | null>(null);
@@ -126,14 +125,14 @@ export default function Home() {
   const [showAddVehiculoForm, setShowAddVehiculoForm] = useState(false);
   const [vehiculoAEditar, setVehiculoAEditar] = useState<Vehiculo | null>(null);
   const [vehiculoAEliminar, setVehiculoAEliminar] = useState<Vehiculo | null>(null);
-  const [sucursales, setSucursales] = useState<{ id: number; nombre: string }[]>(mockSucursales);
+  const [sucursales, setSucursales] = useState<{ id: number; nombre: string }[]>([]);
   const [reservaSucursalRetiro, setReservaSucursalRetiro] = useState<number | null>(null);
   const [reservaSucursalDevolucion, setReservaSucursalDevolucion] = useState<number | null>(null);
   const [reservaCategoriasSucursal, setReservaCategoriasSucursal] = useState<{ id: number; nombre: string }[]>([]);
   const [reservaModelosSucursal, setReservaModelosSucursal] = useState<Model[]>([]);
   const [reservaModelo, setReservaModelo] = useState<number | null>(null);
   const [emailValido, setEmailValido] = useState<null | boolean>(null);
-  const [modelosDisponibles, setModelosDisponibles] = useState<{ id: number; nombre: string; precio_por_dia: number }[]>([]);
+  const [modelosDisponibles, setModelosDisponibles] = useState<{ id: number; nombre: string; precio_por_dia: number; categoria_nombre: string }[]>([]);
   const [mostrarModelos, setMostrarModelos] = useState(false);
   const [montoACobrar, setMontoACobrar] = useState<number | null>(null);
   const [showDevolucionModal, setShowDevolucionModal] = useState(false);
@@ -146,36 +145,20 @@ export default function Home() {
   const [cancelarReservaLoading, setCancelarReservaLoading] = useState(false);
   const [cancelarReservaError, setCancelarReservaError] = useState<string | null>(null);
   const [cancelarReservaConfirmado, setCancelarReservaConfirmado] = useState(false);
+  
+  // Variables de estado para registro de alquiler
+  const [registrarClienteEmail, setRegistrarClienteEmail] = useState('');
+  const [registrarModeloId, setRegistrarModeloId] = useState('');
+  const [registrarSucursalRetiro, setRegistrarSucursalRetiro] = useState('');
+  const [registrarSucursalDevolucion, setRegistrarSucursalDevolucion] = useState('');
+  const [registrarFechaInicio, setRegistrarFechaInicio] = useState('');
+  const [registrarFechaFin, setRegistrarFechaFin] = useState('');
+  const [registrarError, setRegistrarError] = useState<string | null>(null);
+  const [registrarLoading, setRegistrarLoading] = useState(false);
+  const [registrarConfirmado, setRegistrarConfirmado] = useState(false);
+  const [showRegistrarModal, setShowRegistrarModal] = useState(false);
+  
   const router = useRouter();
-  // Reemplazar los usuarios mock por una lista más variada, ahora como estado dentro del componente
-  const [mockUsers, setMockUsers] = useState<User[]>([
-    { id: 1, email: 'ana.garcia@example.com', first_name: 'Ana' },
-    { id: 2, email: 'bruno.martinez@example.com', first_name: 'Bruno' },
-    { id: 3, email: 'carla.lopez@example.com', first_name: 'Carla' },
-    { id: 4, email: 'daniel.sosa@example.com', first_name: 'Daniel' },
-    { id: 5, email: 'elena.perez@example.com', first_name: 'Elena' },
-    { id: 6, email: 'franco.ramos@example.com', first_name: 'Franco' },
-    { id: 7, email: 'gabriela.torres@example.com', first_name: 'Gabriela' },
-    { id: 8, email: 'hector.mendez@example.com', first_name: 'Héctor' },
-    { id: 9, email: 'ines.silva@example.com', first_name: 'Inés' },
-    { id: 10, email: 'jose.alvarez@example.com', first_name: 'José' },
-    { id: 11, email: 'karina.fernandez@example.com', first_name: 'Karina' },
-    { id: 12, email: 'lucas.gomez@example.com', first_name: 'Lucas' },
-    { id: 13, email: 'marina.diaz@example.com', first_name: 'Marina' },
-    { id: 14, email: 'nicolas.bustos@example.com', first_name: 'Nicolás' },
-    { id: 15, email: 'olga.castro@example.com', first_name: 'Olga' },
-    { id: 16, email: 'pablo.vazquez@example.com', first_name: 'Pablo' },
-    { id: 17, email: 'quimey.rios@example.com', first_name: 'Quimey' },
-    { id: 18, email: 'rocio.molina@example.com', first_name: 'Rocío' },
-    { id: 19, email: 'sofia.cabrera@example.com', first_name: 'Sofía' },
-    { id: 20, email: 'tomas.flores@example.com', first_name: 'Tomás' },
-    { id: 21, email: 'ursula.martin@example.com', first_name: 'Úrsula' },
-    { id: 22, email: 'valentin.vera@example.com', first_name: 'Valentín' },
-    { id: 23, email: 'wanda.iglesias@example.com', first_name: 'Wanda' },
-    { id: 24, email: 'ximena.ayala@example.com', first_name: 'Ximena' },
-    { id: 25, email: 'yago.paz@example.com', first_name: 'Yago' },
-    { id: 26, email: 'zulema.ortiz@example.com', first_name: 'Zulema' },
-  ]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -281,27 +264,54 @@ export default function Home() {
     }
   };
 
-  // Actualizar la búsqueda para que filtre en tiempo real por cada letra
+  // Cargar todos los usuarios al montar el componente
   useEffect(() => {
-    if (searchEmail) {
-      const filtered = mockUsers.filter(user =>
-        user.email.toLowerCase().includes(searchEmail.toLowerCase())
+    const loadUsers = async () => {
+      if (userState.isAuthenticated && userState.role && [2, 3].includes(userState.role)) {
+        setUsersLoading(true);
+        try {
+          const users = await getAllUsers();
+          setAllUsers(users);
+        } catch (error) {
+          console.error('Error al cargar usuarios:', error);
+        } finally {
+          setUsersLoading(false);
+        }
+      }
+    };
+
+    loadUsers();
+  }, [userState.isAuthenticated, userState.role]);
+
+  // Actualizar la búsqueda para que filtre localmente
+  useEffect(() => {
+    if (searchEmail.trim()) {
+      const filtered = allUsers.filter(user =>
+        user.email.toLowerCase().includes(searchEmail.toLowerCase()) ||
+        user.first_name.toLowerCase().includes(searchEmail.toLowerCase()) ||
+        user.last_name.toLowerCase().includes(searchEmail.toLowerCase())
       );
       setSearchResults(filtered);
     } else {
       setSearchResults([]);
     }
-  }, [searchEmail, mockUsers]);
+  }, [searchEmail, allUsers]);
 
-  // handleSearchEmail solo actualiza el estado
   const handleSearchEmail = (email: string) => {
     setSearchEmail(email);
   };
 
   const handleDeleteUser = async (userId: number) => {
-    // Aquí iría la llamada al backend para eliminar el usuario
-    console.log('Eliminar usuario:', userId);
-    setSearchResults(prev => prev.filter(user => user.id !== userId));
+    try {
+      await deleteUser(userId);
+      // Actualizar la lista de resultados
+      setSearchResults(prev => prev.filter(user => user.id !== userId));
+      // Actualizar también la lista completa de usuarios
+      setAllUsers(prev => prev.filter(user => user.id !== userId));
+    } catch (error) {
+      console.error('Error al eliminar usuario:', error);
+      // Aquí podrías mostrar un mensaje de error al usuario
+    }
   };
 
   // Limpiar campos al abrir el modal, pero sin fetch ni sobrescribir categorías
@@ -348,37 +358,44 @@ export default function Home() {
     }
     setRetiroLoading(true);
     try {
-      // MOCK: Reserva ficticia
-      const reservaMock = {
-        id: Number(retiroReservaId),
-        cliente: { nombre: "Juan", apellido: "Pérez", email: "juan.perez@email.com" },
-        vehiculo: {
-          marca: { nombre: "Toyota" },
-          modelo: { nombre: "Corolla" },
-          patente: "ABC123"
+      const reservaData = await getReservaYCliente(Number(retiroReservaId));
+      setRetiroReserva({
+        id: reservaData.reserva.id,
+        cliente: {
+          nombre: reservaData.cliente.first_name,
+          apellido: reservaData.cliente.last_name,
+          email: reservaData.cliente.email
         },
-        fecha_inicio: new Date().toISOString(),
-        fecha_fin: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-      };
-      // Simula un retardo de red
-      await new Promise(res => setTimeout(res, 1000));
-      setRetiroReserva(reservaMock);
-    } catch {
-      setRetiroError('Reserva no encontrada');
+        vehiculo: {
+          marca: { nombre: reservaData.reserva.vehiculo.marca.nombre },
+          modelo: { nombre: reservaData.reserva.vehiculo.modelo.nombre },
+          patente: reservaData.reserva.vehiculo.patente
+        },
+        fecha_inicio: reservaData.reserva.fecha_inicio,
+        fecha_fin: reservaData.reserva.fecha_fin
+      });
+    } catch (error) {
+      setRetiroError(error instanceof Error ? error.message : 'Reserva no encontrada');
     } finally {
       setRetiroLoading(false);
     }
   };
 
-  const handleConfirmarRetiro = () => {
-    // Aquí iría la llamada al backend para confirmar el retiro
-    setRetiroConfirmado(true);
-    setTimeout(() => {
-      setShowRetiroModal(false);
-      setRetiroConfirmado(false);
-      setRetiroReservaId('');
-      setRetiroReserva(null);
-    }, 1500);
+  const handleConfirmarRetiro = async () => {
+    if (!retiroReserva) return;
+    
+    try {
+      await retirarVehiculo(retiroReserva.id);
+      setRetiroConfirmado(true);
+      setTimeout(() => {
+        setShowRetiroModal(false);
+        setRetiroConfirmado(false);
+        setRetiroReservaId('');
+        setRetiroReserva(null);
+      }, 1500);
+    } catch (error) {
+      setRetiroError(error instanceof Error ? error.message : 'Error al confirmar retiro');
+    }
   };
 
   const handleCancelarReserva = async () => {
@@ -389,23 +406,7 @@ export default function Home() {
     }
     setCancelarLoading(true);
     try {
-      const token = getAuthToken();
-      if (!token) throw new Error('No autenticado');
-
-      const response = await fetch(`http://localhost:8000/api/alquileres/${cancelarReservaId}/cancelar/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error al cancelar la reserva');
-      }
-
+      await cancelarAlquilerParaCliente(Number(cancelarReservaId));
       setCancelarConfirmado(true);
       // Limpiar formulario y cerrar modal después de 1.5 segundos
       setTimeout(() => {
@@ -426,39 +427,40 @@ export default function Home() {
     setRegistrarUsuarioLoading(true);
     setRegistrarUsuarioError(null);
     setRegistrarUsuarioSuccess(false);
+    setPasswordGenerada('');
 
-    // Validación simple de email duplicado
-    if (mockUsers.some(u => u.email.toLowerCase() === nuevoUsuario.email.toLowerCase())) {
-      setRegistrarUsuarioError('El email ya está registrado');
+    try {
+      // Registrar usuario usando el endpoint real
+      const result = await registerClient(nuevoUsuario);
+      
+      setRegistrarUsuarioSuccess(true);
+      setPasswordGenerada(result.password_generada);
+      
+      // Agregar el nuevo usuario a la lista de resultados
+      setSearchResults(prev => [...prev, result.usuario]);
+      // Actualizar también la lista completa de usuarios
+      setAllUsers(prev => [...prev, result.usuario]);
+      
+      // Limpiar formulario después de 3 segundos
+      setTimeout(() => {
+        setShowRegistrarUsuarioModal(false);
+        setRegistrarUsuarioSuccess(false);
+        setPasswordGenerada('');
+        setNuevoUsuario({
+          email: '',
+          first_name: '',
+          last_name: '',
+          telefono: '',
+          fecha_nacimiento: '',
+          rol: 1 // Cliente por defecto
+        });
+      }, 3000);
+    } catch (error) {
+      console.error('Error al registrar usuario:', error);
+      setRegistrarUsuarioError(error instanceof Error ? error.message : 'Error al registrar usuario');
+    } finally {
       setRegistrarUsuarioLoading(false);
-      return;
     }
-
-    // Agregar usuario mock
-    setMockUsers((prev: User[]) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        email: nuevoUsuario.email,
-        first_name: nuevoUsuario.first_name,
-        // Puedes agregar last_name, telefono, etc. si quieres mostrarlo
-      }
-    ]);
-
-    setRegistrarUsuarioSuccess(true);
-    // Limpiar formulario después de 2 segundos
-    setTimeout(() => {
-      setShowRegistrarUsuarioModal(false);
-      setRegistrarUsuarioSuccess(false);
-      setNuevoUsuario({
-        email: '',
-        first_name: '',
-        last_name: '',
-        telefono: '',
-        fecha_nacimiento: ''
-      });
-    }, 2000);
-    setRegistrarUsuarioLoading(false);
   };
 
   const handleVehiculoSearch = async () => {
@@ -621,22 +623,44 @@ export default function Home() {
     }
     setDevolucionLoading(true);
     try {
-      const reserva = await buscarReservaMock(devolucionReservaId);
-      setDevolucionReserva(reserva);
-    } catch (e: any) {
-      setDevolucionError(e.message);
+      const reservaData = await getReservaYCliente(Number(devolucionReservaId));
+      setDevolucionReserva({
+        id: reservaData.reserva.id,
+        cliente: {
+          nombre: reservaData.cliente.first_name,
+          apellido: reservaData.cliente.last_name,
+          email: reservaData.cliente.email
+        },
+        vehiculo: {
+          marca: { nombre: reservaData.reserva.vehiculo.marca.nombre },
+          modelo: { nombre: reservaData.reserva.vehiculo.modelo.nombre },
+          patente: reservaData.reserva.vehiculo.patente
+        },
+        fecha_inicio: reservaData.reserva.fecha_inicio,
+        fecha_fin: reservaData.reserva.fecha_fin
+      });
+    } catch (error) {
+      setDevolucionError(error instanceof Error ? error.message : 'Reserva no encontrada');
     } finally {
       setDevolucionLoading(false);
     }
   };
-  const handleConfirmarDevolucion = () => {
-    setDevolucionConfirmado(true);
-    setTimeout(() => {
-      setShowDevolucionModal(false);
-      setDevolucionConfirmado(false);
-      setDevolucionReservaId('');
-      setDevolucionReserva(null);
-    }, 1500);
+
+  const handleConfirmarDevolucion = async () => {
+    if (!devolucionReserva) return;
+    
+    try {
+      await registrarDevolucion(devolucionReserva.id);
+      setDevolucionConfirmado(true);
+      setTimeout(() => {
+        setShowDevolucionModal(false);
+        setDevolucionConfirmado(false);
+        setDevolucionReservaId('');
+        setDevolucionReserva(null);
+      }, 1500);
+    } catch (error) {
+      setDevolucionError(error instanceof Error ? error.message : 'Error al confirmar devolución');
+    }
   };
 
   // Handlers para cancelar (mostrar info antes de confirmar)
@@ -687,6 +711,84 @@ export default function Home() {
     const dias = Math.ceil((new Date(reserva.fecha_fin).getTime() - new Date(reserva.fecha_inicio).getTime()) / (1000 * 60 * 60 * 24));
     return dias * precio;
   };
+
+  const handleRegistrarAlquiler = async () => {
+    setRegistrarError(null);
+    if (!registrarClienteEmail || !registrarModeloId || !registrarSucursalRetiro || !registrarSucursalDevolucion || !registrarFechaInicio || !registrarFechaFin) {
+      setRegistrarError('Todos los campos son obligatorios');
+      return;
+    }
+    setRegistrarLoading(true);
+    try {
+      await registrarAlquilerParaCliente({
+        cliente_email: registrarClienteEmail,
+        modelo_id: Number(registrarModeloId),
+        sucursal_retiro: Number(registrarSucursalRetiro),
+        sucursal_devolucion: Number(registrarSucursalDevolucion),
+        fecha_inicio: registrarFechaInicio,
+        fecha_fin: registrarFechaFin
+      });
+      setRegistrarConfirmado(true);
+      // Limpiar formulario y cerrar modal después de 1.5 segundos
+      setTimeout(() => {
+        setShowRegistrarModal(false);
+        setRegistrarConfirmado(false);
+        setRegistrarClienteEmail('');
+        setRegistrarModeloId('');
+        setRegistrarSucursalRetiro('');
+        setRegistrarSucursalDevolucion('');
+        setRegistrarFechaInicio('');
+        setRegistrarFechaFin('');
+      }, 1500);
+    } catch (error) {
+      console.error('Error:', error);
+      setRegistrarError(error instanceof Error ? error.message : 'Error al registrar el alquiler');
+    } finally {
+      setRegistrarLoading(false);
+    }
+  };
+
+  // Cargar modelos disponibles
+  const cargarModelosDisponibles = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/modelos/con-precios/`);
+      if (!response.ok) {
+        throw new Error('Error al cargar modelos');
+      }
+      const modelos = await response.json();
+      setModelosDisponibles(modelos);
+    } catch (error) {
+      console.error('Error al cargar modelos:', error);
+    }
+  };
+
+  // Cargar modelos cuando se abre el modal de registrar alquiler
+  useEffect(() => {
+    if (showRegistrarModal) {
+      cargarModelosDisponibles();
+    }
+  }, [showRegistrarModal]);
+
+  // Cargar sucursales reales
+  const cargarSucursales = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/sucursales/`);
+      if (!response.ok) {
+        throw new Error('Error al cargar sucursales');
+      }
+      const data = await response.json();
+      setSucursales(data);
+    } catch (error) {
+      console.error('Error al cargar sucursales:', error);
+    }
+  };
+
+  // Cargar sucursales cuando se abre el modal de registrar alquiler
+  useEffect(() => {
+    if (showRegistrarModal) {
+      cargarSucursales();
+    }
+  }, [showRegistrarModal]);
 
   return (
     <div className="min-h-screen bg-[#5e3e5a]">
@@ -999,6 +1101,8 @@ export default function Home() {
                 <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
                   <p>✅ Cliente registrado exitosamente</p>
                   <p>Email: {nuevoUsuario.email}</p>
+                  <p className="font-semibold mt-2">Contraseña generada: {passwordGenerada}</p>
+                  <p className="text-xs mt-1">Guarde esta contraseña para proporcionársela al cliente</p>
                 </div>
               )}
             </form>
@@ -1281,9 +1385,9 @@ export default function Home() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full justify-items-center">
                     <button 
                       className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
-                      onClick={() => setShowReservaModal(true)}
+                      onClick={() => setShowRegistrarModal(true)}
                     >
-                      Registrar Reserva
+                      Registrar Alquiler
                     </button>
                     <button 
                       className="bg-[#e94b5a] hover:bg-[#b13e4a] text-white font-semibold px-6 py-3 rounded-md transition-colors w-full"
@@ -1367,7 +1471,7 @@ export default function Home() {
                               <td className="px-6 py-4">{vehiculo.patente}</td>
                               <td className="px-6 py-4">{vehiculo.marca?.nombre || 'N/A'}</td>
                               <td className="px-6 py-4">{vehiculo.modelo?.nombre || 'N/A'}</td>
-                              <td className="px-6 py-4">{vehiculo.año_fabricacion}</td>
+                              <td className="px-6 py-4">{vehiculo.anio_fabricacion}</td>
                               <td className="px-6 py-4">{vehiculo.estado?.nombre || 'N/A'}</td>
                               <td className="px-6 py-4">
                                 <div className="flex gap-2">
@@ -1430,12 +1534,21 @@ export default function Home() {
                         Agregar usuario
                       </button>
                     </div>
+                    
+                    {/* Indicador de carga */}
+                    {usersLoading && (
+                      <div className="text-center text-white py-4">
+                        Cargando usuarios...
+                      </div>
+                    )}
+                    
                     <div className="space-y-2">
                       {searchResults.map((user) => (
                         <div key={user.id} className="flex items-center justify-between bg-[#3d2342] p-4 rounded-md">
                           <div>
-                            <p className="text-white font-medium">{user.first_name}</p>
+                            <p className="text-white font-medium">{user.first_name} {user.last_name}</p>
                             <p className="text-[#a16bb7]">{user.email}</p>
+                            <p className="text-[#a16bb7] text-sm">Tel: {user.telefono}</p>
                           </div>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
@@ -1447,6 +1560,11 @@ export default function Home() {
                           </button>
                         </div>
                       ))}
+                      {!usersLoading && searchEmail && searchResults.length === 0 && (
+                        <div className="text-center text-[#a16bb7] py-4">
+                          No se encontraron usuarios con ese criterio de búsqueda
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1461,6 +1579,298 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Registrar Alquiler */}
+      {showRegistrarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-2xl relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowRegistrarModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Registrar Alquiler para Cliente</h2>
+            
+            {registrarConfirmado ? (
+              <div className="text-center">
+                <div className="text-green-400 text-6xl mb-4">✓</div>
+                <p className="text-white text-lg">Alquiler registrado exitosamente</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Email del cliente */}
+                <div>
+                  <label className="text-white block mb-2">Email del cliente</label>
+                  <input
+                    type="email"
+                    placeholder="Email del cliente"
+                    value={registrarClienteEmail}
+                    onChange={e => setRegistrarClienteEmail(e.target.value)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                  />
+                </div>
+
+                {/* Sucursales */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-white block mb-2">Sucursal de retiro</label>
+                    <select
+                      value={registrarSucursalRetiro}
+                      onChange={e => setRegistrarSucursalRetiro(e.target.value)}
+                      className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    >
+                      <option value="">Seleccionar sucursal</option>
+                      {sucursales.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-white block mb-2">Sucursal de devolución</label>
+                    <select
+                      value={registrarSucursalDevolucion}
+                      onChange={e => setRegistrarSucursalDevolucion(e.target.value)}
+                      className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    >
+                      <option value="">Seleccionar sucursal</option>
+                      {sucursales.map(s => (
+                        <option key={s.id} value={s.id}>{s.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Modelo */}
+                <div>
+                  <label className="text-white block mb-2">Modelo de vehículo</label>
+                  <select
+                    value={registrarModeloId}
+                    onChange={e => setRegistrarModeloId(e.target.value)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  >
+                    <option value="">Seleccionar modelo</option>
+                    {modelosDisponibles.map(modelo => (
+                      <option key={modelo.id} value={modelo.id}>
+                        {modelo.nombre} ({modelo.categoria_nombre}) - ${modelo.precio_por_dia}/día
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Fechas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-white block mb-2">Fecha de inicio</label>
+                    <input
+                      type="date"
+                      value={registrarFechaInicio}
+                      onChange={e => setRegistrarFechaInicio(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a] [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:contrast-200"
+                      style={{
+                        colorScheme: 'dark'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-white block mb-2">Fecha de fin</label>
+                    <input
+                      type="date"
+                      value={registrarFechaFin}
+                      onChange={e => setRegistrarFechaFin(e.target.value)}
+                      min={registrarFechaInicio || new Date().toISOString().split('T')[0]}
+                      className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a] [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:contrast-200"
+                      style={{
+                        colorScheme: 'dark'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Error */}
+                {registrarError && (
+                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+                    {registrarError}
+                  </div>
+                )}
+
+                {/* Botones */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={handleRegistrarAlquiler}
+                    disabled={registrarLoading}
+                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
+                  >
+                    {registrarLoading ? 'Registrando...' : 'Registrar Alquiler'}
+                  </button>
+                  <button
+                    onClick={() => setShowRegistrarModal(false)}
+                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Registrar Usuario */}
+      {showRegistrarUsuarioModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowRegistrarUsuarioModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Registrar Nuevo Usuario</h2>
+            
+            {registrarUsuarioSuccess ? (
+              <div className="text-center">
+                <div className="text-green-400 text-6xl mb-4">✓</div>
+                <p className="text-white text-lg mb-2">Usuario registrado exitosamente</p>
+                <p className="text-[#a16bb7] text-sm">Contraseña generada: <span className="font-mono bg-[#3d2342] px-2 py-1 rounded">{passwordGenerada}</span></p>
+              </div>
+            ) : (
+              <form onSubmit={handleRegistrarUsuario} className="space-y-4">
+                <div>
+                  <label className="text-white block mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={nuevoUsuario.email}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Nombre</label>
+                  <input
+                    type="text"
+                    value={nuevoUsuario.first_name}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, first_name: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Apellido</label>
+                  <input
+                    type="text"
+                    value={nuevoUsuario.last_name}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, last_name: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={nuevoUsuario.telefono}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, telefono: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Fecha de nacimiento</label>
+                  <input
+                    type="date"
+                    value={nuevoUsuario.fecha_nacimiento}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, fecha_nacimiento: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Rol</label>
+                  <select
+                    value={nuevoUsuario.rol}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, rol: Number(e.target.value)})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                  >
+                    <option value={1}>Cliente</option>
+                    <option value={2}>Empleado</option>
+                    <option value={3}>Administrador</option>
+                  </select>
+                </div>
+
+                {registrarUsuarioError && (
+                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+                    {registrarUsuarioError}
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="submit"
+                    disabled={registrarUsuarioLoading}
+                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
+                  >
+                    {registrarUsuarioLoading ? 'Registrando...' : 'Registrar Usuario'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegistrarUsuarioModal(false)}
+                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+
+
+      {/* Modal de Cancelar Reserva */}
+      {showCancelarModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowCancelarModal(false)}>&times;</button>
+            <h2 className="text-2xl font-bold text-white mb-6">Cancelar Reserva</h2>
+            
+            {cancelarConfirmado ? (
+              <div className="text-center">
+                <div className="text-green-400 text-6xl mb-4">✓</div>
+                <p className="text-white text-lg">Reserva cancelada exitosamente</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white block mb-2">Número de reserva</label>
+                  <input
+                    type="text"
+                    placeholder="Ingrese el número de reserva"
+                    value={cancelarReservaId}
+                    onChange={e => setCancelarReservaId(e.target.value)}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                  />
+                </div>
+
+                {cancelarError && (
+                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+                    {cancelarError}
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    onClick={handleCancelarReserva}
+                    disabled={cancelarLoading}
+                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
+                  >
+                    {cancelarLoading ? 'Cancelando...' : 'Cancelar Reserva'}
+                  </button>
+                  <button
+                    onClick={() => setShowCancelarModal(false)}
+                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

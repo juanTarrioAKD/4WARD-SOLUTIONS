@@ -103,7 +103,7 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
         patente: formData.patente.toUpperCase(),
         marca: parseInt(formData.marca),
         modelo: parseInt(formData.modelo),
-        año_fabricacion: parseInt(formData.año.toString()),
+        anio_fabricacion: parseInt(formData.año.toString()),
         categoria: parseInt(formData.categoria),
         estado: parseInt(formData.estado),
         sucursal: parseInt(formData.sucursal)

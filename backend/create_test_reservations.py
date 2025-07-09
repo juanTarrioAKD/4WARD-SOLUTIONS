@@ -79,12 +79,12 @@ def create_test_reservations():
     
     if len(vehiculos) < 10:
         # Crear vehículos adicionales si no hay suficientes
-        politica = PoliticaDeCancelacion.objects.get_or_create(
-            nombre='Política 20%', 
-            defaults={'descripcion': 'Devolución del 20%', 'porcentaje': Decimal('20.00')}
-        )[0]
-        estado_vehiculo = EstadoVehiculo.objects.get_or_create(nombre='Disponible')[0]
-        
+    politica = PoliticaDeCancelacion.objects.get_or_create(
+        nombre='Política 20%', 
+        defaults={'descripcion': 'Devolución del 20%', 'porcentaje': Decimal('20.00')}
+    )[0]
+    estado_vehiculo = EstadoVehiculo.objects.get_or_create(nombre='Disponible')[0]
+    
         for i in range(len(vehiculos), 10):
             categoria = random.choice(categorias)
             marca = random.choice(marcas)
@@ -101,7 +101,7 @@ def create_test_reservations():
                 capacidad=random.randint(4, 8),
                 año_fabricacion=random.randint(2018, 2023)
             )
-            vehiculos.append(vehiculo)
+        vehiculos.append(vehiculo)
             print(f"✅ Vehículo creado: {vehiculo.patente} ({vehiculo.marca.nombre} {vehiculo.modelo.nombre})")
     
     # Crear estados de alquiler

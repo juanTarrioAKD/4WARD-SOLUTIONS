@@ -41,13 +41,28 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return UsuarioSerializer
 
     def get_permissions(self):
-        if self.action in ['register', 'login', 'logout']:
+        if self.action in ['register', 'login', 'logout', 'list']:
             return [AllowAny()]
         elif self.action in ['modificar', 'baja', 'perfil', 'mis_alquileres']:
             return [IsAuthenticated()]
         elif self.action == 'registrar_cliente':
             return [IsEmpleadoOrAdmin()]
         return [IsAdmin()]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Lista usuarios con soporte para búsqueda por email.
+        Solo empleados y administradores pueden listar usuarios.
+        """
+        queryset = self.get_queryset()
+        
+        # Búsqueda por email
+        search = request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(email__icontains=search)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['put'])
     def modificar(self, request):
@@ -788,6 +803,37 @@ class ModeloViewSet(viewsets.ModelViewSet):
         modelo = self.get_object()
         modelo.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['get'], url_path='con-precios')
+    def con_precios(self, request):
+        """
+        Devuelve los modelos con información de categoría y precio
+        """
+        from django.db.models import Min
+        from .models import Vehiculo, Categoria
+        
+        # Obtener modelos que tienen vehículos disponibles
+        modelos_con_vehiculos = Modelo.objects.filter(
+            vehiculo__estado__id=1  # Solo vehículos disponibles
+        ).distinct()
+        
+        modelos_data = []
+        for modelo in modelos_con_vehiculos:
+            # Obtener el precio de la categoría del primer vehículo de este modelo
+            vehiculo = Vehiculo.objects.filter(
+                modelo=modelo, 
+                estado__id=1
+            ).first()
+            
+            if vehiculo:
+                modelos_data.append({
+                    'id': modelo.id,
+                    'nombre': modelo.nombre,
+                    'precio_por_dia': float(vehiculo.categoria.precio),
+                    'categoria_nombre': vehiculo.categoria.nombre
+                })
+        
+        return Response(modelos_data)
 
 class LocalidadViewSet(viewsets.ModelViewSet):
     queryset = Localidad.objects.all()

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/config/config';
+import { getAuthToken } from '@/services/auth';
 
 // Función de ayuda para formatear fechas
 const formatDateForBackend = (date: Date | string): string => {
@@ -10,124 +11,223 @@ const formatDateForBackend = (date: Date | string): string => {
   return date.toISOString().replace('Z', '+00:00');
 };
 
-export interface CreateAlquilerData {
-  modelo_id: number;
-  fecha_inicio: Date | string;  // Aceptamos ambos tipos
-  fecha_fin: Date | string;     // Aceptamos ambos tipos
-}
-
 export interface Alquiler {
   id: number;
-  fecha_inicio: string;
-  fecha_fin: string;
-  fecha_reserva: string;
-  monto_total: string;
-  estado: {
+  cliente: {
     id: number;
-    nombre: string;
+    email: string;
+    first_name: string;
+    last_name: string;
   };
   vehiculo: {
     id: number;
     patente: string;
-    modelo: {
-      id: number;
-      nombre: string;
-    };
+    marca: { nombre: string };
+    modelo: { nombre: string };
   };
+  fecha_inicio: string;
+  fecha_fin: string;
+  monto_total: number;
+  estado: string;
 }
 
-export const createAlquiler = async (data: CreateAlquilerData, token: string) => {
+export interface CreateAlquilerData {
+  cliente_email: string;
+  modelo_id: number;
+  sucursal_retiro: number;
+  sucursal_devolucion: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+}
+
+// Registrar alquiler para cliente (empleados)
+export const registrarAlquilerParaCliente = async (data: CreateAlquilerData): Promise<Alquiler> => {
   try {
-    // Asegurarnos de que las fechas sean objetos Date
-    const formattedData = {
-      modelo_id: data.modelo_id,
-      fecha_inicio: formatDateForBackend(typeof data.fecha_inicio === 'string' ? new Date(data.fecha_inicio) : data.fecha_inicio),
-      fecha_fin: formatDateForBackend(typeof data.fecha_fin === 'string' ? new Date(data.fecha_fin) : data.fecha_fin),
-    };
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
 
-    console.log('Datos formateados a enviar:', formattedData);
-
-    const response = await fetch(`${API_BASE_URL}/api/alquileres/`, {
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/alquilar-para-cliente/`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(formattedData),
+      body: JSON.stringify(data),
     });
 
-    const responseData = await response.json();
-    console.log('Respuesta completa del servidor:', responseData);
-
     if (!response.ok) {
-      let errorMessage = 'Error al crear el alquiler';
-      
-      // Intentar obtener el mensaje de error específico
-      if (responseData.non_field_errors && responseData.non_field_errors.length > 0) {
-        errorMessage = responseData.non_field_errors[0];
-      } else if (responseData.error) {
-        errorMessage = responseData.error;
-      } else if (typeof responseData === 'string') {
-        errorMessage = responseData;
-      } else {
-        // Si hay otros campos con errores, mostrarlos
-        const errorFields = Object.keys(responseData).filter(key => Array.isArray(responseData[key]));
-        if (errorFields.length > 0) {
-          errorMessage = responseData[errorFields[0]][0];
-        }
-      }
-      
-      console.error('Error detallado del servidor:', responseData);
-      throw new Error(errorMessage);
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al registrar alquiler');
     }
 
-    // Validar que la respuesta tenga un ID
-    if (!responseData.id) {
-      console.error('Respuesta del servidor sin ID:', responseData);
-      throw new Error('La respuesta del servidor no incluye el ID del alquiler');
-    }
-
-    console.log('Alquiler creado exitosamente con ID:', responseData.id);
-    return responseData;
+    return await response.json();
   } catch (error) {
-    console.error('Error detallado al crear alquiler:', error);
+    console.error('Error en registrarAlquilerParaCliente:', error);
     throw error;
   }
 };
 
-export const getAlquilerById = async (id: number, token: string): Promise<Alquiler> => {
+// Cancelar alquiler para cliente (empleados)
+export const cancelarAlquilerParaCliente = async (alquilerId: number): Promise<{ mensaje: string; monto_devolucion: number }> => {
   try {
-    if (!id || isNaN(id)) {
-      throw new Error('ID de alquiler inválido');
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
     }
 
-    console.log('Obteniendo alquiler con ID:', id);
-    const response = await fetch(`${API_BASE_URL}/api/alquileres/${id}/`, {
-      method: 'GET',
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/cancelar-para-cliente/`, {
+      method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ alquiler_id: alquilerId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al cancelar alquiler');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en cancelarAlquilerParaCliente:', error);
+    throw error;
+  }
+};
+
+// Retirar vehículo (empleados)
+export const retirarVehiculo = async (alquilerId: number): Promise<{
+  mensaje: string;
+  alquiler_id: number;
+  cliente: string;
+  vehiculo: string;
+  estado: string;
+}> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/retirar-vehiculo/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ alquiler_id: alquilerId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al retirar vehículo');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en retirarVehiculo:', error);
+    throw error;
+  }
+};
+
+// Registrar devolución (empleados)
+export const registrarDevolucion = async (alquilerId: number, sucursalDevolucion?: number): Promise<{
+  mensaje: string;
+  alquiler_id: number;
+  vehiculo: string;
+  cliente: string;
+  sucursal_asignada: string;
+  sucursal_devolucion_real: string;
+  monto_extra: number;
+  mensaje_cobro: string;
+}> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    const requestData: any = { alquiler_id: alquilerId };
+    if (sucursalDevolucion) {
+      requestData.sucursal_devolucion = sucursalDevolucion;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/registrar-devolucion/`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al registrar devolución');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en registrarDevolucion:', error);
+    throw error;
+  }
+};
+
+// Obtener reserva y cliente por ID
+export const getReservaYCliente = async (alquilerId: number): Promise<{
+  reserva: Alquiler;
+  cliente: any;
+}> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/${alquilerId}/reserva-y-cliente/`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
     });
 
     if (!response.ok) {
-      let errorMessage = 'Error al obtener el alquiler';
-      try {
-        const errorData = await response.json();
-        console.error('Error detallado del servidor:', errorData);
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        const errorText = await response.text();
-        console.error('Respuesta no-JSON del servidor:', errorText);
-      }
-      throw new Error(errorMessage);
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Error al obtener reserva');
     }
 
-    const data = await response.json();
-    console.log('Datos del alquiler recibidos:', data);
-    return data;
+    return await response.json();
   } catch (error) {
-    console.error('Error al obtener alquiler:', error);
+    console.error('Error en getReservaYCliente:', error);
+    throw error;
+  }
+};
+
+// Función existente
+export const getAlquilerById = async (id: number): Promise<Alquiler> => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('No autorizado');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/alquileres/${id}/`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Error al obtener alquiler');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error en getAlquilerById:', error);
     throw error;
   }
 }; 

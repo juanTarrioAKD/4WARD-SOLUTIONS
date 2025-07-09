@@ -13,8 +13,8 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
   const [formData, setFormData] = useState({
     patente: vehiculo.patente || '',
     marca: vehiculo.marca?.id?.toString() || '',
-    modelo: vehiculo.modelo || '',
-    año_fabricacion: vehiculo.año_fabricacion?.toString() || new Date().getFullYear().toString(),
+    modelo: vehiculo.modelo?.id?.toString() || '',
+    anio_fabricacion: vehiculo.anio_fabricacion?.toString() || new Date().getFullYear().toString(),
     categoria: vehiculo.categoria?.id?.toString() || '',
     estado: vehiculo.estado?.id?.toString() || '',
     sucursal: vehiculo.sucursal?.id?.toString() || ''
@@ -30,7 +30,7 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
     try {
       // Validar que todos los campos requeridos estén completos
       if (!formData.patente || !formData.marca || !formData.modelo || 
-          !formData.año_fabricacion || !formData.categoria || !formData.estado || 
+          !formData.anio_fabricacion || !formData.categoria || !formData.estado || 
           !formData.sucursal) {
         throw new Error('Todos los campos son requeridos');
       }
@@ -44,8 +44,8 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
       const vehiculoData = {
         patente: formData.patente.toUpperCase(),
         marca: parseInt(formData.marca),
-        modelo: formData.modelo,
-        año_fabricacion: parseInt(formData.año_fabricacion),
+        modelo: parseInt(formData.modelo),
+        anio_fabricacion: parseInt(formData.anio_fabricacion),
         categoria: parseInt(formData.categoria),
         estado: parseInt(formData.estado),
         sucursal: parseInt(formData.sucursal)
@@ -121,22 +121,29 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
 
             <div>
               <label className="block text-white mb-2">Modelo</label>
-              <input
-                type="text"
+              <select
                 name="modelo"
                 value={formData.modelo}
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
                 required
-              />
+              >
+                <option value="">Seleccionar modelo</option>
+                <option value="1">Corolla</option>
+                <option value="2">Civic</option>
+                <option value="3">Golf</option>
+                <option value="4">Camry</option>
+                <option value="5">Accord</option>
+                <option value="6">Passat</option>
+              </select>
             </div>
 
             <div>
               <label className="block text-white mb-2">Año de Fabricación</label>
               <input
                 type="number"
-                name="año_fabricacion"
-                value={formData.año_fabricacion}
+                name="anio_fabricacion"
+                value={formData.anio_fabricacion}
                 onChange={handleChange}
                 min="1900"
                 max={new Date().getFullYear() + 1}

@@ -12,7 +12,7 @@ export interface Vehiculo {
     id: number;
     nombre: string;
   } | null;
-  año_fabricacion: number;
+  anio_fabricacion: number;
   categoria: {
     id: number;
     nombre: string;
