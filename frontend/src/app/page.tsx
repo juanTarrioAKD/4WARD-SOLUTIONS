@@ -674,22 +674,47 @@ export default function Home() {
     }
     setCancelarReservaLoading(true);
     try {
-      const reserva = await buscarReservaMock(cancelarReservaId);
-      setCancelarReservaInfo(reserva);
+      // Usar el endpoint real para buscar la reserva
+      const reservaData = await getReservaYCliente(Number(cancelarReservaId));
+      setCancelarReservaInfo({
+        id: reservaData.reserva.id,
+        cliente: {
+          nombre: reservaData.cliente.first_name,
+          apellido: reservaData.cliente.last_name,
+          email: reservaData.cliente.email
+        },
+        vehiculo: {
+          marca: { nombre: reservaData.reserva.vehiculo.marca.nombre },
+          modelo: { nombre: reservaData.reserva.vehiculo.modelo.nombre },
+          patente: reservaData.reserva.vehiculo.patente
+        },
+        fecha_inicio: reservaData.reserva.fecha_inicio,
+        fecha_fin: reservaData.reserva.fecha_fin
+      });
     } catch (e: any) {
-      setCancelarReservaError(e.message);
+      setCancelarReservaError(e.message || 'Reserva no encontrada');
     } finally {
       setCancelarReservaLoading(false);
     }
   };
-  const handleConfirmarCancelar = () => {
-    setCancelarReservaConfirmado(true);
-    setTimeout(() => {
-      setShowCancelarModal(false);
-      setCancelarReservaConfirmado(false);
-      setCancelarReservaId('');
-      setCancelarReservaInfo(null);
-    }, 1500);
+  const handleConfirmarCancelar = async () => {
+    if (!cancelarReservaInfo) return;
+    setCancelarReservaLoading(true);
+    setCancelarReservaError(null);
+    try {
+      await cancelarAlquilerParaCliente(cancelarReservaInfo.id);
+      setCancelarReservaConfirmado(true);
+      setTimeout(() => {
+        setShowCancelarModal(false);
+        setCancelarReservaConfirmado(false);
+        setCancelarReservaId('');
+        setCancelarReservaInfo(null);
+      }, 1500);
+    } catch (error) {
+      setCancelarReservaError(error instanceof Error ? error.message : 'Error al cancelar la reserva');
+    } finally {
+      setCancelarReservaLoading(false);
+    }
   };
 
   // 1. Agregar función para calcular monto total
@@ -750,24 +775,44 @@ export default function Home() {
 
   // Cargar modelos disponibles
   const cargarModelosDisponibles = async () => {
+    console.log('Ejecutando cargarModelosDisponibles');
     try {
-      const response = await fetch(`${API_BASE_URL}/api/modelos/con-precios/`);
-      if (!response.ok) {
-        throw new Error('Error al cargar modelos');
+      if (!reservaSucursalRetiro) {
+        setModelosDisponibles([]);
+        return;
       }
-      const modelos = await response.json();
-      setModelosDisponibles(modelos);
+      const response = await fetch(`${API_BASE_URL}/api/vehiculos/`);
+      if (!response.ok) {
+        throw new Error('Error al cargar vehículos');
+      }
+      const autos = await response.json();
+      console.log('Todos los autos:', autos);
+      // Filtrar autos por sucursal seleccionada
+      const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(reservaSucursalRetiro));
+      console.log('Autos filtrados por sucursal:', autosFiltrados);
+      // Mapear a modelos
+      const modelos = autosFiltrados.map((auto: any) => auto.modelo);
+      console.log('Modelos de autos filtrados:', modelos);
+      // Eliminar modelos duplicados por id
+      const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
+        arr.findIndex((m) => m.id === modelo.id) === idx
+      );
+      console.log('Modelos únicos:', modelosUnicos);
+      setModelosDisponibles(modelosUnicos);
     } catch (error) {
       console.error('Error al cargar modelos:', error);
+      setModelosDisponibles([]);
     }
   };
 
-  // Cargar modelos cuando se abre el modal de registrar alquiler
   useEffect(() => {
-    if (showRegistrarModal) {
+    console.log('useEffect de modelos: showRegistrarModal', showRegistrarModal, 'reservaSucursalRetiro', reservaSucursalRetiro);
+    if (showRegistrarModal && reservaSucursalRetiro) {
       cargarModelosDisponibles();
+    } else {
+      setModelosDisponibles([]);
     }
-  }, [showRegistrarModal]);
+  }, [showRegistrarModal, reservaSucursalRetiro]);
 
   // Cargar sucursales reales
   const cargarSucursales = async () => {
@@ -789,6 +834,82 @@ export default function Home() {
       cargarSucursales();
     }
   }, [showRegistrarModal]);
+
+  useEffect(() => {
+    if (!showCancelarModal) {
+      setCancelarReservaId('');
+      setCancelarReservaInfo(null);
+      setCancelarReservaError(null);
+      setCancelarReservaConfirmado(false);
+      setCancelarReservaLoading(false);
+    }
+  }, [showCancelarModal]);
+
+  // Cargar modelos cuando se selecciona una sucursal de retiro
+  useEffect(() => {
+    if (reservaSucursalRetiro) {
+      cargarModelosDisponibles();
+    } else {
+      setModelosDisponibles([]);
+    }
+  }, [reservaSucursalRetiro]);
+
+  // Limpiar modelos y sucursal al cerrar el modal
+  useEffect(() => {
+    if (!showRegistrarModal) {
+      setModelosDisponibles([]);
+      setReservaSucursalRetiro(null);
+    }
+  }, [showRegistrarModal]);
+
+  // Cargar modelos cuando se selecciona una sucursal de retiro en el modal de registrar alquiler para cliente
+  useEffect(() => {
+    if (registrarSucursalRetiro) {
+      cargarModelosDisponiblesCliente();
+    } else {
+      setModelosDisponibles([]);
+    }
+  }, [registrarSucursalRetiro]);
+
+  // Limpiar modelos y sucursal al cerrar el modal de registrar alquiler para cliente
+  useEffect(() => {
+    if (!showRegistrarModal) {
+      setModelosDisponibles([]);
+      setRegistrarSucursalRetiro('');
+    }
+  }, [showRegistrarModal]);
+
+  // Nueva función para cargar modelos en el flujo de registrar alquiler para cliente
+  const cargarModelosDisponiblesCliente = async () => {
+    console.log('Ejecutando cargarModelosDisponiblesCliente');
+    try {
+      if (!registrarSucursalRetiro) {
+        setModelosDisponibles([]);
+        return;
+      }
+      const response = await fetch(`${API_BASE_URL}/api/vehiculos/`);
+      if (!response.ok) {
+        throw new Error('Error al cargar vehículos');
+      }
+      const autos = await response.json();
+      console.log('Todos los autos:', autos);
+      // Filtrar autos por sucursal seleccionada
+      const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(registrarSucursalRetiro));
+      console.log('Autos filtrados por sucursal:', autosFiltrados);
+      // Mapear a modelos
+      const modelos = autosFiltrados.map((auto: any) => auto.modelo);
+      console.log('Modelos de autos filtrados:', modelos);
+      // Eliminar modelos duplicados por id
+      const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
+        arr.findIndex((m) => m.id === modelo.id) === idx
+      );
+      console.log('Modelos únicos:', modelosUnicos);
+      setModelosDisponibles(modelosUnicos);
+    } catch (error) {
+      console.error('Error al cargar modelos:', error);
+      setModelosDisponibles([]);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#5e3e5a]">
@@ -888,7 +1009,11 @@ export default function Home() {
                   <label className="text-white">Sucursal de retiro</label>
                   <select
                     value={reservaSucursalRetiro ?? ''}
-                    onChange={e => setReservaSucursalRetiro(Number(e.target.value) || null)}
+                    onChange={e => {
+                      const value = Number(e.target.value) || null;
+                      setReservaSucursalRetiro(value);
+                      console.log('Sucursal de retiro seleccionada:', value);
+                    }}
                     className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
                   >
                     <option value="">Seleccionar sucursal</option>
@@ -1116,26 +1241,13 @@ export default function Home() {
           <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
             <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowCancelarModal(false)}>&times;</button>
             <h2 className="text-2xl font-bold text-white mb-6">Cancelar Reserva</h2>
-            <div className="space-y-4">
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="Número de reserva"
-                value={cancelarReservaId}
-                onChange={e => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                disabled={cancelarReservaInfo !== null}
-              />
-              <button
-                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
-                onClick={handleBuscarCancelar}
-                disabled={cancelarReservaLoading || cancelarReservaInfo !== null}
-              >
-                {cancelarReservaLoading ? 'Buscando...' : 'Buscar Reserva'}
-              </button>
-              {cancelarReservaError && <div className="text-[#e94b5a] text-sm">{cancelarReservaError}</div>}
-              {cancelarReservaInfo && (
+            {cancelarReservaConfirmado ? (
+              <div className="text-center">
+                <div className="text-green-400 text-6xl mb-4">✓</div>
+                <p className="text-white text-lg">Reserva cancelada exitosamente</p>
+              </div>
+            ) : cancelarReservaInfo ? (
+              <div>
                 <div className="bg-[#3d2342] rounded-md p-4 mt-4">
                   <h3 className="text-lg font-semibold text-white mb-2">Reserva #{cancelarReservaInfo.id}</h3>
                   <p className="text-white mb-1">Usuario: {cancelarReservaInfo.cliente?.nombre} {cancelarReservaInfo.cliente?.apellido}</p>
@@ -1143,14 +1255,13 @@ export default function Home() {
                   <p className="text-white mb-1">Vehículo: {cancelarReservaInfo.vehiculo?.marca?.nombre} {cancelarReservaInfo.vehiculo?.modelo?.nombre} ({cancelarReservaInfo.vehiculo?.patente})</p>
                   <p className="text-white mb-1">Fecha inicio: {cancelarReservaInfo.fecha_inicio ? new Date(cancelarReservaInfo.fecha_inicio).toLocaleString() : ''}</p>
                   <p className="text-white mb-1">Fecha fin: {cancelarReservaInfo.fecha_fin ? new Date(cancelarReservaInfo.fecha_fin).toLocaleString() : ''}</p>
-                  <p className="text-white mb-1 font-semibold">Monto total: ${calcularMontoReserva(cancelarReservaInfo) ?? '-'}</p>
                   <div className="flex gap-4 mt-4">
                     <button
                       className="w-full h-12 bg-[#a16bb7] text-white rounded-md hover:bg-[#e94b5a] transition-colors font-semibold"
                       onClick={handleConfirmarCancelar}
-                      disabled={cancelarReservaConfirmado}
+                      disabled={cancelarReservaLoading}
                     >
-                      {cancelarReservaConfirmado ? 'Reserva Cancelada' : 'Confirmar Cancelación'}
+                      {cancelarReservaLoading ? 'Cancelando...' : 'Confirmar Cancelación'}
                     </button>
                     <button
                       className="w-full h-12 border border-[#a16bb7] text-[#a16bb7] rounded-md hover:text-[#e94b5a] hover:border-[#e94b5a] transition-colors font-semibold bg-transparent"
@@ -1159,10 +1270,35 @@ export default function Home() {
                       Cancelar
                     </button>
                   </div>
-                  {cancelarReservaConfirmado && <div className="text-green-400 mt-2">Reserva cancelada exitosamente.</div>}
+                  {cancelarReservaError && <div className="text-[#e94b5a] text-sm mt-2">{cancelarReservaError}</div>}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Número de reserva"
+                  value={cancelarReservaId}
+                  onChange={e => setCancelarReservaId(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                  disabled={cancelarReservaLoading}
+                />
+                <button
+                  className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
+                  onClick={handleBuscarCancelar}
+                  disabled={cancelarReservaLoading}
+                >
+                  {cancelarReservaLoading ? 'Buscando...' : 'Buscar Reserva'}
+                </button>
+                {cancelarReservaError && (
+                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+                    {cancelarReservaError}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1612,7 +1748,10 @@ export default function Home() {
                     <label className="text-white block mb-2">Sucursal de retiro</label>
                     <select
                       value={registrarSucursalRetiro}
-                      onChange={e => setRegistrarSucursalRetiro(e.target.value)}
+                      onChange={e => {
+                        setRegistrarSucursalRetiro(e.target.value);
+                        console.log('Sucursal de retiro seleccionada (cliente):', e.target.value);
+                      }}
                       className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
                     >
                       <option value="">Seleccionar sucursal</option>
@@ -1813,60 +1952,6 @@ export default function Home() {
                   </button>
                 </div>
               </form>
-            )}
-          </div>
-        </div>
-      )}
-
-
-
-      {/* Modal de Cancelar Reserva */}
-      {showCancelarModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
-            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowCancelarModal(false)}>&times;</button>
-            <h2 className="text-2xl font-bold text-white mb-6">Cancelar Reserva</h2>
-            
-            {cancelarConfirmado ? (
-              <div className="text-center">
-                <div className="text-green-400 text-6xl mb-4">✓</div>
-                <p className="text-white text-lg">Reserva cancelada exitosamente</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-white block mb-2">Número de reserva</label>
-                  <input
-                    type="text"
-                    placeholder="Ingrese el número de reserva"
-                    value={cancelarReservaId}
-                    onChange={e => setCancelarReservaId(e.target.value)}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                  />
-                </div>
-
-                {cancelarError && (
-                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
-                    {cancelarError}
-                  </div>
-                )}
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={handleCancelarReserva}
-                    disabled={cancelarLoading}
-                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
-                  >
-                    {cancelarLoading ? 'Cancelando...' : 'Cancelar Reserva'}
-                  </button>
-                  <button
-                    onClick={() => setShowCancelarModal(false)}
-                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         </div>

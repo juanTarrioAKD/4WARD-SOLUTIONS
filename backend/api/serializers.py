@@ -233,10 +233,15 @@ class PreguntaCreateSerializer(serializers.ModelSerializer):
         usuario = self.context['request'].user
         return Pregunta.objects.create(usuario=usuario, **validated_data)
 
+class EstadoAlquilerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EstadoAlquiler
+        fields = ['id', 'nombre'] 
+
 class AlquilerSerializer(serializers.ModelSerializer):
     cliente = UsuarioSerializer(read_only=True)
     vehiculo = VehiculoSerializer(read_only=True)
-    estado = serializers.StringRelatedField()
+    estado = EstadoAlquilerSerializer(read_only=True)
     sucursal_devolucion = SucursalSerializer(read_only=True)
 
     class Meta:
@@ -296,8 +301,3 @@ class AlquilerCreateSerializer(serializers.ModelSerializer):
         alquiler = Alquiler.objects.create(**validated_data)
         
         return alquiler
-
-class EstadoAlquilerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = EstadoAlquiler
-        fields = ['id', 'nombre'] 

@@ -67,7 +67,20 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
 
       // Verificar si la reserva ya está cancelada
       const reservation = reservations.find(res => res.id === reservationId);
-      if (!reservation || (typeof reservation.estado === 'object' && reservation.estado.id === 2)) {
+      if (!reservation) {
+        setError('Reserva no encontrada');
+        return;
+      }
+      
+      // Determinar si ya está cancelada
+      let isCancelled = false;
+      if (typeof reservation.estado === 'object' && reservation.estado !== null) {
+        isCancelled = reservation.estado.id === 2;
+      } else if (typeof reservation.estado === 'string') {
+        isCancelled = reservation.estado.toLowerCase().includes('cancelada');
+      }
+      
+      if (isCancelled) {
         setError('Esta reserva ya ha sido cancelada');
         return;
       }
@@ -82,10 +95,7 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
           res.id === reservationId 
             ? { 
                 ...res, 
-                estado: { 
-                  id: 2, // ID para estado "Cancelada"
-                  nombre: 'Cancelada'
-                }
+                estado: 'Cancelada'
               }
             : res
         )
@@ -163,12 +173,17 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
       )}
       
       {reservations.map((reservation) => {
-        //const estadoId = typeof reservation.estado === 'string' ? getEstadoId(reservation.estado) : null;
-        const estadoId = typeof reservation.estado === 'object' 
-          ? reservation.estado.id 
-          : typeof reservation.estado === 'string' 
-            ? getEstadoId(reservation.estado) 
-            : null;
+        // Determinar el estado de la reserva
+        let estadoId = null;
+        let estadoNombre = 'Estado no disponible';
+        
+        if (typeof reservation.estado === 'object' && reservation.estado !== null) {
+          estadoId = reservation.estado.id;
+          estadoNombre = reservation.estado.nombre;
+        } else if (typeof reservation.estado === 'string') {
+          estadoId = getEstadoId(reservation.estado);
+          estadoNombre = reservation.estado;
+        }
         return (
           <div 
             key={reservation.id}
@@ -177,10 +192,10 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
             {/* Encabezado con Categoría y Modelo */}
             <div className="bg-[#4a2b50] p-4 border-b border-[#a16bb7]">
               <h3 className="text-[#e94b5a] font-semibold text-lg">
-                {reservation.vehiculo.categoria.nombre}
+                {reservation.vehiculo?.categoria?.nombre || 'Categoría no disponible'}
               </h3>
               <p className="text-white text-xl font-bold mt-1">
-                {reservation.vehiculo.modelo.nombre}
+                {reservation.vehiculo?.modelo?.nombre || 'Modelo no disponible'}
               </p>
             </div>
 
@@ -203,10 +218,7 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
               <div>
                 <p className="text-[#a16bb7] text-sm">Estado</p>
                 <p className="text-white font-medium">
-                  {estadoId === 1 ? 'Confirmada' : 
-                   estadoId === 2 ? 'Cancelada' : 
-                   estadoId === 3 ? 'Finalizada' : 
-                   'Estado no disponible'}
+                  {estadoNombre}
                 </p>
               </div>
 
@@ -219,7 +231,7 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
               </div>
 
               {/* Botón de cancelar (solo para reservas confirmadas) */}
-              {estadoId === 1 && (
+              {(estadoId === 1 || (typeof reservation.estado === 'string' && reservation.estado.toLowerCase().includes('confirmada'))) && (
                 <button
                   onClick={() => handleCancelReservation(reservation.id)}
                   disabled={cancellingId === reservation.id}

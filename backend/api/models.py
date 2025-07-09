@@ -96,9 +96,13 @@ class Alquiler(models.Model):
         """
         Cancela la reserva y actualiza el estado del vehículo si es necesario.
         """
-        if self.estado.id in [5, 6]:  # Si ya está cancelado o finalizado (IDs 5 y 6)
-            raise ValueError("No se puede cancelar una reserva que ya está cancelada o finalizada")
-            
+        print(f"Estado actual: {self.estado.id}")
+        print(f"DEBUG cancelar: Estado actual: {self.estado.id}")
+        # Solo se puede cancelar si está en estado Confirmado (ID 4)
+        if self.estado.id != 4:
+            print("DEBUG cancelar: Lanzando error por estado no confirmado")
+            raise ValueError("Solo se puede cancelar una reserva confirmada")
+        
         # Obtener el estado "Cancelado"
         estado_cancelado = EstadoAlquiler.objects.get(id=5)
         
