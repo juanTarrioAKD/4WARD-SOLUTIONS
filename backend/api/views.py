@@ -690,7 +690,11 @@ class PoliticaDeCancelacionViewSet(viewsets.ModelViewSet):
 class MarcaViewSet(viewsets.ModelViewSet):
     queryset = Marca.objects.all()
     serializer_class = MarcaSerializer
-    permission_classes = [IsAdmin]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsEmpleadoOrAdmin()]
+        return [IsAdmin()]
 
     @action(detail=True, methods=['delete'])
     def baja(self, request, pk=None):

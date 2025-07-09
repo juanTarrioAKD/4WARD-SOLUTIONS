@@ -9,11 +9,28 @@ const LandingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
+  // Mapeo de IDs de categoría a URLs de imágenes
+  const categoryUrlMap: { [key: number]: string } = {
+    1: '/images/down.png',
+    2: '/images/auto_chico.png',
+    3: '/images/deportivo.png',
+    4: '/images/mediano.png',
+    5: '/images/suv.png',
+    6: '/images/van.png',
+    // Agrega aquí más mapeos según tus IDs reales
+  };
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const data = await categoryService.getCategories();
-        setCategories(data);
+        // Asignar la URL al campo 'imagen' de cada categoría según el mapeo
+        const categoriesWithUrl = data.map((cat: Category) => ({
+          ...cat,
+          imagen: categoryUrlMap[cat.id],
+        }));
+
+        setCategories(categoriesWithUrl);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar las categorías');
       } finally {
@@ -22,7 +39,7 @@ const LandingPage: React.FC = () => {
     };
 
     fetchCategories();
-  }, []);
+  }, [categoryUrlMap]);
 
   // Auto-avance del carrusel
   useEffect(() => {
@@ -93,13 +110,11 @@ const LandingPage: React.FC = () => {
                   className="w-full flex-shrink-0 p-8 bg-white"
                 >
                   <div className="text-center">
-                    {category.imagen && (
-                      <img
-                        src={category.imagen}
-                        alt={category.nombre}
-                        className="w-full h-64 object-cover rounded-lg mb-4"
-                      />
-                    )}
+                    <img
+                      src={category.imagen || '/images/down.png'}
+                      alt={category.nombre}
+                      className="w-full h-64 object-cover rounded-lg mb-4"
+                    />
                     <h3 className="text-2xl font-semibold mb-2">{category.nombre}</h3>
                     <p className="text-gray-600">{category.descripcion}</p>
                   </div>

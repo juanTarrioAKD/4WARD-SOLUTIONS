@@ -16,11 +16,29 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // Mapeo de IDs de categoría a URLs de imágenes
+  const categoryUrlMap: { [key: number]: string } = {
+    1: '/images/down.png',
+    2: '/images/auto_chico.png',
+    3: '/images/deportivo.png',
+    4: '/images/mediano.png',
+    5: '/images/suv.png',
+    6: '/images/van.png',
+    // Agrega aquí más mapeos según tus IDs reales
+  };
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const data = await getCategories();
-        setCategories(data);
+        // Asignar la imagen a cada categoría según el mapeo y la API
+        const categoriesWithUrl = data.map((cat: Category) => ({
+          ...cat,
+          image: categoryUrlMap[cat.id],
+        }));
+        console.log(categoriesWithUrl[1].image);
+        setCategories(categoriesWithUrl);
+        
       } catch (error) {
         console.error('Error fetching categories:', error);
         setError('Error al cargar las categorías');
@@ -57,6 +75,7 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
     );
   }
 
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto px-4">
       {categories.map((category) => (
@@ -67,7 +86,7 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
         >
           <div className="relative h-48">
             <Image
-              src={category.image || '/default-category.jpg'}
+              src={category.image || '/images/down.png'}
               alt={category.nombre}
               fill
               className="object-cover"
