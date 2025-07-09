@@ -1313,6 +1313,52 @@ class EstadisticasViewSet(viewsets.ViewSet):
         ]
         return Response(data)
 
+    @action(detail=True, methods=['get'], url_path='alquileres-vehiculo')
+    def alquileres_vehiculo(self, request, pk=None):
+        # Devuelve todos los alquileres de un vehículo específico
+        from django.db.models import Sum
+        from .models import Vehiculo, Alquiler
+        from .serializers import AlquilerSerializer
+        
+        try:
+            vehiculo = Vehiculo.objects.get(id=pk)
+        except Vehiculo.DoesNotExist:
+            return Response({'error': 'Vehículo no encontrado'}, status=404)
+        
+        # Obtener todos los alquileres del vehículo
+        alquileres = Alquiler.objects.filter(vehiculo=vehiculo).order_by('-fecha_inicio')
+        
+        # Calcular estadísticas
+        total_alquileres = alquileres.count()
+        monto_total = alquileres.aggregate(total=Sum('monto_total'))['total'] or 0
+        
+        # Serializar los alquileres
+        alquileres_data = []
+        for alquiler in alquileres:
+            alquiler_data = AlquilerSerializer(alquiler).data
+            # Agregar información adicional del cliente y sucursal
+            alquiler_data['cliente_email'] = alquiler.cliente.email
+            alquiler_data['cliente_nombre'] = f"{alquiler.cliente.first_name} {alquiler.cliente.last_name}"
+            alquiler_data['sucursal_nombre'] = alquiler.sucursal_devolucion.nombre if alquiler.sucursal_devolucion else 'No especificada'
+            alquiler_data['estado_nombre'] = alquiler.estado.nombre
+            alquileres_data.append(alquiler_data)
+        
+        # Información del vehículo
+        vehiculo_data = {
+            'id': vehiculo.id,
+            'marca': vehiculo.marca.nombre,
+            'modelo': vehiculo.modelo.nombre,
+            'año': vehiculo.anio_fabricacion,
+            'patente': vehiculo.patente,
+            'total_alquileres': total_alquileres,
+            'monto_total': float(monto_total)
+        }
+        
+        return Response({
+            'vehiculo': vehiculo_data,
+            'alquileres': alquileres_data
+        })
+
 def searchAvailableCategories(request):
     """
     Busca las categorías que tienen vehículos disponibles.

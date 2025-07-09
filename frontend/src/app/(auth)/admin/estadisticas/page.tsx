@@ -163,7 +163,7 @@ export default function Estadisticas() {
                   <p className="text-[#a16bb7]">Total alquileres: {topVehicle?.cantidad_alquileres || topVehicle?.cantidad}</p>
                   <div className="flex justify-end mt-3">
                     <button
-                      onClick={() => handleVerMasVehiculo(topVehicle.id)}
+                      onClick={() => handleVerMasVehiculo(topVehicle?.vehiculo?.id || '')}
                       className="px-3 py-1 text-sm bg-[#a16bb7] hover:bg-[#8a5a9d] text-white rounded-md transition-colors duration-200"
                     >
                       Ver más

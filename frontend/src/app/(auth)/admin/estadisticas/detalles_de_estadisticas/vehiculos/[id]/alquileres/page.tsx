@@ -3,95 +3,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
-
-interface Alquiler {
-  id: string;
-  fechaInicio: string;
-  fechaFin: string;
-  cliente: string;
-  monto: number;
-  estado: 'completado' | 'activo' | 'cancelado';
-  sucursal: string;
-}
-
-interface Vehiculo {
-  id: string;
-  marca: string;
-  modelo: string;
-  año: number;
-  patente: string;
-  totalAlquileres: number;
-  montoTotal: number;
-}
+import { estadisticasService, Alquiler, VehiculoDetalle } from '@/services/estadisticas';
 
 export default function DetalleAlquileresVehiculo() {
   const router = useRouter();
   const params = useParams();
   const vehiculoId = params.id as string;
   
-  const [vehiculo, setVehiculo] = useState<Vehiculo | null>(null);
+  const [vehiculo, setVehiculo] = useState<VehiculoDetalle | null>(null);
   const [alquileres, setAlquileres] = useState<Alquiler[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Datos de ejemplo para el vehículo
-  const vehiculoEjemplo: Vehiculo = {
-    id: vehiculoId,
-    marca: 'Toyota',
-    modelo: 'Corolla',
-    año: 2022,
-    patente: 'ABC123',
-    totalAlquileres: 45,
-    montoTotal: 67500
-  };
-
-  // Datos de ejemplo para los alquileres
-  const alquileresEjemplo: Alquiler[] = [
-    {
-      id: '1',
-      fechaInicio: '2024-01-15',
-      fechaFin: '2024-01-18',
-      cliente: 'maria.gonzalez@email.com',
-      monto: 1500,
-      estado: 'completado',
-      sucursal: 'Sucursal Centro'
-    },
-    {
-      id: '2',
-      fechaInicio: '2024-01-20',
-      fechaFin: '2024-01-25',
-      cliente: 'juan.perez@email.com',
-      monto: 2500,
-      estado: 'completado',
-      sucursal: 'Sucursal Norte'
-    },
-    {
-      id: '3',
-      fechaInicio: '2024-02-01',
-      fechaFin: '2024-02-03',
-      cliente: 'ana.rodriguez@email.com',
-      monto: 1200,
-      estado: 'completado',
-      sucursal: 'Sucursal Sur'
-    },
-    {
-      id: '4',
-      fechaInicio: '2024-02-10',
-      fechaFin: '2024-02-15',
-      cliente: 'carlos.lopez@email.com',
-      monto: 3000,
-      estado: 'activo',
-      sucursal: 'Sucursal Este'
-    },
-    {
-      id: '5',
-      fechaInicio: '2024-02-20',
-      fechaFin: '2024-02-22',
-      cliente: 'lucia.martinez@email.com',
-      monto: 1800,
-      estado: 'cancelado',
-      sucursal: 'Sucursal Oeste'
-    }
-  ];
 
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
@@ -102,12 +23,21 @@ export default function DetalleAlquileresVehiculo() {
       return;
     }
 
-    // Simular carga de datos
-    setTimeout(() => {
-      setVehiculo(vehiculoEjemplo);
-      setAlquileres(alquileresEjemplo);
-      setIsLoading(false);
-    }, 1000);
+    // Cargar datos reales del backend
+    const cargarDatos = async () => {
+      try {
+        const response = await estadisticasService.getAlquileresVehiculo(vehiculoId);
+        setVehiculo(response.vehiculo);
+        setAlquileres(response.alquileres);
+      } catch (error) {
+        console.error('Error al cargar datos del vehículo:', error);
+        // En caso de error, mostrar mensaje o redirigir
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    cargarDatos();
   }, [router, vehiculoId]);
 
   // Función para formatear el monto en pesos
@@ -125,13 +55,17 @@ export default function DetalleAlquileresVehiculo() {
 
   // Función para obtener el color del estado
   const getEstadoColor = (estado: string) => {
-    switch (estado) {
+    switch (estado.toLowerCase()) {
+      case 'finalizado':
       case 'completado':
         return 'bg-green-500';
+      case 'en curso':
       case 'activo':
         return 'bg-blue-500';
       case 'cancelado':
         return 'bg-red-500';
+      case 'confirmado':
+        return 'bg-yellow-500';
       default:
         return 'bg-gray-500';
     }
@@ -139,13 +73,15 @@ export default function DetalleAlquileresVehiculo() {
 
   // Función para obtener el texto del estado
   const getEstadoText = (estado: string) => {
-    switch (estado) {
-      case 'completado':
-        return 'Completado';
-      case 'activo':
-        return 'Activo';
+    switch (estado.toLowerCase()) {
+      case 'finalizado':
+        return 'Finalizado';
+      case 'en curso':
+        return 'En Curso';
       case 'cancelado':
         return 'Cancelado';
+      case 'confirmado':
+        return 'Confirmado';
       default:
         return estado;
     }
@@ -207,17 +143,17 @@ export default function DetalleAlquileresVehiculo() {
         <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-[#a16bb7]">{vehiculo.totalAlquileres}</div>
+              <div className="text-3xl font-bold text-[#a16bb7]">{vehiculo.total_alquileres}</div>
               <div className="text-gray-300">Total de Alquileres</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-400">{formatCurrency(vehiculo.montoTotal)}</div>
+              <div className="text-3xl font-bold text-green-400">{formatCurrency(vehiculo.monto_total)}</div>
               <div className="text-gray-300">Monto Total</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-400">
-                {vehiculo.montoTotal / vehiculo.totalAlquileres > 0 
-                  ? formatCurrency(vehiculo.montoTotal / vehiculo.totalAlquileres)
+                {vehiculo.monto_total / vehiculo.total_alquileres > 0 
+                  ? formatCurrency(vehiculo.monto_total / vehiculo.total_alquileres)
                   : formatCurrency(0)
                 }
               </div>
@@ -247,16 +183,16 @@ export default function DetalleAlquileresVehiculo() {
                 {alquileres.map((alquiler) => (
                   <tr key={alquiler.id} className="border-b border-[#4a3654] hover:bg-[#3d2342] transition-colors">
                     <td className="py-3 px-4">{alquiler.id}</td>
-                    <td className="py-3 px-4">{alquiler.cliente}</td>
-                    <td className="py-3 px-4">{formatDate(alquiler.fechaInicio)}</td>
-                    <td className="py-3 px-4">{formatDate(alquiler.fechaFin)}</td>
-                    <td className="py-3 px-4">{alquiler.sucursal}</td>
+                    <td className="py-3 px-4">{alquiler.cliente_email}</td>
+                    <td className="py-3 px-4">{formatDate(alquiler.fecha_inicio)}</td>
+                    <td className="py-3 px-4">{formatDate(alquiler.fecha_fin)}</td>
+                    <td className="py-3 px-4">{alquiler.sucursal_nombre}</td>
                     <td className="py-3 px-4 font-semibold text-green-400">
-                      {formatCurrency(alquiler.monto)}
+                      {formatCurrency(alquiler.monto_total)}
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold text-white ${getEstadoColor(alquiler.estado)}`}>
-                        {getEstadoText(alquiler.estado)}
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold text-white ${getEstadoColor(alquiler.estado_nombre)}`}>
+                        {getEstadoText(alquiler.estado_nombre)}
                       </span>
                     </td>
                   </tr>

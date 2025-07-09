@@ -44,16 +44,6 @@ const mockSucursales = [
   { id: 1, nombre: 'Sucursal Centro' },
   { id: 2, nombre: 'Sucursal Norte' },
 ];
-const mockCategoriasPorSucursal: { [sucursalId: number]: { id: number; nombre: string }[] } = {
-  1: [
-    { id: 1, nombre: 'Económico' },
-    { id: 2, nombre: 'SUV' },
-  ],
-  2: [
-    { id: 3, nombre: 'Deportivo' },
-    { id: 4, nombre: 'Van' },
-  ],
-};
 const mockModelosPorCategoria: { [categoriaId: number]: { id: number; nombre: string; precio_por_dia: number; categoria_nombre: string }[] } = {
   1: [
     { id: 101, nombre: 'Toyota Etios', precio_por_dia: 10000, categoria_nombre: 'Económico' },
@@ -565,7 +555,6 @@ export default function Home() {
   // Cargar categorías disponibles en la sucursal de retiro
   useEffect(() => {
     if (reservaSucursalRetiro) {
-      setReservaCategoriasSucursal(mockCategoriasPorSucursal[reservaSucursalRetiro] || []);
       setReservaCategoria(null);
     } else {
       setReservaCategoriasSucursal([]);
@@ -936,8 +925,6 @@ export default function Home() {
   // Cargar categorías disponibles cuando se selecciona sucursal de retiro
   useEffect(() => {
     if (registrarSucursalRetiro) {
-      // Si usás mockCategoriasPorSucursal, podés filtrar así:
-      setRegistrarCategoriasSucursal(mockCategoriasPorSucursal[registrarSucursalRetiro] || []);
       setRegistrarCategoria(null);
     } else {
       setRegistrarCategoriasSucursal([]);
