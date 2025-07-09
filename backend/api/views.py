@@ -1359,6 +1359,82 @@ class EstadisticasViewSet(viewsets.ViewSet):
             'alquileres': alquileres_data
         })
 
+    @action(detail=False, methods=['post'], url_path='registros-por-fecha')
+    def registros_por_fecha(self, request):
+        # Devuelve registros de usuarios y reservas en un rango de fechas
+        from django.db.models import Q
+        from .models import Usuario, Alquiler
+        from .serializers import UsuarioSerializer, AlquilerSerializer
+        
+        fecha_inicio = request.data.get('fecha_inicio')
+        fecha_fin = request.data.get('fecha_fin')
+        
+        if not fecha_inicio or not fecha_fin:
+            return Response({'error': 'Debe proporcionar fecha_inicio y fecha_fin'}, status=400)
+        
+        try:
+            # Obtener usuarios registrados en el período
+            usuarios = Usuario.objects.filter(
+                date_joined__date__gte=fecha_inicio,
+                date_joined__date__lte=fecha_fin
+            ).order_by('date_joined')
+            
+            # Obtener reservas realizadas en el período
+            reservas = Alquiler.objects.filter(
+                fecha_reserva__date__gte=fecha_inicio,
+                fecha_reserva__date__lte=fecha_fin
+            ).order_by('fecha_reserva')
+            
+            # Separar usuarios por rol (clientes vs empleados/admin)
+            usuarios_clientes = usuarios.filter(rol__nombre__in=['Cliente'])
+            usuarios_empleados = usuarios.filter(rol__nombre__in=['Empleado', 'Admin'])
+            
+            # Calcular estadísticas
+            total_usuarios = usuarios.count()
+            total_clientes = usuarios_clientes.count()
+            total_empleados = usuarios_empleados.count()
+            total_reservas = reservas.count()
+            
+            # Serializar datos
+            usuarios_clientes_data = []
+            for usuario in usuarios_clientes:
+                usuario_data = UsuarioSerializer(usuario).data
+                usuario_data['fecha_registro'] = usuario.date_joined.strftime('%Y-%m-%d %H:%M:%S')
+                usuario_data['tipo'] = 'cliente'
+                usuarios_clientes_data.append(usuario_data)
+            
+            usuarios_empleados_data = []
+            for usuario in usuarios_empleados:
+                usuario_data = UsuarioSerializer(usuario).data
+                usuario_data['fecha_registro'] = usuario.date_joined.strftime('%Y-%m-%d %H:%M:%S')
+                usuario_data['tipo'] = 'empleado'
+                usuarios_empleados_data.append(usuario_data)
+            
+            reservas_data = []
+            for reserva in reservas:
+                reserva_data = AlquilerSerializer(reserva).data
+                reserva_data['fecha_reserva'] = reserva.fecha_reserva.strftime('%Y-%m-%d %H:%M:%S')
+                reserva_data['cliente_email'] = reserva.cliente.email
+                reserva_data['cliente_nombre'] = f"{reserva.cliente.first_name} {reserva.cliente.last_name}"
+                reserva_data['vehiculo_info'] = f"{reserva.vehiculo.marca.nombre} {reserva.vehiculo.modelo.nombre} - {reserva.vehiculo.patente}"
+                reservas_data.append(reserva_data)
+            
+            return Response({
+                'estadisticas': {
+                    'total_usuarios': total_usuarios,
+                    'total_clientes': total_clientes,
+                    'total_empleados': total_empleados,
+                    'total_reservas': total_reservas,
+                    'total_registros': total_usuarios + total_reservas
+                },
+                'usuarios_clientes': usuarios_clientes_data,
+                'usuarios_empleados': usuarios_empleados_data,
+                'reservas': reservas_data
+            })
+            
+        except Exception as e:
+            return Response({'error': f'Error al obtener registros: {str(e)}'}, status=500)
+
 def searchAvailableCategories(request):
     """
     Busca las categorías que tienen vehículos disponibles.

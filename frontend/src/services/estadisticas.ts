@@ -32,6 +32,41 @@ export interface AlquileresVehiculoResponse {
   alquileres: Alquiler[];
 }
 
+export interface UsuarioRegistro {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  fecha_registro: string;
+  tipo: 'cliente' | 'empleado';
+  rol: string;
+}
+
+export interface ReservaRegistro {
+  id: string;
+  fecha_reserva: string;
+  cliente_email: string;
+  cliente_nombre: string;
+  vehiculo_info: string;
+  monto_total: number;
+  estado: string;
+}
+
+export interface EstadisticasRegistros {
+  total_usuarios: number;
+  total_clientes: number;
+  total_empleados: number;
+  total_reservas: number;
+  total_registros: number;
+}
+
+export interface RegistrosPorFechaResponse {
+  estadisticas: EstadisticasRegistros;
+  usuarios_clientes: UsuarioRegistro[];
+  usuarios_empleados: UsuarioRegistro[];
+  reservas: ReservaRegistro[];
+}
+
 export const estadisticasService = {
   async getTopVehicles(): Promise<TopVehicle[]> {
     return apiService.get<TopVehicle[]>('/estadisticas/mas_alquilado/', { requiresAuth: true });
@@ -39,5 +74,12 @@ export const estadisticasService = {
 
   async getAlquileresVehiculo(vehiculoId: string): Promise<AlquileresVehiculoResponse> {
     return apiService.get<AlquileresVehiculoResponse>(`/estadisticas/${vehiculoId}/alquileres-vehiculo/`, { requiresAuth: true });
+  },
+
+  async getRegistrosPorFecha(fechaInicio: string, fechaFin: string): Promise<RegistrosPorFechaResponse> {
+    return apiService.post<RegistrosPorFechaResponse>('/estadisticas/registros-por-fecha/', {
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin
+    }, { requiresAuth: true });
   }
 }; 

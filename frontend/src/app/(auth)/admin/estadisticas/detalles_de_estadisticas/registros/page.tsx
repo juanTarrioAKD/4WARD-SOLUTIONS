@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/services/auth';
+import { estadisticasService, RegistrosPorFechaResponse, UsuarioRegistro, ReservaRegistro } from '@/services/estadisticas';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface Registro {
   id: string;
@@ -30,75 +32,8 @@ export default function DetalleRegistros() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [resumen, setResumen] = useState<ResumenRegistros | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Datos de ejemplo para los registros
-  const registrosEjemplo: Registro[] = [
-    {
-      id: '1',
-      fecha: '2024-01-01',
-      tipo: 'nuevo_usuario',
-      descripcion: 'Nuevo usuario registrado',
-      usuario: 'maria.gonzalez@email.com',
-      detalles: 'Usuario registrado desde la web'
-    },
-    {
-      id: '2',
-      fecha: '2024-01-01',
-      tipo: 'nueva_reserva',
-      descripcion: 'Nueva reserva creada',
-      usuario: 'juan.perez@email.com',
-      detalles: 'Reserva para Toyota Corolla - 3 días'
-    },
-    {
-      id: '3',
-      fecha: '2024-01-02',
-      tipo: 'nuevo_pago',
-      descripcion: 'Pago procesado',
-      usuario: 'ana.rodriguez@email.com',
-      detalles: 'Pago de $1500 por reserva #123'
-    },
-    {
-      id: '4',
-      fecha: '2024-01-02',
-      tipo: 'nuevo_usuario',
-      descripcion: 'Nuevo usuario registrado',
-      usuario: 'carlos.lopez@email.com',
-      detalles: 'Usuario registrado desde la app móvil'
-    },
-    {
-      id: '5',
-      fecha: '2024-01-03',
-      tipo: 'nueva_reserva',
-      descripcion: 'Nueva reserva creada',
-      usuario: 'lucia.martinez@email.com',
-      detalles: 'Reserva para Honda Civic - 5 días'
-    },
-    {
-      id: '6',
-      fecha: '2024-01-03',
-      tipo: 'nuevo_vehiculo',
-      descripcion: 'Nuevo vehículo agregado',
-      usuario: 'admin@alquilapp.com',
-      detalles: 'Ford Focus 2023 agregado a la flota'
-    },
-    {
-      id: '7',
-      fecha: '2024-01-04',
-      tipo: 'nuevo_pago',
-      descripcion: 'Pago procesado',
-      usuario: 'maria.gonzalez@email.com',
-      detalles: 'Pago de $2500 por reserva #124'
-    }
-  ];
-
-  // Resumen de ejemplo
-  const resumenEjemplo: ResumenRegistros = {
-    totalRegistros: 7,
-    nuevosUsuarios: 2,
-    nuevasReservas: 2,
-    nuevosVehiculos: 1,
-    nuevosPagos: 2
-  };
+  const [datosReales, setDatosReales] = useState<RegistrosPorFechaResponse | null>(null);
+  const [registrosData, setRegistrosData] = useState<{ fecha: string; registros: number }[]>([]);
 
   // Verificar que el usuario es admin al cargar la página
   useEffect(() => {
@@ -109,13 +44,97 @@ export default function DetalleRegistros() {
       return;
     }
 
-    // Simular carga de datos
-    setTimeout(() => {
-      setRegistros(registrosEjemplo);
-      setResumen(resumenEjemplo);
-      setIsLoading(false);
-    }, 1000);
-  }, [router]);
+    // Cargar datos reales del backend
+    const cargarDatos = async () => {
+      if (!startDate || !endDate) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await estadisticasService.getRegistrosPorFecha(startDate, endDate);
+        setDatosReales(response);
+        
+        // Crear resumen con datos reales
+        const resumenReal: ResumenRegistros = {
+          totalRegistros: response.estadisticas.total_registros,
+          nuevosUsuarios: response.estadisticas.total_usuarios,
+          nuevasReservas: response.estadisticas.total_reservas,
+          nuevosVehiculos: 0, // No hay datos de vehículos por fecha
+          nuevosPagos: 0 // No hay datos de pagos por fecha
+        };
+        setResumen(resumenReal);
+        
+        // Crear registros combinados
+        const registrosCombinados: Registro[] = [];
+        
+        // Agregar usuarios clientes
+        response.usuarios_clientes.forEach(usuario => {
+          registrosCombinados.push({
+            id: `usuario_${usuario.id}`,
+            fecha: usuario.fecha_registro.split(' ')[0],
+            tipo: 'nuevo_usuario',
+            descripcion: 'Nuevo usuario registrado',
+            usuario: usuario.email,
+            detalles: `Cliente: ${usuario.first_name} ${usuario.last_name}`
+          });
+        });
+        
+        // Agregar usuarios empleados
+        response.usuarios_empleados.forEach(usuario => {
+          registrosCombinados.push({
+            id: `empleado_${usuario.id}`,
+            fecha: usuario.fecha_registro.split(' ')[0],
+            tipo: 'nuevo_usuario',
+            descripcion: 'Nuevo empleado registrado',
+            usuario: usuario.email,
+            detalles: `Empleado: ${usuario.first_name} ${usuario.last_name} - ${usuario.rol}`
+          });
+        });
+        
+        // Agregar reservas
+        response.reservas.forEach(reserva => {
+          registrosCombinados.push({
+            id: `reserva_${reserva.id}`,
+            fecha: reserva.fecha_reserva.split(' ')[0],
+            tipo: 'nueva_reserva',
+            descripcion: 'Nueva reserva creada',
+            usuario: reserva.cliente_email,
+            detalles: `${reserva.vehiculo_info} - $${reserva.monto_total}`
+          });
+        });
+        
+        // Ordenar por fecha
+        registrosCombinados.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+        setRegistros(registrosCombinados);
+
+        // --- Agrupar para el gráfico ---
+        const conteoPorFecha: Record<string, number> = {};
+        // Usuarios clientes y empleados
+        [...response.usuarios_clientes, ...response.usuarios_empleados].forEach(usuario => {
+          const fecha = usuario.fecha_registro.split(' ')[0];
+          conteoPorFecha[fecha] = (conteoPorFecha[fecha] || 0) + 1;
+        });
+        // Reservas
+        response.reservas.forEach(reserva => {
+          const fecha = reserva.fecha_reserva.split(' ')[0];
+          conteoPorFecha[fecha] = (conteoPorFecha[fecha] || 0) + 1;
+        });
+        // Convertir a array ordenado para el gráfico
+        const registrosDataReal = Object.entries(conteoPorFecha)
+          .map(([fecha, registros]) => ({ fecha, registros }))
+          .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+        setRegistrosData(registrosDataReal);
+        
+      } catch (error) {
+        console.error('Error al cargar datos de registros:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, [router, startDate, endDate]);
 
   // Función para formatear fechas
   const formatDate = (dateString: string) => {
@@ -124,6 +143,14 @@ export default function DetalleRegistros() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Función para formatear el monto en pesos
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(amount);
   };
 
   // Función para obtener el color del tipo de registro
@@ -170,7 +197,7 @@ export default function DetalleRegistros() {
       case 'nueva_reserva':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 01-2 2v12a2 2 0 002 2z" />
           </svg>
         );
       case 'nuevo_vehiculo':
@@ -250,7 +277,7 @@ export default function DetalleRegistros() {
         {resumen && (
           <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg mb-8">
             <h2 className="text-2xl font-semibold mb-6">Resumen del Período</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <div className="text-3xl font-bold text-[#a16bb7]">{resumen.totalRegistros}</div>
                 <div className="text-gray-300">Total Registros</div>
@@ -264,20 +291,192 @@ export default function DetalleRegistros() {
                 <div className="text-gray-300">Nuevas Reservas</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-purple-400">{resumen.nuevosVehiculos}</div>
-                <div className="text-gray-300">Nuevos Vehículos</div>
+                <div className="text-3xl font-bold text-purple-400">
+                  {datosReales ? datosReales.estadisticas.total_clientes : 0}
+                </div>
+                <div className="text-gray-300">Nuevos Clientes</div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400">{resumen.nuevosPagos}</div>
-                <div className="text-gray-300">Nuevos Pagos</div>
+            </div>
+            
+            {/* Estadísticas adicionales */}
+            {datosReales && (
+              <div className="mt-6 pt-6 border-t border-[#4a3654]">
+                {/* Calcular total y promedio de reservas de forma segura */}
+                {(() => {
+                  const montos = datosReales.reservas.map(r => Number(r.monto_total) || 0);
+                  const totalReservas = montos.reduce((sum, val) => sum + val, 0);
+                  const promedioReservas = montos.length > 0 ? totalReservas / montos.length : 0;
+                  return (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-orange-400">
+                          {datosReales.estadisticas.total_empleados}
+                        </div>
+                        <div className="text-gray-300">Nuevos Empleados</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-cyan-400">
+                          {formatCurrency(totalReservas)}
+                        </div>
+                        <div className="text-gray-300">Total Reservas</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-pink-400">
+                          {formatCurrency(promedioReservas)}
+                        </div>
+                        <div className="text-gray-300">Promedio por Reserva</div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Sección de Usuarios */}
+        {datosReales && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* Usuarios Clientes */}
+            <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-semibold mb-6 text-blue-400">Nuevos Clientes</h2>
+              
+              <div className="space-y-4">
+                {datosReales.usuarios_clientes.map((usuario) => (
+                  <div key={usuario.id} className="bg-[#3d2342] p-4 rounded-lg border-l-4 border-blue-400 hover:bg-[#4a3654] transition-colors">
+                    <div className="flex items-start space-x-4">
+                      <div className="p-2 rounded-lg bg-blue-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold">{usuario.first_name} {usuario.last_name}</h3>
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-blue-500">
+                            Cliente
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-gray-300">
+                          <div>
+                            <span className="text-[#a16bb7] font-medium">Email: </span>
+                            {usuario.email}
+                          </div>
+                          <div>
+                            <span className="text-[#a16bb7] font-medium">Fecha Registro: </span>
+                            {formatDate(usuario.fecha_registro)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {datosReales.usuarios_clientes.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  No hay nuevos clientes en este período.
+                </div>
+              )}
+            </div>
+
+            {/* Usuarios Empleados */}
+            <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-semibold mb-6 text-orange-400">Nuevos Empleados</h2>
+              
+              <div className="space-y-4">
+                {datosReales.usuarios_empleados.map((usuario) => (
+                  <div key={usuario.id} className="bg-[#3d2342] p-4 rounded-lg border-l-4 border-orange-400 hover:bg-[#4a3654] transition-colors">
+                    <div className="flex items-start space-x-4">
+                      <div className="p-2 rounded-lg bg-orange-500">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-lg font-semibold">{usuario.first_name} {usuario.last_name}</h3>
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-orange-500">
+                            {usuario.rol}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 text-sm text-gray-300">
+                          <div>
+                            <span className="text-[#a16bb7] font-medium">Email: </span>
+                            {usuario.email}
+                          </div>
+                          <div>
+                            <span className="text-[#a16bb7] font-medium">Fecha Registro: </span>
+                            {formatDate(usuario.fecha_registro)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {datosReales.usuarios_empleados.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  No hay nuevos empleados en este período.
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Lista de registros */}
-        <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-semibold mb-6">Registros del Período</h2>
+        {/* Sección de Reservas */}
+        {datosReales && (
+          <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg">
+            <h2 className="text-2xl font-semibold mb-6 text-green-400">Nuevas Reservas</h2>
+            
+            <div className="space-y-4">
+              {datosReales.reservas.map((reserva) => (
+                <div key={reserva.id} className="bg-[#3d2342] p-4 rounded-lg border-l-4 border-green-400 hover:bg-[#4a3654] transition-colors">
+                  <div className="flex items-start space-x-4">
+                    <div className="p-2 rounded-lg bg-green-500">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 01-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-semibold">{reserva.cliente_nombre}</h3>
+                        <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold text-white bg-green-500">
+                          Reserva
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                        <div>
+                          <span className="text-[#a16bb7] font-medium">Vehículo: </span>
+                          {reserva.vehiculo_info}
+                        </div>
+                        <div>
+                          <span className="text-[#a16bb7] font-medium">Fecha: </span>
+                          {formatDate(reserva.fecha_reserva)}
+                        </div>
+                        <div>
+                          <span className="text-[#a16bb7] font-medium">Monto: </span>
+                          <span className="text-green-400 font-semibold">{formatCurrency(reserva.monto_total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {datosReales.reservas.length === 0 && (
+              <div className="text-center py-8 text-gray-400">
+                No hay nuevas reservas en este período.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Lista combinada de registros (mantener para compatibilidad) */}
+        <div className="bg-[#2d1830] p-6 rounded-lg shadow-lg mt-8">
+          <h2 className="text-2xl font-semibold mb-6">Todos los Registros</h2>
           
           <div className="space-y-4">
             {registros.map((registro) => (
@@ -319,6 +518,54 @@ export default function DetalleRegistros() {
             </div>
           )}
         </div>
+
+        {/* Gráfico de evolución de registros */}
+        {registrosData.length > 0 && (
+          <div className="bg-[#3d2342] p-4 rounded-lg mt-8">
+            <h3 className="text-lg font-medium mb-4 text-[#a16bb7]">Evolución de Registros</h3>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={registrosData}
+                  margin={{
+                    top: 10,
+                    right: 30,
+                    left: 0,
+                    bottom: 0,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#4a3654" />
+                  <XAxis
+                    dataKey="fecha"
+                    tick={{ fill: '#a16bb7', dy: 10 }}
+                    axisLine={{ stroke: '#4a3654' }}
+                    padding={{ left: 10, right: 10 }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#a16bb7' }}
+                    axisLine={{ stroke: '#4a3654' }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#2d1830',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    cursor={{ fill: 'rgba(161, 107, 183, 0.1)' }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="registros"
+                    stroke="#a16bb7"
+                    fill="#a16bb7"
+                    fillOpacity={0.3}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

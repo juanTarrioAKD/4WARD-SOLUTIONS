@@ -107,14 +107,21 @@ export default function Estadisticas() {
     registrosRange.endDate &&
     registrosRange.endDate >= registrosRange.startDate;
 
-  // Placeholder para la consulta al backend
-  const handleBuscarRegistros = () => {
+  // Consulta al backend para obtener registros por fecha
+  const handleBuscarRegistros = async () => {
     setIsSearching(true);
-    // Aquí iría la consulta al backend con registrosRange.startDate y registrosRange.endDate
-    setTimeout(() => {
+    try {
+      const response = await estadisticasService.getRegistrosPorFecha(
+        registrosRange.startDate,
+        registrosRange.endDate
+      );
+      setRegistrosCount(response.estadisticas.total_registros);
+    } catch (error) {
+      console.error('Error al buscar registros:', error);
+      setRegistrosCount(0);
+    } finally {
       setIsSearching(false);
-      // setRegistrosCount(respuestaDelBackend)
-    }, 1000);
+    }
   };
 
   // Función para formatear el monto en pesos
