@@ -27,14 +27,8 @@ export interface CreateUserData {
 // Buscar usuarios por email
 export const searchUsersByEmail = async (email: string): Promise<User[]> => {
   try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error('No autorizado');
-    }
-
     const response = await fetch(`${API_BASE_URL}/api/usuarios/?search=${email}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
     });

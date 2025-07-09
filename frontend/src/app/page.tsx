@@ -157,7 +157,9 @@ export default function Home() {
   const [registrarLoading, setRegistrarLoading] = useState(false);
   const [registrarConfirmado, setRegistrarConfirmado] = useState(false);
   const [showRegistrarModal, setShowRegistrarModal] = useState(false);
-  
+  // Estado para validación de email en el modal de registrar alquiler para cliente
+  const [registrarEmailValido, setRegistrarEmailValido] = useState<null | boolean>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -908,6 +910,19 @@ export default function Home() {
     } catch (error) {
       console.error('Error al cargar modelos:', error);
       setModelosDisponibles([]);
+    }
+  };
+
+  // Función para validar email al salir del campo en el modal de registrar alquiler para cliente
+  const handleRegistrarEmailBlur = async () => {
+    if (!registrarClienteEmail) return;
+    try {
+      const users = await searchUsersByEmail(registrarClienteEmail);
+      setRegistrarEmailValido(
+        Array.isArray(users) && users.some(u => u.email.toLowerCase() === registrarClienteEmail.toLowerCase())
+      );
+    } catch (error) {
+      setRegistrarEmailValido(false);
     }
   };
 
@@ -1737,9 +1752,11 @@ export default function Home() {
                     type="email"
                     placeholder="Email del cliente"
                     value={registrarClienteEmail}
-                    onChange={e => setRegistrarClienteEmail(e.target.value)}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    onChange={e => { setRegistrarClienteEmail(e.target.value); setRegistrarEmailValido(null); }}
+                    onBlur={handleRegistrarEmailBlur}
+                    className={`w-full bg-[#3d2342] border ${registrarEmailValido === null ? 'border-[#a16bb7]' : registrarEmailValido ? 'border-green-500' : 'border-red-500'} rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]`}
                   />
+                  {registrarEmailValido === false && <div className="text-[#e94b5a] text-sm">El email no está registrado</div>}
                 </div>
 
                 {/* Sucursales */}
