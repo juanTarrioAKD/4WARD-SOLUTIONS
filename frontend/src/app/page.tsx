@@ -972,6 +972,19 @@ export default function Home() {
     fetchModelos();
   }, [registrarSucursalRetiro, registrarCategoria]);
 
+  const EXTRA_SUCURSAL = 7500;
+  // Calcular monto total y extra cuando se selecciona modelo, fechas y sucursales
+  const calcularMontoTotal = () => {
+    if (!registrarModeloId || !registrarFechaInicio || !registrarFechaFin) return null;
+    const modelo = modelosDisponibles.find(m => String(m.id) === String(registrarModeloId));
+    if (!modelo) return null;
+    const dias = Math.ceil((new Date(registrarFechaFin).getTime() - new Date(registrarFechaInicio).getTime()) / (1000 * 60 * 60 * 24));
+    if (dias <= 0) return null;
+    const montoBase = dias * Number(modelo.precio_por_dia);
+    const extra = registrarSucursalRetiro && registrarSucursalDevolucion && registrarSucursalRetiro !== registrarSucursalDevolucion ? EXTRA_SUCURSAL : 0;
+    return { montoBase, extra, total: montoBase + extra };
+  };
+
   return (
     <div className="min-h-screen bg-[#5e3e5a]">
       {/* Header */}
@@ -1905,6 +1918,23 @@ export default function Home() {
                   <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
                     {registrarError}
                   </div>
+                )}
+
+                {/* Mostrar monto total y extra luego de seleccionar modelo, fechas y sucursales */}
+                {registrarModeloId && registrarFechaInicio && registrarFechaFin && (
+                  (() => {
+                    const monto = calcularMontoTotal();
+                    if (!monto) return null;
+                    return (
+                      <div className="mt-4 text-white text-lg font-semibold">
+                        El monto a cobrar es: ${monto.montoBase}
+                        {monto.extra > 0 && (
+                          <span> + ${EXTRA_SUCURSAL} extra por devolución en sucursal distinta</span>
+                        )}<br/>
+                        <span>Monto total: ${monto.total}</span>
+                      </div>
+                    );
+                  })()
                 )}
 
                 {/* Botones */}
