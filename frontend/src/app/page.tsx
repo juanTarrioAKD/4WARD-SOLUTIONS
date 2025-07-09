@@ -159,6 +159,9 @@ export default function Home() {
   const [showRegistrarModal, setShowRegistrarModal] = useState(false);
   // Estado para validación de email en el modal de registrar alquiler para cliente
   const [registrarEmailValido, setRegistrarEmailValido] = useState<null | boolean>(null);
+  // Estado para categoría seleccionada en el modal de registrar alquiler para cliente
+  const [registrarCategoria, setRegistrarCategoria] = useState<number | null>(null);
+  const [registrarCategoriasSucursal, setRegistrarCategoriasSucursal] = useState<{ id: number; nombre: string }[]>([]);
 
   const router = useRouter();
 
@@ -899,7 +902,11 @@ export default function Home() {
       const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(registrarSucursalRetiro));
       console.log('Autos filtrados por sucursal:', autosFiltrados);
       // Mapear a modelos
-      const modelos = autosFiltrados.map((auto: any) => auto.modelo);
+      const modelos = autosFiltrados.map((auto: any) => ({
+        id: auto.modelo.id,
+        nombre: auto.modelo.nombre,
+        precio_por_dia: auto.categoria?.precio
+      }));
       console.log('Modelos de autos filtrados:', modelos);
       // Eliminar modelos duplicados por id
       const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
@@ -925,6 +932,45 @@ export default function Home() {
       setRegistrarEmailValido(false);
     }
   };
+
+  // Cargar categorías disponibles cuando se selecciona sucursal de retiro
+  useEffect(() => {
+    if (registrarSucursalRetiro) {
+      // Si usás mockCategoriasPorSucursal, podés filtrar así:
+      setRegistrarCategoriasSucursal(mockCategoriasPorSucursal[registrarSucursalRetiro] || []);
+      setRegistrarCategoria(null);
+    } else {
+      setRegistrarCategoriasSucursal([]);
+      setRegistrarCategoria(null);
+    }
+  }, [registrarSucursalRetiro]);
+
+  // Filtrar modelos disponibles cuando cambia la categoría o la sucursal en el modal de registrar alquiler para cliente
+  useEffect(() => {
+    const fetchModelos = async () => {
+      if (registrarSucursalRetiro && registrarCategoria) {
+        const autosSucursal = await fetch(`${API_BASE_URL}/api/vehiculos/`).then(res => res.json());
+        // Filtrar autos por sucursal y categoría
+        const autosFiltrados = autosSucursal.filter((auto: any) =>
+          auto.sucursal?.id === Number(registrarSucursalRetiro) &&
+          auto.categoria?.id === registrarCategoria
+        );
+        // Mapear a modelos únicos incluyendo el precio
+        const modelos = autosFiltrados.map((auto: any) => ({
+          id: auto.modelo.id,
+          nombre: auto.modelo.nombre,
+          precio_por_dia: auto.categoria?.precio
+        }));
+        const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
+          arr.findIndex((m) => m.id === modelo.id) === idx
+        );
+        setModelosDisponibles(modelosUnicos);
+      } else {
+        setModelosDisponibles([]);
+      }
+    };
+    fetchModelos();
+  }, [registrarSucursalRetiro, registrarCategoria]);
 
   return (
     <div className="min-h-screen bg-[#5e3e5a]">
@@ -1792,19 +1838,18 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Modelo */}
+                {/* Categoría */}
                 <div>
-                  <label className="text-white block mb-2">Modelo de vehículo</label>
+                  <label className="text-white block mb-2">Categoría</label>
                   <select
-                    value={registrarModeloId}
-                    onChange={e => setRegistrarModeloId(e.target.value)}
+                    value={registrarCategoria ?? ''}
+                    onChange={e => setRegistrarCategoria(Number(e.target.value) || null)}
                     className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    disabled={!registrarSucursalRetiro}
                   >
-                    <option value="">Seleccionar modelo</option>
-                    {modelosDisponibles.map(modelo => (
-                      <option key={modelo.id} value={modelo.id}>
-                        {modelo.nombre} ({modelo.categoria_nombre}) - ${modelo.precio_por_dia}/día
-                      </option>
+                    <option value="">Seleccionar categoría</option>
+                    {registrarCategoriasSucursal.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.nombre}</option>
                     ))}
                   </select>
                 </div>
@@ -1819,9 +1864,7 @@ export default function Home() {
                       onChange={e => setRegistrarFechaInicio(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
                       className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a] [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:contrast-200"
-                      style={{
-                        colorScheme: 'dark'
-                      }}
+                      style={{ colorScheme: 'dark' }}
                     />
                   </div>
                   <div>
@@ -1832,12 +1875,30 @@ export default function Home() {
                       onChange={e => setRegistrarFechaFin(e.target.value)}
                       min={registrarFechaInicio || new Date().toISOString().split('T')[0]}
                       className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a] [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:contrast-200"
-                      style={{
-                        colorScheme: 'dark'
-                      }}
+                      style={{ colorScheme: 'dark' }}
                     />
                   </div>
                 </div>
+
+                {/* Modelos disponibles solo después de seleccionar sucursal, categoría y fechas */}
+                {registrarSucursalRetiro && registrarCategoria && registrarFechaInicio && registrarFechaFin && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-white mb-4">Modelos disponibles</h3>
+                    <select
+                      value={registrarModeloId}
+                      onChange={e => setRegistrarModeloId(e.target.value)}
+                      className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    >
+                      <option value="">Seleccionar modelo</option>
+                      {modelosDisponibles.map(modelo => (
+                        <option key={modelo.id} value={modelo.id}>
+                          {modelo.nombre} - ${modelo.precio_por_dia}/día
+                        </option>
+                      ))}
+                    </select>
+                    {modelosDisponibles.length === 0 && <div className="text-[#e94b5a] text-sm mt-2">No hay modelos disponibles para la selección.</div>}
+                  </div>
+                )}
 
                 {/* Error */}
                 {registrarError && (
