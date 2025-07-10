@@ -217,12 +217,6 @@ export default function Home() {
             >
               Gestionar Usuarios
             </button>
-            <button 
-              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => router.push('/admin/reportes')}
-            >
-              Reportes
-            </button>
           </>
         );
       case 2: // ID del rol empleado
@@ -1618,39 +1612,7 @@ export default function Home() {
             >
               Flota
             </button>
-            <button 
-              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Sucursales clicked')}
-            >
-              Sucursales
-            </button>
 
-            {/* Opciones comunes para todos los usuarios */}
-            <button 
-              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => {
-                if (userState.isAuthenticated) {
-                  router.push('/politicas');
-                } else {
-                  setShowLoginForm(true);
-                  setIsMenuOpen(false);
-                }
-              }}
-            >
-              Politicas de uso
-            </button>
-            <button 
-              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Sobre nosotros clicked')}
-            >
-              Sobre nosotros
-            </button>
-            <button 
-              className="text-white text-left px-4 py-3 rounded-md hover:bg-[#a16bb7]/50 backdrop-blur-md transition-colors"
-              onClick={() => console.log('Preguntas frecuentes clicked')}
-            >
-              Preguntas frecuentes
-            </button>
           </div>
         </nav>
       </div>

@@ -77,6 +77,7 @@ export default function GestionSucursales() {
   });
   const [localidades, setLocalidades] = useState<Localidad[]>([]);
   const [localidadBusqueda, setLocalidadBusqueda] = useState('');
+  const [addSucursalError, setAddSucursalError] = useState<string | null>(null);
 
   // Cargar sucursales al montar el componente
   useEffect(() => {
@@ -141,6 +142,7 @@ export default function GestionSucursales() {
       localidad_id: 0
     });
     setLocalidadBusqueda('');
+    setAddSucursalError(null);
     setShowAddModal(true);
   };
 
@@ -221,13 +223,14 @@ export default function GestionSucursales() {
       setSucursalesFiltradas(sucursalesActualizadas);
       setShowAddModal(false);
       setNewSucursalData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
+      setAddSucursalError(null);
     } catch (error: any) {
       let msg = 'Error al crear sucursal';
       if (error && error.nombre && Array.isArray(error.nombre) && error.nombre[0].toLowerCase().includes('ya existe')) {
         msg = 'La sucursal ya se encuentra registrada en el sistema.';
       }
       console.error('Error al crear sucursal:', error);
-      alert(msg);
+      setAddSucursalError(msg);
     }
   };
 
@@ -536,7 +539,11 @@ export default function GestionSucursales() {
                   </select>
                 </div>
               </div>
-
+              {addSucursalError && (
+                <div className="mt-4 p-3 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded">
+                  {addSucursalError}
+                </div>
+              )}
               <div className="flex space-x-3 mt-6">
                 <button
                   type="button"
