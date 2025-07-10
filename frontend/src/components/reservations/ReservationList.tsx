@@ -75,13 +75,20 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
       // Determinar si ya está cancelada
       let isCancelled = false;
       if (typeof reservation.estado === 'object' && reservation.estado !== null) {
-        isCancelled = reservation.estado.id === 2;
+        isCancelled = reservation.estado.id === 2; // 2 = Cancelada
       } else if (typeof reservation.estado === 'string') {
         isCancelled = reservation.estado.toLowerCase().includes('cancelada');
       }
-      
+      // Permitir cancelar si el estado es 1 (Confirmada) o 4 (Confirmado)
+      const isCancelable = typeof reservation.estado === 'object' && reservation.estado !== null
+        ? (reservation.estado.id === 1 || reservation.estado.id === 4)
+        : (typeof reservation.estado === 'string' && reservation.estado.toLowerCase().includes('confirmada'));
       if (isCancelled) {
         setError('Esta reserva ya ha sido cancelada');
+        return;
+      }
+      if (!isCancelable) {
+        setError('Solo se pueden cancelar reservas confirmadas.');
         return;
       }
 
@@ -189,14 +196,19 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
             key={reservation.id}
             className="bg-gradient-to-br from-[#3d2342] to-[#2d1a31] rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-all duration-300"
           >
-            {/* Encabezado con Categoría y Modelo */}
-            <div className="bg-[#4a2b50] p-4 border-b border-[#a16bb7]">
-              <h3 className="text-[#e94b5a] font-semibold text-lg">
-                {reservation.vehiculo?.categoria?.nombre || 'Categoría no disponible'}
-              </h3>
-              <p className="text-white text-xl font-bold mt-1">
-                {reservation.vehiculo?.modelo?.nombre || 'Modelo no disponible'}
-              </p>
+            {/* Encabezado con Categoría, Modelo e ID de reserva */}
+            <div className="bg-[#4a2b50] p-4 border-b border-[#a16bb7] flex items-start justify-between">
+              <div>
+                <h3 className="text-[#e94b5a] font-semibold text-lg">
+                  {reservation.vehiculo?.categoria?.nombre || 'Categoría no disponible'}
+                </h3>
+                <p className="text-white text-xl font-bold mt-1">
+                  {reservation.vehiculo?.modelo?.nombre || 'Modelo no disponible'}
+                </p>
+              </div>
+              <div className="ml-4 text-right flex-shrink-0">
+                <span className="text-xs text-[#a16bb7] bg-[#2d1830] px-2 py-1 rounded font-mono whitespace-nowrap min-w-[48px] inline-block">ID #{reservation.id}</span>
+              </div>
             </div>
 
             {/* Cuerpo con fechas */}
@@ -230,8 +242,8 @@ export default function ReservationList({ userEmail, userName, userLastName }: R
                 </p>
               </div>
 
-              {/* Botón de cancelar (solo para reservas confirmadas) */}
-              {(estadoId === 1 || (typeof reservation.estado === 'string' && reservation.estado.toLowerCase().includes('confirmada'))) && (
+              {/* Botón de cancelar (solo para reservas confirmadas o confirmados) */}
+              {(estadoId === 1 || estadoId === 4 || (typeof reservation.estado === 'string' && reservation.estado.toLowerCase().includes('confirmada'))) && (
                 <button
                   onClick={() => handleCancelReservation(reservation.id)}
                   disabled={cancellingId === reservation.id}

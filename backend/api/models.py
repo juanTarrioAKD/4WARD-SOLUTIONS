@@ -98,8 +98,8 @@ class Alquiler(models.Model):
         """
         print(f"Estado actual: {self.estado.id}")
         print(f"DEBUG cancelar: Estado actual: {self.estado.id}")
-        # Solo se puede cancelar si está en estado Confirmado (ID 4)
-        if self.estado.id != 4:
+        # Solo se puede cancelar si está en estado Confirmada (ID 1) o Confirmado (ID 4)
+        if self.estado.id not in [1, 4]:
             print("DEBUG cancelar: Lanzando error por estado no confirmado")
             raise ValueError("Solo se puede cancelar una reserva confirmada")
         
