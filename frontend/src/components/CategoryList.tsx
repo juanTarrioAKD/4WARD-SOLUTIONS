@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { getCategories, type Category } from '@/services/categories';
 import { getAuthToken } from '@/services/auth';
+import { getPublications, type Publication } from '@/services/publications';
 
 interface CategoryListProps {
   setShowLoginForm: (show: boolean) => void;
@@ -30,18 +31,16 @@ export default function CategoryList({ setShowLoginForm }: CategoryListProps) {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const data = await getCategories();
-        // Asignar la imagen a cada categoría según el mapeo y la API
-        const categoriesWithUrl = data.map((cat: Category) => ({
-          ...cat,
-          image: categoryUrlMap[cat.id],
+        // Cambiar: obtener publicaciones y extraer la categoría de cada publicación
+        const publications = await getPublications();
+        const categoriesWithUrl = publications.map((pub: Publication) => ({
+          ...pub.categoria,
+          image: categoryUrlMap[pub.categoria.id],
         }));
-        console.log(categoriesWithUrl[1].image);
         setCategories(categoriesWithUrl);
-        
       } catch (error) {
-        console.error('Error fetching categories:', error);
-        setError('Error al cargar las categorías');
+        console.error('Error fetching published categories:', error);
+        setError('Error al cargar las categorías publicadas');
       } finally {
         setIsLoading(false);
       }
