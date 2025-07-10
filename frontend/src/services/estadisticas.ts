@@ -67,6 +67,31 @@ export interface RegistrosPorFechaResponse {
   reservas: ReservaRegistro[];
 }
 
+export interface TopUserAlquileres {
+  cliente: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    // otros campos si es necesario
+  };
+  cantidad_alquileres: number;
+}
+
+export interface UsuarioDetalle {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  total_alquileres: number;
+  monto_total: number;
+}
+
+export interface AlquileresUsuarioResponse {
+  usuario: UsuarioDetalle;
+  alquileres: Alquiler[];
+}
+
 export const estadisticasService = {
   async getTopVehicles(): Promise<TopVehicle[]> {
     return apiService.get<TopVehicle[]>('/estadisticas/mas_alquilado/', { requiresAuth: true });
@@ -81,5 +106,13 @@ export const estadisticasService = {
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin
     }, { requiresAuth: true });
+  },
+
+  async getTopUsers(): Promise<TopUserAlquileres[]> {
+    return apiService.get<TopUserAlquileres[]>('/estadisticas/clientes_con_mas_alquileres/', { requiresAuth: true });
+  },
+
+  async getAlquileresUsuario(usuarioId: string): Promise<AlquileresUsuarioResponse> {
+    return apiService.get<AlquileresUsuarioResponse>(`/estadisticas/${usuarioId}/alquileres-usuario/`, { requiresAuth: true });
   }
 }; 

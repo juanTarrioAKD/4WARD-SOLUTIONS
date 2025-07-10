@@ -1435,6 +1435,51 @@ class EstadisticasViewSet(viewsets.ViewSet):
         except Exception as e:
             return Response({'error': f'Error al obtener registros: {str(e)}'}, status=500)
 
+    @action(detail=True, methods=['get'], url_path='alquileres-usuario')
+    def alquileres_usuario(self, request, pk=None):
+        # Devuelve todos los alquileres de un usuario específico
+        from django.db.models import Sum
+        from .models import Usuario, Alquiler, Vehiculo
+        from .serializers import AlquilerSerializer
+        try:
+            usuario = Usuario.objects.get(id=pk)
+        except Usuario.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado'}, status=404)
+        alquileres = Alquiler.objects.filter(cliente=usuario).order_by('-fecha_inicio')
+        total_alquileres = alquileres.count()
+        monto_total = alquileres.aggregate(total=Sum('monto_total'))['total'] or 0
+        alquileres_data = []
+        for alquiler in alquileres:
+            alquiler_data = AlquilerSerializer(alquiler).data
+            # Manejar el caso donde el vehículo no existe
+            try:
+                vehiculo = alquiler.vehiculo
+                alquiler_data['vehiculo_info'] = f"{vehiculo.marca.nombre} {vehiculo.modelo.nombre} - {vehiculo.patente}"
+            except Vehiculo.DoesNotExist:
+                alquiler_data['vehiculo_info'] = "Vehículo eliminado o inexistente"
+            
+            # Manejar el caso donde la sucursal no existe
+            try:
+                sucursal = alquiler.sucursal_devolucion
+                alquiler_data['sucursal_nombre'] = sucursal.nombre if sucursal else 'No especificada'
+            except Exception:
+                alquiler_data['sucursal_nombre'] = 'Sucursal eliminada o inexistente'
+            
+            alquiler_data['estado_nombre'] = alquiler.estado.nombre
+            alquileres_data.append(alquiler_data)
+        usuario_data = {
+            'id': usuario.id,
+            'email': usuario.email,
+            'first_name': usuario.first_name,
+            'last_name': usuario.last_name,
+            'total_alquileres': total_alquileres,
+            'monto_total': float(monto_total)
+        }
+        return Response({
+            'usuario': usuario_data,
+            'alquileres': alquileres_data
+        })
+
 def searchAvailableCategories(request):
     """
     Busca las categorías que tienen vehículos disponibles.

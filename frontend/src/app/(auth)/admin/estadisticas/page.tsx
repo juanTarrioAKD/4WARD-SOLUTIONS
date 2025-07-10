@@ -29,6 +29,16 @@ interface RegistroData {
   registros: number;
 }
 
+interface TopUserAlquileres {
+  cliente: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+  };
+  cantidad_alquileres: number;
+}
+
 export default function Estadisticas() {
   const router = useRouter();
   const [registrosRange, setRegistrosRange] = useState<DateRange>({
@@ -36,20 +46,15 @@ export default function Estadisticas() {
     endDate: ''
   });
   const [isSearching, setIsSearching] = useState(false);
-  const [registrosCount, setRegistrosCount] = useState<number | null>(128);
+  // Cambia el valor inicial de registrosCount a 0 (o null para mostrar '-')
+  const [registrosCount, setRegistrosCount] = useState<number | null>(null);
   
-  // Datos de ejemplo para el gráfico de registros por fecha
-  const [registrosData, setRegistrosData] = useState<RegistroData[]>([
-    { fecha: '2024-01-01', registros: 15 },
-    { fecha: '2024-01-02', registros: 22 },
-    { fecha: '2024-01-03', registros: 18 },
-    { fecha: '2024-01-04', registros: 35 },
-    { fecha: '2024-01-05', registros: 28 },
-    { fecha: '2024-01-06', registros: 42 },
-    { fecha: '2024-01-07', registros: 31 },
-  ]);
+  // Eliminar el mock de registrosData y dejar el estado vacío por defecto
+  const [registrosData, setRegistrosData] = useState<RegistroData[]>([]);
 
   const [topVehicles, setTopVehicles] = useState<any[]>([]);
+  // Elimina el mock de topUsers y usa el estado para los usuarios reales
+  const [topUsers, setTopUsers] = useState<TopUserAlquileres[]>([]);
 
   // Transformar los datos para el gráfico
   const topVehiclesChartData = topVehicles.map(tv => ({
@@ -60,26 +65,26 @@ export default function Estadisticas() {
   }));
 
   // Datos de ejemplo para los usuarios con más alquileres
-  const topUsers: TopUser[] = [
-    {
-      id: '1',
-      email: 'maria.gonzalez@email.com',
-      alquileres: 12,
-      montoTotal: 2400
-    },
-    {
-      id: '2',
-      email: 'juan.perez@email.com',
-      alquileres: 9,
-      montoTotal: 1800
-    },
-    {
-      id: '3',
-      email: 'ana.rodriguez@email.com',
-      alquileres: 7,
-      montoTotal: 1400
-    }
-  ];
+  // const topUsers: TopUser[] = [
+  //   {
+  //     id: '1',
+  //     email: 'maria.gonzalez@email.com',
+  //     alquileres: 12,
+  //     montoTotal: 2400
+  //   },
+  //   {
+  //     id: '2',
+  //     email: 'juan.perez@email.com',
+  //     alquileres: 9,
+  //     montoTotal: 1800
+  //   },
+  //   {
+  //     id: '3',
+  //     email: 'ana.rodriguez@email.com',
+  //     alquileres: 7,
+  //     montoTotal: 1400
+  //   }
+  // ];
 
   // Obtener el vehículo más alquilado (el primero del array)
   const topVehicle = topVehicles[0];
@@ -99,6 +104,10 @@ export default function Estadisticas() {
     estadisticasService.getTopVehicles().then(data => {
       setTopVehicles(data);
     });
+    // Cargar los usuarios con más alquileres
+    estadisticasService.getTopUsers().then(data => {
+      setTopUsers(data.slice(0, 3)); // Solo los 3 primeros
+    });
   }, []);
 
   // Validación de fechas
@@ -107,7 +116,7 @@ export default function Estadisticas() {
     registrosRange.endDate &&
     registrosRange.endDate >= registrosRange.startDate;
 
-  // Consulta al backend para obtener registros por fecha
+  // handleBuscarRegistros: actualizar registrosData con datos reales
   const handleBuscarRegistros = async () => {
     setIsSearching(true);
     try {
@@ -116,9 +125,26 @@ export default function Estadisticas() {
         registrosRange.endDate
       );
       setRegistrosCount(response.estadisticas.total_registros);
+
+      // Agrupar por fecha (usuarios + reservas)
+      const conteoPorFecha: Record<string, number> = {};
+      [...response.usuarios_clientes, ...response.usuarios_empleados].forEach(usuario => {
+        const fecha = usuario.fecha_registro.split(' ')[0];
+        conteoPorFecha[fecha] = (conteoPorFecha[fecha] || 0) + 1;
+      });
+      response.reservas.forEach(reserva => {
+        const fecha = reserva.fecha_reserva.split(' ')[0];
+        conteoPorFecha[fecha] = (conteoPorFecha[fecha] || 0) + 1;
+      });
+      const registrosDataReal = Object.entries(conteoPorFecha)
+        .map(([fecha, registros]) => ({ fecha, registros }))
+        .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+      setRegistrosData(registrosDataReal);
+
     } catch (error) {
       console.error('Error al buscar registros:', error);
       setRegistrosCount(0);
+      setRegistrosData([]);
     } finally {
       setIsSearching(false);
     }
@@ -134,7 +160,7 @@ export default function Estadisticas() {
 
   // Función para manejar la redirección al detalle del usuario
   const handleVerMas = (userId: string) => {
-    router.push(`/admin/usuarios/${userId}/alquileres`);
+    router.push(`/admin/estadisticas/detalles_de_estadisticas/alquileres?id=${userId}`);
   };
 
   // Función para manejar la redirección al detalle del vehículo
@@ -329,27 +355,27 @@ export default function Estadisticas() {
             <h2 className="text-2xl font-semibold mb-4">Usuarios con Más Alquileres</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {topUsers.map((user, index) => (
-                <div key={index} className="bg-[#3d2342] p-4 rounded-lg">
+                <div key={user.cliente.id} className="bg-[#3d2342] p-4 rounded-lg">
                   <div className="flex items-center space-x-3 mb-3">
                     <div className="w-10 h-10 bg-[#a16bb7] rounded-full flex items-center justify-center text-white font-bold">
                       {index + 1}
                     </div>
                     <div className="overflow-hidden">
-                      <p className="text-sm text-gray-300 truncate">{user.email}</p>
+                      <p className="text-sm text-gray-300 truncate">{user.cliente.email}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <span className="text-[#a16bb7] text-sm">Alquileres: </span>
-                      <span className="text-white font-semibold ml-1">{user.alquileres}</span>
+                      <span className="text-white font-semibold ml-1">{user.cantidad_alquileres}</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-[#a16bb7] text-sm">Total: </span>
-                      <span className="text-green-400 font-semibold ml-1">{formatCurrency(user.montoTotal)}</span>
+                      <span className="text-[#a16bb7] text-sm">Nombre: </span>
+                      <span className="text-white font-semibold ml-1">{user.cliente.first_name} {user.cliente.last_name}</span>
                     </div>
                     <div className="flex justify-end mt-3">
                       <button
-                        onClick={() => handleVerMas(user.id)}
+                        onClick={() => handleVerMas(user.cliente.id)}
                         className="px-3 py-1 text-sm bg-[#a16bb7] hover:bg-[#8a5a9d] text-white rounded-md transition-colors duration-200"
                       >
                         Ver más
