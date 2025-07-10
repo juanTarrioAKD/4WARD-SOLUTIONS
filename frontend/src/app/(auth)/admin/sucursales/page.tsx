@@ -221,8 +221,13 @@ export default function GestionSucursales() {
       setSucursalesFiltradas(sucursalesActualizadas);
       setShowAddModal(false);
       setNewSucursalData({ nombre: '', direccion: '', telefono: '', localidad_id: 0 });
-    } catch (error) {
+    } catch (error: any) {
+      let msg = 'Error al crear sucursal';
+      if (error && error.nombre && Array.isArray(error.nombre) && error.nombre[0].toLowerCase().includes('ya existe')) {
+        msg = 'La sucursal ya se encuentra registrada en el sistema.';
+      }
       console.error('Error al crear sucursal:', error);
+      alert(msg);
     }
   };
 

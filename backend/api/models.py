@@ -195,7 +195,7 @@ class EstadoVehiculo(models.Model):
         return self.nombre
 
 class Sucursal(models.Model):
-    nombre = models.CharField(max_length=100)
+    nombre = models.CharField(max_length=100, unique=True)
     telefono = models.CharField(max_length=20)
     localidad = models.ForeignKey(Localidad, on_delete=models.CASCADE, db_column='ID_Localidad')
     direccion = models.CharField(max_length=200)

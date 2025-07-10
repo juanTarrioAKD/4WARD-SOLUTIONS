@@ -370,7 +370,11 @@ export default function Home() {
         fecha_fin: reservaData.reserva.fecha_fin
       });
     } catch (error) {
-      setRetiroError(error instanceof Error ? error.message : 'Reserva no encontrada');
+      let msg = error instanceof Error ? error.message : 'Reserva no encontrada';
+      if (msg.includes('No Alquiler matches the given query')) {
+        msg = 'No existe una reserva asociada a ese número de reserva.';
+      }
+      setRetiroError(msg);
     } finally {
       setRetiroLoading(false);
     }
@@ -427,16 +431,10 @@ export default function Home() {
     try {
       // Registrar usuario usando el endpoint real
       const result = await registerClient(nuevoUsuario);
-      
       setRegistrarUsuarioSuccess(true);
       setPasswordGenerada(result.password_generada);
-      
-      // Agregar el nuevo usuario a la lista de resultados
       setSearchResults(prev => [...prev, result.usuario]);
-      // Actualizar también la lista completa de usuarios
       setAllUsers(prev => [...prev, result.usuario]);
-      
-      // Limpiar formulario después de 3 segundos
       setTimeout(() => {
         setShowRegistrarUsuarioModal(false);
         setRegistrarUsuarioSuccess(false);
@@ -450,9 +448,16 @@ export default function Home() {
           rol: 1 // Cliente por defecto
         });
       }, 3000);
-    } catch (error) {
-      console.error('Error al registrar usuario:', error);
-      setRegistrarUsuarioError(error instanceof Error ? error.message : 'Error al registrar usuario');
+    } catch (error: any) {
+      let msg = 'Error al registrar usuario';
+      if (error) {
+        if (error.fecha_nacimiento && Array.isArray(error.fecha_nacimiento)) {
+          msg = 'No se pueden registrar menores de edad.';
+        } else if (error.email && Array.isArray(error.email) && error.email[0].toLowerCase().includes('ya existe')) {
+          msg = 'El email ingresado ya existe en el sistema.';
+        }
+      }
+      setRegistrarUsuarioError(msg);
     } finally {
       setRegistrarUsuarioLoading(false);
     }
@@ -554,12 +559,33 @@ export default function Home() {
 
   // Cargar categorías disponibles en la sucursal de retiro
   useEffect(() => {
-    if (reservaSucursalRetiro) {
-      setReservaCategoria(null);
-    } else {
-      setReservaCategoriasSucursal([]);
-      setReservaCategoria(null);
-    }
+    const cargarCategorias = async () => {
+      if (reservaSucursalRetiro) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/vehiculos/`);
+          if (!response.ok) {
+            throw new Error('Error al cargar vehículos');
+          }
+          const autos = await response.json();
+          // Filtrar autos por sucursal seleccionada
+          const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(reservaSucursalRetiro));
+          // Obtener categorías únicas de los autos filtrados
+          const categorias = autosFiltrados.map((auto: any) => auto.categoria).filter((cat: any, idx: number, arr: any[]) =>
+            cat && arr.findIndex((c) => c.id === cat.id) === idx
+          );
+          setReservaCategoriasSucursal(categorias);
+          setReservaCategoria(null);
+        } catch (error) {
+          console.error('Error al cargar categorías:', error);
+          setReservaCategoriasSucursal([]);
+        }
+      } else {
+        setReservaCategoriasSucursal([]);
+        setReservaCategoria(null);
+      }
+    };
+    
+    cargarCategorias();
   }, [reservaSucursalRetiro]);
 
   // Mostrar modelos automáticamente cuando todos los campos estén completos
@@ -568,10 +594,8 @@ export default function Home() {
       setReservaError(null);
       setMostrarModelos(false);
       setMontoACobrar(null);
-      setTimeout(() => {
-        setModelosDisponibles(mockModelosPorCategoria[reservaCategoria] || []);
-        setMostrarModelos(true);
-      }, 500);
+      // Los modelos ya se cargan automáticamente cuando se selecciona la categoría
+      setMostrarModelos(true);
     } else {
       setMostrarModelos(false);
     }
@@ -634,7 +658,11 @@ export default function Home() {
         fecha_fin: reservaData.reserva.fecha_fin
       });
     } catch (error) {
-      setDevolucionError(error instanceof Error ? error.message : 'Reserva no encontrada');
+      let msg = error instanceof Error ? error.message : 'Reserva no encontrada';
+      if (msg.includes('No Alquiler matches the given query')) {
+        msg = 'No existe una reserva asociada a ese número de reserva.';
+      }
+      setDevolucionError(msg);
     } finally {
       setDevolucionLoading(false);
     }
@@ -686,7 +714,11 @@ export default function Home() {
         fecha_fin: reservaData.reserva.fecha_fin
       });
     } catch (e: any) {
-      setCancelarReservaError(e.message || 'Reserva no encontrada');
+      let msg = e && e.message ? e.message : 'Reserva no encontrada';
+      if (msg.includes('No Alquiler matches the given query')) {
+        msg = 'No existe una reserva asociada a ese número de reserva.';
+      }
+      setCancelarReservaError(msg);
     } finally {
       setCancelarReservaLoading(false);
     }
@@ -771,7 +803,7 @@ export default function Home() {
   const cargarModelosDisponibles = async () => {
     console.log('Ejecutando cargarModelosDisponibles');
     try {
-      if (!reservaSucursalRetiro) {
+      if (!reservaSucursalRetiro || !reservaCategoria) {
         setModelosDisponibles([]);
         return;
       }
@@ -781,11 +813,18 @@ export default function Home() {
       }
       const autos = await response.json();
       console.log('Todos los autos:', autos);
-      // Filtrar autos por sucursal seleccionada
-      const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(reservaSucursalRetiro));
-      console.log('Autos filtrados por sucursal:', autosFiltrados);
-      // Mapear a modelos
-      const modelos = autosFiltrados.map((auto: any) => auto.modelo);
+      // Filtrar autos por sucursal y categoría seleccionada
+      const autosFiltrados = autos.filter((auto: any) => 
+        auto.sucursal?.id === Number(reservaSucursalRetiro) && 
+        auto.categoria?.id === reservaCategoria
+      );
+      console.log('Autos filtrados por sucursal y categoría:', autosFiltrados);
+      // Mapear a modelos con precio
+      const modelos = autosFiltrados.map((auto: any) => ({
+        id: auto.modelo.id,
+        nombre: auto.modelo.nombre,
+        precio_por_dia: auto.categoria?.precio
+      }));
       console.log('Modelos de autos filtrados:', modelos);
       // Eliminar modelos duplicados por id
       const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
@@ -800,13 +839,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    console.log('useEffect de modelos: showRegistrarModal', showRegistrarModal, 'reservaSucursalRetiro', reservaSucursalRetiro);
-    if (showRegistrarModal && reservaSucursalRetiro) {
+    console.log('useEffect de modelos: showRegistrarModal', showRegistrarModal, 'reservaSucursalRetiro', reservaSucursalRetiro, 'reservaCategoria', reservaCategoria);
+    if (showRegistrarModal && reservaSucursalRetiro && reservaCategoria) {
       cargarModelosDisponibles();
     } else {
       setModelosDisponibles([]);
     }
-  }, [showRegistrarModal, reservaSucursalRetiro]);
+  }, [showRegistrarModal, reservaSucursalRetiro, reservaCategoria]);
 
   // Cargar sucursales reales
   const cargarSucursales = async () => {
@@ -839,14 +878,55 @@ export default function Home() {
     }
   }, [showCancelarModal]);
 
-  // Cargar modelos cuando se selecciona una sucursal de retiro
+  // Resetear campos del modal de retirar vehículo cuando se cierra
   useEffect(() => {
-    if (reservaSucursalRetiro) {
+    if (!showRetiroModal) {
+      setRetiroReservaId('');
+      setRetiroReserva(null);
+      setRetiroError(null);
+      setRetiroConfirmado(false);
+      setRetiroLoading(false);
+    }
+  }, [showRetiroModal]);
+
+  // Resetear campos del modal de registrar alquiler cuando se cierra
+  useEffect(() => {
+    if (!showRegistrarModal) {
+      setRegistrarClienteEmail('');
+      setRegistrarModeloId('');
+      setRegistrarSucursalRetiro('');
+      setRegistrarSucursalDevolucion('');
+      setRegistrarFechaInicio('');
+      setRegistrarFechaFin('');
+      setRegistrarError(null);
+      setRegistrarConfirmado(false);
+      setRegistrarLoading(false);
+      setRegistrarEmailValido(null);
+      setRegistrarCategoria(null);
+      setRegistrarCategoriasSucursal([]);
+      setModelosDisponibles([]);
+    }
+  }, [showRegistrarModal]);
+
+  // Resetear campos del modal de devolución de vehículo cuando se cierra
+  useEffect(() => {
+    if (!showDevolucionModal) {
+      setDevolucionReservaId('');
+      setDevolucionReserva(null);
+      setDevolucionError(null);
+      setDevolucionConfirmado(false);
+      setDevolucionLoading(false);
+    }
+  }, [showDevolucionModal]);
+
+  // Cargar modelos cuando se selecciona una sucursal de retiro y categoría
+  useEffect(() => {
+    if (reservaSucursalRetiro && reservaCategoria) {
       cargarModelosDisponibles();
     } else {
       setModelosDisponibles([]);
     }
-  }, [reservaSucursalRetiro]);
+  }, [reservaSucursalRetiro, reservaCategoria]);
 
   // Limpiar modelos y sucursal al cerrar el modal
   useEffect(() => {
@@ -924,34 +1004,64 @@ export default function Home() {
 
   // Cargar categorías disponibles cuando se selecciona sucursal de retiro
   useEffect(() => {
-    if (registrarSucursalRetiro) {
-      setRegistrarCategoria(null);
-    } else {
-      setRegistrarCategoriasSucursal([]);
-      setRegistrarCategoria(null);
-    }
+    const cargarCategoriasCliente = async () => {
+      if (registrarSucursalRetiro) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/vehiculos/`);
+          if (!response.ok) {
+            throw new Error('Error al cargar vehículos');
+          }
+          const autos = await response.json();
+          // Filtrar autos por sucursal seleccionada
+          const autosFiltrados = autos.filter((auto: any) => auto.sucursal?.id === Number(registrarSucursalRetiro));
+          // Obtener categorías únicas de los autos filtrados
+          const categorias = autosFiltrados.map((auto: any) => auto.categoria).filter((cat: any, idx: number, arr: any[]) =>
+            cat && arr.findIndex((c) => c.id === cat.id) === idx
+          );
+          setRegistrarCategoriasSucursal(categorias);
+          setRegistrarCategoria(null);
+        } catch (error) {
+          console.error('Error al cargar categorías:', error);
+          setRegistrarCategoriasSucursal([]);
+        }
+      } else {
+        setRegistrarCategoriasSucursal([]);
+        setRegistrarCategoria(null);
+      }
+    };
+    
+    cargarCategoriasCliente();
   }, [registrarSucursalRetiro]);
 
   // Filtrar modelos disponibles cuando cambia la categoría o la sucursal en el modal de registrar alquiler para cliente
   useEffect(() => {
     const fetchModelos = async () => {
       if (registrarSucursalRetiro && registrarCategoria) {
-        const autosSucursal = await fetch(`${API_BASE_URL}/api/vehiculos/`).then(res => res.json());
-        // Filtrar autos por sucursal y categoría
-        const autosFiltrados = autosSucursal.filter((auto: any) =>
-          auto.sucursal?.id === Number(registrarSucursalRetiro) &&
-          auto.categoria?.id === registrarCategoria
-        );
-        // Mapear a modelos únicos incluyendo el precio
-        const modelos = autosFiltrados.map((auto: any) => ({
-          id: auto.modelo.id,
-          nombre: auto.modelo.nombre,
-          precio_por_dia: auto.categoria?.precio
-        }));
-        const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
-          arr.findIndex((m) => m.id === modelo.id) === idx
-        );
-        setModelosDisponibles(modelosUnicos);
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/vehiculos/`);
+          if (!response.ok) {
+            throw new Error('Error al cargar vehículos');
+          }
+          const autosSucursal = await response.json();
+          // Filtrar autos por sucursal y categoría
+          const autosFiltrados = autosSucursal.filter((auto: any) =>
+            auto.sucursal?.id === Number(registrarSucursalRetiro) &&
+            auto.categoria?.id === registrarCategoria
+          );
+          // Mapear a modelos únicos incluyendo el precio
+          const modelos = autosFiltrados.map((auto: any) => ({
+            id: auto.modelo.id,
+            nombre: auto.modelo.nombre,
+            precio_por_dia: auto.categoria?.precio
+          }));
+          const modelosUnicos = modelos.filter((modelo: any, idx: number, arr: any[]) =>
+            arr.findIndex((m) => m.id === modelo.id) === idx
+          );
+          setModelosDisponibles(modelosUnicos);
+        } catch (error) {
+          console.error('Error al cargar modelos:', error);
+          setModelosDisponibles([]);
+        }
       } else {
         setModelosDisponibles([]);
       }
@@ -1233,65 +1343,91 @@ export default function Home() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
           <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
             <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowRegistrarUsuarioModal(false)}>&times;</button>
-            <h2 className="text-2xl font-bold text-white mb-6">Registrar Nuevo Cliente</h2>
-            <form className="space-y-4" onSubmit={handleRegistrarUsuario}>
-              <input
-                type="email"
-                placeholder="Email del cliente"
-                value={nuevoUsuario.email}
-                onChange={(e) => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Nombre"
-                value={nuevoUsuario.first_name}
-                onChange={(e) => setNuevoUsuario({...nuevoUsuario, first_name: e.target.value})}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Apellido"
-                value={nuevoUsuario.last_name}
-                onChange={(e) => setNuevoUsuario({...nuevoUsuario, last_name: e.target.value})}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                required
-              />
-              <input
-                type="tel"
-                placeholder="Teléfono"
-                value={nuevoUsuario.telefono}
-                onChange={(e) => setNuevoUsuario({...nuevoUsuario, telefono: e.target.value})}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                required
-              />
-              <input
-                type="date"
-                placeholder="Fecha de nacimiento"
-                value={nuevoUsuario.fecha_nacimiento}
-                onChange={(e) => setNuevoUsuario({...nuevoUsuario, fecha_nacimiento: e.target.value})}
-                className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full h-12 bg-[#e94b5a] text-white rounded-md hover:bg-[#b13e4a] transition-colors font-semibold"
-                disabled={registrarUsuarioLoading}
-              >
-                {registrarUsuarioLoading ? 'Registrando...' : 'Registrar Cliente'}
-              </button>
-              {registrarUsuarioError && <div className="text-[#e94b5a] text-sm">{registrarUsuarioError}</div>}
-              {registrarUsuarioSuccess && (
-                <div className="bg-green-500/10 border border-green-500 text-green-500 px-4 py-3 rounded-md text-sm">
-                  <p>✅ Cliente registrado exitosamente</p>
-                  <p>Email: {nuevoUsuario.email}</p>
-                  <p className="font-semibold mt-2">Contraseña generada: {passwordGenerada}</p>
-                  <p className="text-xs mt-1">Guarde esta contraseña para proporcionársela al cliente</p>
+            <h2 className="text-2xl font-bold text-white mb-6">Registrar Nuevo Usuario</h2>
+            
+            {registrarUsuarioSuccess ? (
+              <div className="text-center">
+                <div className="text-green-400 text-6xl mb-4">✓</div>
+                <p className="text-white text-lg mb-2">Usuario registrado exitosamente</p>
+                <p className="text-[#a16bb7] text-sm">Contraseña generada: <span className="font-mono bg-[#3d2342] px-2 py-1 rounded">{passwordGenerada}</span></p>
+              </div>
+            ) : (
+              <form onSubmit={handleRegistrarUsuario} className="space-y-4">
+                <div>
+                  <label className="text-white block mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={nuevoUsuario.email}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
                 </div>
-              )}
-            </form>
+                <div>
+                  <label className="text-white block mb-2">Nombre</label>
+                  <input
+                    type="text"
+                    value={nuevoUsuario.first_name}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, first_name: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Apellido</label>
+                  <input
+                    type="text"
+                    value={nuevoUsuario.last_name}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, last_name: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={nuevoUsuario.telefono}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, telefono: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-white block mb-2">Fecha de nacimiento</label>
+                  <input
+                    type="date"
+                    value={nuevoUsuario.fecha_nacimiento}
+                    onChange={e => setNuevoUsuario({...nuevoUsuario, fecha_nacimiento: e.target.value})}
+                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
+                    required
+                  />
+                </div>
+
+                {registrarUsuarioError && (
+                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
+                    {registrarUsuarioError}
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="submit"
+                    disabled={registrarUsuarioLoading}
+                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
+                  >
+                    {registrarUsuarioLoading ? 'Registrando...' : 'Registrar Usuario'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegistrarUsuarioModal(false)}
+                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -1941,112 +2077,6 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Registrar Usuario */}
-      {showRegistrarUsuarioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-[#2d1830] rounded-lg p-8 w-full max-w-md relative">
-            <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setShowRegistrarUsuarioModal(false)}>&times;</button>
-            <h2 className="text-2xl font-bold text-white mb-6">Registrar Nuevo Usuario</h2>
-            
-            {registrarUsuarioSuccess ? (
-              <div className="text-center">
-                <div className="text-green-400 text-6xl mb-4">✓</div>
-                <p className="text-white text-lg mb-2">Usuario registrado exitosamente</p>
-                <p className="text-[#a16bb7] text-sm">Contraseña generada: <span className="font-mono bg-[#3d2342] px-2 py-1 rounded">{passwordGenerada}</span></p>
-              </div>
-            ) : (
-              <form onSubmit={handleRegistrarUsuario} className="space-y-4">
-                <div>
-                  <label className="text-white block mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={nuevoUsuario.email}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, email: e.target.value})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-2">Nombre</label>
-                  <input
-                    type="text"
-                    value={nuevoUsuario.first_name}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, first_name: e.target.value})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-2">Apellido</label>
-                  <input
-                    type="text"
-                    value={nuevoUsuario.last_name}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, last_name: e.target.value})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-2">Teléfono</label>
-                  <input
-                    type="tel"
-                    value={nuevoUsuario.telefono}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, telefono: e.target.value})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white placeholder-[#a16bb7] focus:outline-none focus:border-[#e94b5a]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-2">Fecha de nacimiento</label>
-                  <input
-                    type="date"
-                    value={nuevoUsuario.fecha_nacimiento}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, fecha_nacimiento: e.target.value})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-white block mb-2">Rol</label>
-                  <select
-                    value={nuevoUsuario.rol}
-                    onChange={e => setNuevoUsuario({...nuevoUsuario, rol: Number(e.target.value)})}
-                    className="w-full bg-[#3d2342] border border-[#a16bb7] rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#e94b5a]"
-                  >
-                    <option value={1}>Cliente</option>
-                    <option value={2}>Empleado</option>
-                    <option value={3}>Administrador</option>
-                  </select>
-                </div>
-
-                {registrarUsuarioError && (
-                  <div className="p-4 bg-[#e94b5a]/10 border border-[#e94b5a] text-[#e94b5a] rounded-md">
-                    {registrarUsuarioError}
-                  </div>
-                )}
-
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="submit"
-                    disabled={registrarUsuarioLoading}
-                    className="flex-1 bg-[#e94b5a] text-white py-2 px-4 rounded-md hover:bg-[#b13e4a] transition-colors disabled:opacity-50"
-                  >
-                    {registrarUsuarioLoading ? 'Registrando...' : 'Registrar Usuario'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowRegistrarUsuarioModal(false)}
-                    className="flex-1 bg-[#3d2342] text-white py-2 px-4 rounded-md hover:bg-[#4c3246] transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
             )}
           </div>
         </div>

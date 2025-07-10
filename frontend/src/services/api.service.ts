@@ -47,7 +47,7 @@ export const apiService = {
         throw new Error('No autorizado. Verifique que esté logueado como administrador.');
       }
       const error = await response.json();
-      throw new Error(error.error || 'Error en la petición');
+      throw error;
     }
 
     // Si la respuesta es 204 No Content, no intentes parsear JSON

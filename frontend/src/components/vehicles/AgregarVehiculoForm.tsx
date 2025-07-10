@@ -13,6 +13,11 @@ interface Modelo {
   nombre: string;
 }
 
+interface Sucursal {
+  id: number;
+  nombre: string;
+}
+
 interface AgregarVehiculoFormProps {
   onClose: () => void;
   onVehiculoCreado: () => void;
@@ -32,6 +37,7 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
   const [isLoading, setIsLoading] = useState(false);
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
 
   // Cargar marcas al montar el componente
   useEffect(() => {
@@ -79,6 +85,22 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
     fetchModelos();
   }, [formData.marca]);
 
+  // Cargar sucursales al montar el componente
+  useEffect(() => {
+    const fetchSucursales = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/sucursales/`);
+        if (!response.ok) throw new Error('Error al cargar las sucursales');
+        const data = await response.json();
+        setSucursales(data);
+      } catch (error) {
+        console.error('Error al cargar sucursales:', error);
+        setError('Error al cargar las sucursales');
+      }
+    };
+    fetchSucursales();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -113,8 +135,26 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
       await crearVehiculo(vehiculoData);
       onVehiculoCreado();
       onClose();
-    } catch (error) {
-      console.error('Error en el formulario:', error);
+    } catch (error: any) {
+      // Manejo especial para error de patente duplicada
+      if (error && error.message && typeof error.message === 'string') {
+        // Si el mensaje contiene el JSON del backend
+        try {
+          const match = error.message.match(/\{.*\}/);
+          if (match) {
+            const data = JSON.parse(match[0]);
+            if (data.patente && Array.isArray(data.patente)) {
+              setError(data.patente[0]);
+              return;
+            }
+          }
+        } catch (e) { /* fallback abajo */ }
+      }
+      // Si el error es un objeto con campo patente
+      if (error && error.patente && Array.isArray(error.patente)) {
+        setError(error.patente[0]);
+        return;
+      }
       setError(error instanceof Error ? error.message : 'Error al crear el vehículo');
     } finally {
       setIsLoading(false);
@@ -257,9 +297,9 @@ export default function AgregarVehiculoForm({ onClose, onVehiculoCreado }: Agreg
                 required
               >
                 <option value="">Seleccionar sucursal</option>
-                <option value="1">Sucursal Central</option>
-                <option value="2">Sucursal Norte</option>
-                <option value="3">Sucursal Sur</option>
+                {sucursales.map(sucursal => (
+                  <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+                ))}
               </select>
             </div>
           </div>

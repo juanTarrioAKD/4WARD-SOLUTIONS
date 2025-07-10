@@ -64,7 +64,7 @@ export const registerClient = async (userData: CreateUserData): Promise<{ usuari
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Error al registrar usuario');
+      throw errorData;
     }
 
     const data = await response.json();

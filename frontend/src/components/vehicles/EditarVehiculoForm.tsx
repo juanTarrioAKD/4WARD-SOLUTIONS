@@ -3,6 +3,31 @@ import { Vehiculo, modificarVehiculo } from '@/services/vehiculos';
 import { API_BASE_URL } from '@/config/config';
 import { getAuthToken } from '@/services/auth';
 
+interface Marca {
+  id: number;
+  nombre: string;
+}
+
+interface Modelo {
+  id: number;
+  nombre: string;
+}
+
+interface Sucursal {
+  id: number;
+  nombre: string;
+}
+
+interface Categoria {
+  id: number;
+  nombre: string;
+}
+
+interface Estado {
+  id: number;
+  nombre: string;
+}
+
 interface EditarVehiculoFormProps {
   vehiculo: Vehiculo;
   onClose: () => void;
@@ -21,6 +46,85 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [marcas, setMarcas] = useState<Marca[]>([]);
+  const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [estados, setEstados] = useState<Estado[]>([ // Puedes reemplazar esto por fetch si tienes endpoint
+    { id: 1, nombre: 'Disponible' },
+    { id: 2, nombre: 'En mantenimiento' },
+    { id: 3, nombre: 'No disponible' },
+  ]);
+
+  // Cargar marcas al montar
+  useEffect(() => {
+    const fetchMarcas = async () => {
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/api/marcas/`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Error al cargar las marcas');
+        const data = await response.json();
+        setMarcas(data);
+      } catch (error) {
+        setError('Error al cargar las marcas');
+      }
+    };
+    fetchMarcas();
+  }, []);
+
+  // Cargar modelos cuando cambia la marca
+  useEffect(() => {
+    const fetchModelos = async () => {
+      if (!formData.marca) {
+        setModelos([]);
+        return;
+      }
+      try {
+        const token = getAuthToken();
+        const response = await fetch(`${API_BASE_URL}/api/modelos/?marca=${formData.marca}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Error al cargar los modelos');
+        const data = await response.json();
+        setModelos(data);
+      } catch (error) {
+        setError('Error al cargar los modelos');
+      }
+    };
+    fetchModelos();
+  }, [formData.marca]);
+
+  // Cargar sucursales al montar
+  useEffect(() => {
+    const fetchSucursales = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/sucursales/`);
+        if (!response.ok) throw new Error('Error al cargar las sucursales');
+        const data = await response.json();
+        setSucursales(data);
+      } catch (error) {
+        setError('Error al cargar las sucursales');
+      }
+    };
+    fetchSucursales();
+  }, []);
+
+  // Cargar categorías al montar
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/categorias/`);
+        if (!response.ok) throw new Error('Error al cargar las categorías');
+        const data = await response.json();
+        setCategorias(data);
+      } catch (error) {
+        setError('Error al cargar las categorías');
+      }
+    };
+    fetchCategorias();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +169,8 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === 'marca' ? { modelo: '' } : {}) // reset modelo si cambia marca
     }));
   };
 
@@ -113,9 +218,9 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
                 required
               >
                 <option value="">Seleccionar marca</option>
-                <option value="1">Toyota</option>
-                <option value="2">Honda</option>
-                <option value="3">Volkswagen</option>
+                {marcas.map(marca => (
+                  <option key={marca.id} value={marca.id}>{marca.nombre}</option>
+                ))}
               </select>
             </div>
 
@@ -127,14 +232,12 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-[#3d2342] text-white border border-[#a16bb7] focus:border-[#e94b5a] focus:outline-none"
                 required
+                disabled={!formData.marca}
               >
                 <option value="">Seleccionar modelo</option>
-                <option value="1">Corolla</option>
-                <option value="2">Civic</option>
-                <option value="3">Golf</option>
-                <option value="4">Camry</option>
-                <option value="5">Accord</option>
-                <option value="6">Passat</option>
+                {modelos.map(modelo => (
+                  <option key={modelo.id} value={modelo.id}>{modelo.nombre}</option>
+                ))}
               </select>
             </div>
 
@@ -162,9 +265,9 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
                 required
               >
                 <option value="">Seleccionar categoría</option>
-                <option value="1">SUV</option>
-                <option value="2">Sedán</option>
-                <option value="3">Deportivo</option>
+                {categorias.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+                ))}
               </select>
             </div>
 
@@ -178,9 +281,9 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
                 required
               >
                 <option value="">Seleccionar estado</option>
-                <option value="1">Disponible</option>
-                <option value="2">En mantenimiento</option>
-                <option value="3">No disponible</option>
+                {estados.map(est => (
+                  <option key={est.id} value={est.id}>{est.nombre}</option>
+                ))}
               </select>
             </div>
 
@@ -194,9 +297,9 @@ export default function EditarVehiculoForm({ vehiculo, onClose, onVehiculoEditad
                 required
               >
                 <option value="">Seleccionar sucursal</option>
-                <option value="1">Sucursal Central</option>
-                <option value="2">Sucursal Norte</option>
-                <option value="3">Sucursal Sur</option>
+                {sucursales.map(suc => (
+                  <option key={suc.id} value={suc.id}>{suc.nombre}</option>
+                ))}
               </select>
             </div>
           </div>
