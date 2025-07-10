@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { User } from '@/types/user';
+import { User } from '@/services/users';
 
 interface AddEmployeeData {
   email: string;
